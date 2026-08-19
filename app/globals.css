@@ -1,0 +1,38 @@
+/* TODO: Replace with actual styles from original site's CSS/index.html once available */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.nav-links {
+  list-style: none;
+  display: flex;
+  gap: 1.5rem;
+}
+
+.hero {
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+footer {
+  padding: 1rem 2rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #666;
+}
