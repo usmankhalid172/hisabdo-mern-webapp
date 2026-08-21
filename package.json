@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
@@ -32,4 +33,10 @@
     "url": "https://github.com/usmankhalid172/hisabDo_site/issues"
   },
   "homepage": "https://github.com/usmankhalid172/hisabDo_site#readme"
+=======
+  "name": "hisabdo-website-mern",
+  "private": true,
+  "scripts": { "dev": "next dev", "build": "next build", "start": "next start" },
+  "dependencies": { "next": "latest", "react": "latest", "react-dom": "latest" }
+>>>>>>> 77a6bbef670ea34c632d614aad094a8b51ad4a59
 }

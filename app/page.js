@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -273,3 +274,19 @@ export default function Home() {
     </>
   );
 }
+=======
+export default function Home() {
+  return (
+    <section className="hero">
+      <h1>Welcome to HisabDo</h1>
+      <p>
+        {/*
+          TODO: Replace this placeholder with the actual content
+          from index.html once it is available in the repo.
+        */}
+        Track your hisab (accounts) simply and quickly.
+      </p>
+    </section>
+  );
+}
+>>>>>>> 77a6bbef670ea34c632d614aad094a8b51ad4a59

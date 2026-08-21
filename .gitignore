@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Dependencies
 node_modules/
 
@@ -18,4 +19,9 @@ Thumbs.db
 .vscode/
 
 .vercel
+=======
+node_modules/
+.next/
+out/
+>>>>>>> 77a6bbef670ea34c632d614aad094a8b51ad4a59
 .env*
