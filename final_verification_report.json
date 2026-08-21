@@ -1,0 +1,25 @@
+{
+  "evaluated_pages": 41,
+  "evaluated_sample": [
+    "about-app.html",
+    "about.html",
+    "app.html",
+    "blog/best-khata-app-in-pakistan.html",
+    "blog/bookkeeping-basics.html",
+    "blog/business-expense-categories.html",
+    "blog/business-finance-tips.html",
+    "blog/cash-flow-management.html",
+    "blog/complete-guide-to-hisabdo.html",
+    "blog/customer-credit-management.html",
+    "blog/digital-ledger-vs-paper-ledger.html",
+    "blog/expense-tracking-for-small-business.html"
+  ],
+  "pages_with_issues": 0,
+  "issues": {},
+  "missing_in_sitemap": [],
+  "robots_ok": true,
+  "eeat_issues": {},
+  "ads_violations": [],
+  "pass": true,
+  "readiness_percent": 100.0
+}

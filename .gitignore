@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Secrets — never commit
+serviceAccountKey.json
+.env
+.env.local
+.env*.local
+
+# Build output
+.next/
+out/
+dist/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+.vercel
+.env*

@@ -1,0 +1,6 @@
+User-agent: *
+
+Allow: /
+Disallow: /careers-admin.html
+
+Sitemap: https://hisabdo.app/sitemap.xml

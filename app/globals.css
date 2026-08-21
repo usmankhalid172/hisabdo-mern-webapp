@@ -1,0 +1,22 @@
+/* Mobile & iPhone Responsive Fixes */
+html,
+body {
+    overflow-x: hidden;
+    max-width: 100vw;
+}
+
+@media (max-width: 375px) {
+
+    .stats,
+    .stat-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 0 12px;
+    }
+
+    .stat-item,
+    .stat-card {
+        width: 100% !important;
+    }
+}

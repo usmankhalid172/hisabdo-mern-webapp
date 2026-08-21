@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>404 – Page Not Found | HisabDo App</title>
+<meta name="description" content="The page you are looking for doesn't exist or may have been moved. Return to HisabDo's home page or browse our blog.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="assets/images/app-logo.webp">
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  .error-code {
+    font-size: clamp(80px, 18vw, 160px);
+    font-weight: 800;
+    letter-spacing: -6px;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--green) 0%, #16a34a 60%, rgba(34,197,94,.3) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+  .error-divider {
+    width: 64px;
+    height: 3px;
+    background: var(--green);
+    border-radius: 2px;
+    margin: 20px auto 28px;
+  }
+  .error-help {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 40px;
+    padding: 10px 20px;
+    font-size: 13.5px;
+    color: var(--muted);
+    margin-top: 32px;
+  }
+  .error-help i { color: var(--green); }
+</style>
+<link rel="canonical" href="https://hisabdo.app/404.html">
+<meta property="og:site_name" content="HisabDo">
+<meta property="og:type" content="website">
+<meta property="og:title" content="404 – Page Not Found | HisabDo App">
+<meta property="og:description" content="The page you are looking for doesn't exist or may have been moved. Return to HisabDo's home page or browse our blog.">
+<meta property="og:url" content="https://hisabdo.app/404.html">
+<meta property="og:image" content="https://hisabdo.app/assets/images/app-logo.webp">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="404 – Page Not Found | HisabDo App">
+<meta name="twitter:description" content="The page you are looking for doesn't exist or may have been moved. Return to HisabDo's home page or browse our blog.">
+<meta name="twitter:image" content="https://hisabdo.app/assets/images/app-logo.webp">
+</head>
+<body>
+
+<div id="site-nav"></div>
+
+<main id="main-content">
+
+<section class="hero" style="padding:80px 24px 90px; min-height:calc(100vh - 68px - 200px); display:flex; flex-direction:column; align-items:center; justify-content:center;">
+  <div class="badge">⚠️ Error 404</div>
+  <div class="error-code">404</div>
+  <h1 style="margin-bottom:14px;">Page Not Found</h1>
+  <p style="max-width:520px;">Sorry, the page you are looking for doesn't exist or may have been moved. Let's get you back on track.</p>
+  <div class="error-divider"></div>
+  <div class="hero-buttons">
+    <a class="btn" href="index.html"><i class="fas fa-home"></i> Go to Home</a>
+    <a class="btn-outline" href="blog.html"><i class="fas fa-newspaper"></i> Visit Blog</a>
+  </div>
+  <p class="error-help">
+    <i class="fas fa-compass"></i>
+    Browse our website to find what you need — or check the navigation above.
+  </p>
+</section>
+
+</main>
+
+<div id="site-footer"></div>
+<script src="js/components.js" defer></script>
+<script src="js/main.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>Careers Admin — HisabDo</title>
+<link rel="icon" type="image/png" href="assets/images/app-logo.webp">
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  body { min-height: 100vh; background: var(--bg); color: #e2e8f0; font-family: inherit; }
+
+  /* ── Login screen ── */
+  #login-screen {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 24px;
+  }
+  .login-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 40px 36px; width: 100%; max-width: 420px;
+  }
+  .login-box h1 { font-size: 22px; margin-bottom: 6px; }
+  .login-box p  { color: var(--muted); font-size: 14px; margin-bottom: 28px; }
+
+  /* ── Admin panel ── */
+  #admin-panel { display: none; padding: 0 0 60px; }
+
+  .admin-header {
+    background: rgba(6,13,26,.95); border-bottom: 1px solid var(--border);
+    padding: 14px 28px; display: flex; align-items: center;
+    justify-content: space-between; gap: 12px; flex-wrap: wrap; position: sticky; top: 0; z-index: 100;
+  }
+  .admin-header-left { display: flex; align-items: center; gap: 12px; }
+  .admin-logo { font-size: 18px; font-weight: 700; color: var(--green); }
+  .admin-tag  { font-size: 11px; background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.25);
+                color: var(--green); padding: 2px 10px; border-radius: 20px; font-weight: 600; }
+  .admin-user { color: var(--muted); font-size: 13px; }
+
+  .admin-body { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+  /* ── Form fields ── */
+  .form-group { margin-bottom: 18px; }
+  .form-group label { display: block; font-size: 13px; font-weight: 600;
+                      color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .4px; }
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%; background: rgba(15,23,42,.6); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px; color: #e2e8f0; font-size: 14px;
+    font-family: inherit; outline: none; transition: border-color .2s; box-sizing: border-box;
+  }
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus { border-color: var(--green); }
+  .form-group textarea { resize: vertical; min-height: 90px; }
+  .form-group select option { background: #0b1220; }
+  .form-hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 20px; }
+
+  /* ── Table ── */
+  .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead th {
+    background: rgba(15,23,42,.8); padding: 12px 16px; text-align: left;
+    font-size: 11.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .5px; color: var(--muted); border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody tr { border-bottom: 1px solid rgba(30,41,59,.6); transition: background .15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(34,197,94,.03); }
+  tbody td { padding: 14px 16px; vertical-align: middle; }
+
+  /* ── Table action buttons ── */
+  .tbl-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 12px; border-radius: 6px; font-size: 12.5px; font-weight: 600;
+    cursor: pointer; border: 1px solid; transition: opacity .15s; white-space: nowrap;
+  }
+  .tbl-btn:hover { opacity: .8; }
+  .tbl-btn-edit   { background: rgba(59,130,246,.1); border-color: rgba(59,130,246,.3); color: #60a5fa; }
+  .tbl-btn-toggle { background: rgba(234,179,8,.08); border-color: rgba(234,179,8,.25); color: #fbbf24; }
+  .tbl-btn-delete { background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.25); color: #f87171; }
+
+  /* ── Badges ── */
+  .badge-pill { padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid; }
+  .badge-green { background: rgba(34,197,94,.08); border-color: rgba(34,197,94,.25); color: var(--green); }
+  .badge-gray  { background: rgba(148,163,184,.08); border-color: rgba(148,163,184,.2); color: var(--muted); }
+  .badge-red   { background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.25); color: #f87171; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; bottom: 28px; right: 28px; z-index: 9999;
+    padding: 13px 20px; border-radius: 10px; font-size: 14px; font-weight: 500;
+    border: 1px solid; opacity: 0; transform: translateY(12px);
+    transition: opacity .25s, transform .25s; pointer-events: none; max-width: 340px;
+  }
+  .toast-visible { opacity: 1; transform: translateY(0); }
+  .toast-success { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.3); color: #4ade80; }
+  .toast-error   { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.3); color: #f87171; }
+  .toast-info    { background: rgba(148,163,184,.1); border-color: rgba(148,163,184,.2); color: var(--muted); }
+
+  /* ── Loading overlay ── */
+  #loading-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(6,13,26,.7);
+    backdrop-filter: blur(4px); z-index: 8000;
+    align-items: center; justify-content: center; flex-direction: column; gap: 14px;
+  }
+  #loading-overlay span { color: var(--muted); font-size: 14px; }
+
+  /* ── Confirm modal ── */
+  #confirm-modal {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7);
+    backdrop-filter: blur(6px); z-index: 9000;
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .confirm-box {
+    background: #0b1220; border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 32px 28px; max-width: 420px; width: 100%; text-align: center;
+  }
+  .confirm-box h3 { font-size: 18px; margin-bottom: 10px; }
+  .confirm-box p  { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+  .confirm-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+  /* ── Form section ── */
+  #form-section { display: none; }
+  .form-section-inner {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 32px 28px; margin-bottom: 32px;
+  }
+  .form-section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px; flex-wrap: wrap; gap: 12px;
+  }
+  .form-section-header h2 { font-size: 18px; margin: 0; }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 20px;
+  }
+  .toolbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .search-input {
+    background: rgba(15,23,42,.6); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 14px; color: #e2e8f0; font-size: 14px;
+    outline: none; width: 240px; transition: border-color .2s;
+  }
+  .search-input:focus { border-color: var(--green); }
+
+  /* ── Smart Fill ── */
+  .smart-fill-box {
+    background: rgba(34,197,94,.04); border: 1px solid rgba(34,197,94,.2);
+    border-radius: var(--radius); padding: 20px 24px; margin-bottom: 28px;
+  }
+  .smart-fill-box h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; color: var(--green); }
+  .smart-fill-box p  { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+  .smart-fill-row { display: flex; gap: 10px; align-items: flex-start; }
+  .smart-fill-row textarea {
+    flex: 1; background: rgba(15,23,42,.6); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px; color: #e2e8f0; font-size: 13px;
+    font-family: inherit; outline: none; resize: vertical; min-height: 80px;
+    transition: border-color .2s; box-sizing: border-box;
+  }
+  .smart-fill-row textarea:focus { border-color: var(--green); }
+  #smart-fill-btn {
+    white-space: nowrap; display: inline-flex; align-items: center; gap: 7px;
+    padding: 10px 18px; font-size: 13px;
+  }
+  #smart-fill-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* ── Login error ── */
+  #login-error { color: #f87171; font-size: 13px; margin-top: 10px; min-height: 18px; }
+
+  /* ── Section title ── */
+  .section-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .section-sub   { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+
+  @media (max-width: 600px) {
+    .admin-body { padding: 20px 16px; }
+    .login-box  { padding: 28px 20px; }
+    .form-section-inner { padding: 20px 16px; }
+  }
+</style>
+<link rel="canonical" href="https://hisabdo.app/careers-admin.html">
+<meta property="og:site_name" content="HisabDo">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Careers Admin — HisabDo">
+<meta property="og:description" content="HisabDo helps users manage khata, ledger, and expense operations offline.">
+<meta property="og:url" content="https://hisabdo.app/careers-admin.html">
+<meta property="og:image" content="https://hisabdo.app/assets/images/app-logo.webp">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Careers Admin — HisabDo">
+<meta name="twitter:description" content="HisabDo helps users manage khata, ledger, and expense operations offline.">
+<meta name="twitter:image" content="https://hisabdo.app/assets/images/app-logo.webp">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     LOGIN SCREEN
+══════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+      <img src="assets/images/app-logo.webp" alt="HisabDo" style="width:36px;height:36px;border-radius:8px;" width="768" height="768">
+      <div>
+        <div style="font-weight:700;font-size:16px;">HisabDo</div>
+        <div style="font-size:12px;color:var(--muted);">Careers Admin</div>
+      </div>
+    </div>
+    <h1>Sign In</h1>
+    <p>Admin access only. Unauthorized access is prohibited.</p>
+    <form id="login-form">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="admin@hisabdo.app" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn" style="width:100%;justify-content:center;">
+        <i class="fas fa-sign-in-alt"></i> Sign In
+      </button>
+      <div id="login-error"></div>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     ADMIN PANEL
+══════════════════════════════════════════ -->
+<div id="admin-panel">
+
+  <!-- Header -->
+  <div class="admin-header">
+    <div class="admin-header-left">
+      <span class="admin-logo">HisabDo</span>
+      <span class="admin-tag">Careers Admin</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <span class="admin-user"><i class="fas fa-user-circle"></i> <span id="admin-email-display"></span></span>
+      <button id="logout-btn" class="tbl-btn tbl-btn-delete" style="font-size:13px;">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </button>
+    </div>
+  </div>
+
+  <div class="admin-body">
+
+    <!-- ── Add/Edit Form ── -->
+    <div id="form-section">
+      <div class="form-section-inner">
+        <div class="form-section-header">
+          <h2 id="form-title">Add New Job</h2>
+          <button id="cancel-form-btn" class="btn-outline" style="font-size:13px;padding:8px 18px;">
+            <i class="fas fa-times"></i> Cancel
+          </button>
+        </div>
+
+        <!-- Smart Fill -->
+        <div class="smart-fill-box">
+          <h3>✨ Smart Fill with AI</h3>
+          <p>LinkedIn post ya job description paste karo — AI automatically form fill kar dega.</p>
+          <div class="smart-fill-row">
+            <textarea id="smart-fill-input" placeholder="Paste your LinkedIn post or job description here…"></textarea>
+            <button type="button" id="smart-fill-btn" class="btn">
+              <i class="fas fa-magic"></i> Auto Fill
+            </button>
+          </div>
+        </div>
+
+        <form id="job-form">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Job Title *</label>
+              <input type="text" id="f-title" name="f-title" required placeholder="e.g. Flutter Developer">
+            </div>
+            <div class="form-group">
+              <label>Slug</label>
+              <input type="text" id="f-slug" name="f-slug" placeholder="auto-generated">
+              <div class="form-hint">Auto-filled from title. Edit if needed.</div>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Department</label>
+              <input type="text" id="f-department" name="f-department" placeholder="e.g. Engineering">
+            </div>
+            <div class="form-group">
+              <label>Employment Type</label>
+              <select id="f-employment-type" name="f-employment-type">
+                <option value="">— Select —</option>
+                <option>Full-Time</option>
+                <option>Part-Time</option>
+                <option>Contract</option>
+                <option>Internship</option>
+                <option>Freelance</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Location</label>
+              <input type="text" id="f-location" name="f-location" placeholder="e.g. Lahore, Pakistan">
+            </div>
+            <div class="form-group">
+              <label>Workplace Type</label>
+              <select id="f-workplace-type" name="f-workplace-type">
+                <option value="">— Select —</option>
+                <option>Remote</option>
+                <option>On-site</option>
+                <option>Hybrid</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Experience</label>
+              <input type="text" id="f-experience" name="f-experience" placeholder="e.g. 1–2 years">
+            </div>
+            <div class="form-group">
+              <label>Salary / Compensation</label>
+              <input type="text" id="f-salary" name="f-salary" placeholder="e.g. PKR 80,000/month">
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Openings</label>
+              <input type="number" id="f-openings" name="f-openings" min="1" placeholder="1">
+            </div>
+            <div class="form-group">
+              <label>Closing Date</label>
+              <input type="date" id="f-closing-date" name="f-closing-date">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Application URL</label>
+            <input type="url" id="f-application-url" name="f-application-url" placeholder="https://forms.gle/...">
+          </div>
+          <div class="form-group">
+            <label>Application Email</label>
+            <input type="email" id="f-application-email" name="f-application-email" placeholder="careers@hisabdo.app">
+          </div>
+          <div class="form-group">
+            <label>Application Phone / WhatsApp</label>
+            <input type="tel" id="f-application-phone" name="f-application-phone" placeholder="+92 300 1234567">
+          </div>
+          <div class="form-hint" style="margin-top:-12px;margin-bottom:18px;color:#f87171;">* At least one of URL, Email or Phone is required.</div>
+
+          <div class="form-group">
+            <label>Description</label>
+            <textarea id="f-description" name="f-description" rows="4" placeholder="Brief overview of the role…"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Responsibilities</label>
+            <textarea id="f-responsibilities" name="f-responsibilities" rows="5"
+              placeholder="One item per line&#10;Build and maintain Flutter app&#10;Write clean, testable code"></textarea>
+            <div class="form-hint">One item per line.</div>
+          </div>
+
+          <div class="form-group">
+            <label>Requirements</label>
+            <textarea id="f-requirements" name="f-requirements" rows="5"
+              placeholder="One item per line&#10;2+ years Flutter experience&#10;Strong Dart knowledge"></textarea>
+            <div class="form-hint">One item per line.</div>
+          </div>
+
+          <div class="form-group">
+            <label>Skills / Tags</label>
+            <textarea id="f-skills" name="f-skills" rows="3"
+              placeholder="One skill per line&#10;Flutter&#10;Firebase&#10;REST APIs"></textarea>
+            <div class="form-hint">One skill per line.</div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Status</label>
+              <select id="f-status" name="f-status">
+                <option value="published">Published</option>
+                <option value="draft">Draft</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Visibility</label>
+              <select id="f-published" name="f-published">
+                <option value="true">Published (visible on site)</option>
+                <option value="false">Draft (hidden from site)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Open Status</label>
+              <select id="f-open-status" name="f-open-status">
+                <option value="Open">Open</option>
+                <option value="Closed">Closed</option>
+                <option value="Paused">Paused</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;">
+            <button type="submit" class="btn"><i class="fas fa-save"></i> Save Job</button>
+            <button type="button" id="cancel-form-btn-2" class="btn-outline">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ── Jobs Table ── -->
+    <div class="section-title">Open Roles</div>
+    <div class="section-sub">Manage all job listings. Changes are reflected on the careers page immediately.</div>
+
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <input type="text" id="search-input" class="search-input" placeholder="🔍  Search by title or department…">
+        <span style="color:var(--muted);font-size:13px;"><span id="jobs-count">0</span> jobs</span>
+      </div>
+      <button id="add-job-btn" class="btn" style="font-size:14px;">
+        <i class="fas fa-plus"></i> Add Job
+      </button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Title / Department</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Open</th>
+            <th>Created</th>
+            <th>Closes</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="jobs-table-body">
+          <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px;">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div><!-- /admin-body -->
+</div><!-- /admin-panel -->
+
+<!-- ══════════════════════════════════════════
+     DELETE CONFIRM MODAL
+══════════════════════════════════════════ -->
+<div id="confirm-modal">
+  <div class="confirm-box">
+    <div style="font-size:32px;margin-bottom:14px;">🗑️</div>
+    <h3 id="confirm-modal-title">Delete this job?</h3>
+    <p>This action cannot be undone. The job will be permanently removed from Firestore.</p>
+    <div class="confirm-actions">
+      <button id="confirm-delete-btn" class="btn" style="background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#f87171;">
+        <i class="fas fa-trash"></i> Yes, Delete
+      </button>
+      <button id="confirm-cancel-btn" class="btn-outline">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TOAST
+══════════════════════════════════════════ -->
+<div id="toast" class="toast toast-success"></div>
+
+<!-- ══════════════════════════════════════════
+     LOADING OVERLAY
+══════════════════════════════════════════ -->
+<div id="loading-overlay">
+  <i class="fas fa-circle-notch fa-spin" style="font-size:32px;color:var(--green);"></i>
+  <span>Please wait…</span>
+</div>
+
+<script type="module" src="js/firebase-admin.js"></script>
+<script>
+  // Second cancel button wires to the same handler after module loads
+  document.getElementById('cancel-form-btn-2').addEventListener('click', () => {
+    document.getElementById('cancel-form-btn').click();
+  });
+</script>
+</body>
+</html>
