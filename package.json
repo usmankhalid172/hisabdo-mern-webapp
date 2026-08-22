@@ -1,6 +1,24 @@
 {
   "name": "hisabdo-website-mern",
   "private": true,
-  "scripts": { "dev": "next dev", "build": "next build", "start": "next start" },
-  "dependencies": { "next": "latest", "react": "latest", "react-dom": "latest" }
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "api": "node server/server.js",
+    "test": "node --test server/*.test.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.9.3",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "zod": "^4.4.3"
+  }
 }
