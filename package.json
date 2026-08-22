@@ -1,12 +1,14 @@
 {
-<<<<<<< HEAD
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
-    "firebase-admin": "^14.2.0",
-    "next": "^16.3.2",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-validator": "^7.3.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.9.3"
   },
   "name": "hisabdo_site",
   "version": "1.0.0",
@@ -16,10 +18,8 @@
     "lib": "lib"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "test": "jest --runInBand --forceExit"
   },
   "repository": {
     "type": "git",
@@ -28,15 +28,13 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "module",
+  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/usmankhalid172/hisabDo_site/issues"
   },
-  "homepage": "https://github.com/usmankhalid172/hisabDo_site#readme"
-=======
-  "name": "hisabdo-website-mern",
-  "private": true,
-  "scripts": { "dev": "next dev", "build": "next build", "start": "next start" },
-  "dependencies": { "next": "latest", "react": "latest", "react-dom": "latest" }
->>>>>>> 77a6bbef670ea34c632d614aad094a8b51ad4a59
+  "homepage": "https://github.com/usmankhalid172/hisabDo_site#readme",
+  "devDependencies": {
+    "jest": "^30.4.2",
+    "supertest": "^7.2.2"
+  }
 }
