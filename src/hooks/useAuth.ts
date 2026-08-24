@@ -1,7 +1,6 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAuthContext } from '../context/AuthContext';
 
 export function useAuth() {
   const router = useRouter();

@@ -17,10 +17,8 @@ const transactionSchema = z.object({
 
   date: z.string().min(1, "Date is required"),
 });
-
+export type TransactionFormInput = z.input<typeof transactionSchema>;
 export type TransactionFormData = z.output<typeof transactionSchema>;
-
-type TransactionFormInput = z.input<typeof transactionSchema>;
 
 export interface TransactionItem extends TransactionFormData {
   id: string;
@@ -32,7 +30,6 @@ interface ModalProps {
   onSubmit: (data: TransactionFormData) => void;
   initialData?: TransactionItem | null;
 }
-
 export function TransactionModal({
   isOpen,
   onClose,
@@ -45,7 +42,7 @@ export function TransactionModal({
     reset,
     setValue,
     formState: { errors },
-  } = useForm<TransactionFormInput, unknown, TransactionFormData>({
+  } = useForm<TransactionFormInput, any, TransactionFormData>({
     resolver: zodResolver(transactionSchema),
 
     defaultValues: {
@@ -53,8 +50,10 @@ export function TransactionModal({
       amount: 0,
       type: "Got Money",
       date: new Date().toISOString().split("T")[0],
+      amount: 0,
     },
   });
+
   useEffect(() => {
     if (initialData) {
       setValue("partyName", initialData.partyName);
@@ -74,6 +73,7 @@ export function TransactionModal({
   if (!isOpen) {
     return null;
   }
+
   const handleFormSubmit = (data: TransactionFormData) => {
     onSubmit(data);
 
@@ -90,6 +90,7 @@ export function TransactionModal({
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-6 shadow-2xl relative">
+
         <button
           type="button"
           onClick={onClose}
@@ -97,8 +98,9 @@ export function TransactionModal({
         >
           <X className="w-5 h-5" />
         </button>
+
         <h2 className="text-xl font-bold text-white mb-4">
-          {initialData ? "Edit Transaction" : "Add New Transaction"}
+          {initialData ? "Edit Transaction" : "Record New Transaction"}
         </h2>
 
         <form

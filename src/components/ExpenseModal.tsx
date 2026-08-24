@@ -23,18 +23,24 @@ const expenseSchema = z.object({
 
   date: z.string().min(1, "Date is required"),
 });
+
+// Input type = data coming from the form
+export type ExpenseFormInput = z.input<typeof expenseSchema>;
+
+// Output type = validated data returned by Zod
 export type ExpenseFormData = z.output<typeof expenseSchema>;
-type ExpenseFormInput = z.input<typeof expenseSchema>;
 
 export interface ExpenseItem extends ExpenseFormData {
   id: string;
 }
+
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: ExpenseFormData) => void;
   initialData?: ExpenseItem | null;
 }
+
 export function ExpenseModal({
   isOpen,
   onClose,
@@ -47,7 +53,7 @@ export function ExpenseModal({
     reset,
     setValue,
     formState: { errors },
-  } = useForm<ExpenseFormInput, unknown, ExpenseFormData>({
+  } = useForm<ExpenseFormInput, any, ExpenseFormData>({
     resolver: zodResolver(expenseSchema),
 
     defaultValues: {
@@ -55,6 +61,7 @@ export function ExpenseModal({
       amount: 0,
       category: "Utilities",
       date: new Date().toISOString().split("T")[0],
+      amount: 0,
     },
   });
 
@@ -94,6 +101,7 @@ export function ExpenseModal({
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-6 shadow-2xl relative">
+
         <button
           type="button"
           onClick={onClose}
@@ -101,14 +109,17 @@ export function ExpenseModal({
         >
           <X className="w-5 h-5" />
         </button>
+
         <h2 className="text-xl font-bold text-white mb-4">
-          {initialData ? "Edit Expense Entry" : "Add New Expense"}
+          {initialData ? "Edit Expense" : "Record New Expense"}
         </h2>
 
         <form
           onSubmit={handleSubmit(handleFormSubmit)}
           className="space-y-4"
         >
+
+          {/* Expense Title */}
           <div>
             <label className="block text-xs font-semibold text-slate-400 mb-1">
               Expense Title
@@ -116,7 +127,7 @@ export function ExpenseModal({
 
             <input
               {...register("title")}
-              placeholder="e.g. Office Electricity Bill"
+              placeholder="e.g. Electricity Bill"
               className="w-full bg-slate-950 border border-slate-800 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
             />
 
@@ -126,6 +137,8 @@ export function ExpenseModal({
               </p>
             )}
           </div>
+
+          {/* Amount */}
           <div>
             <label className="block text-xs font-semibold text-slate-400 mb-1">
               Amount (Rs.)
@@ -145,6 +158,8 @@ export function ExpenseModal({
               </p>
             )}
           </div>
+
+          {/* Category */}
           <div>
             <label className="block text-xs font-semibold text-slate-400 mb-1">
               Category
@@ -161,6 +176,8 @@ export function ExpenseModal({
               <option value="Other">Other</option>
             </select>
           </div>
+
+          {/* Date */}
           <div>
             <label className="block text-xs font-semibold text-slate-400 mb-1">
               Date
@@ -169,7 +186,7 @@ export function ExpenseModal({
             <input
               type="date"
               {...register("date")}
-              className="w-full bg-slate-950 border border-slate-800 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-slate-300"
+              className="w-full bg-slate-950 border border-slate-800 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
             />
 
             {errors.date && (
@@ -178,6 +195,8 @@ export function ExpenseModal({
               </p>
             )}
           </div>
+
+          {/* Buttons */}
           <div className="flex justify-end gap-2 pt-2">
 
             <button
