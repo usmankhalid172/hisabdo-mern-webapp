@@ -10,16 +10,16 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
+    "@supabase/ssr": "^0.12.5",
+    "@supabase/supabase-js": "^2.112.4",
     "axios": "^1.19.0",
     "bcryptjs": "^3.0.3",
-    "jose": "^6.2.9",
+    "jose": "^6.2.10",
     "lucide-react": "^1.30.0",
-    "mongoose": "^9.9.3",
     "next": "14.2.5",
     "react": "^18",
     "react-dom": "^18",
-    "react-hook-form": "^7.85.0",
-    "zod": "^3.25.76"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

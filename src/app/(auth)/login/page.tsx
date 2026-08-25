@@ -1,9 +1,18 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useAuth } from '../../../hooks/useAuth';
+import React, { useState } from "react";
+import Link from "next/link";
+import { useForm } from "react-hook-form";
+import {
+  loginSchema,
+  LoginFormData,
+} from "@/lib/validations/auth";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { AlertCircle } from "lucide-react";
+
+
+
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
