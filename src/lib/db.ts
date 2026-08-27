@@ -1,40 +1,9 @@
-import mongoose from "mongoose";
+import { createClient } from "@supabase/supabase-js";
 
-const MONGO_URI = process.env.MONGO_URI;
-
-if (!MONGO_URI) {
-  throw new Error("MONGO_URI is not configured");
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SECRET_KEY;
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error("Supabase environment variables are not configured");
 }
 
-let cached = (global as typeof globalThis & {
-  mongoose?: {
-    conn: typeof mongoose | null;
-    promise: Promise<typeof mongoose> | null;
-  };
-}).mongoose;
-
-if (!cached) {
-  cached = (global as typeof globalThis & {
-    mongoose?: {
-      conn: typeof mongoose | null;
-      promise: Promise<typeof mongoose> | null;
-    };
-  }).mongoose = {
-    conn: null,
-    promise: null,
-  };
-}
-
-export async function connectDB() {
-  if (cached!.conn) {
-    return cached!.conn;
-  }
-
-  if (!cached!.promise) {
-    cached!.promise = mongoose.connect(MONGO_URI!);
-  }
-
-  cached!.conn = await cached!.promise;
-
-  return cached!.conn;
-}
+export const supabase = createClient(supabaseUrl, supabaseKey);

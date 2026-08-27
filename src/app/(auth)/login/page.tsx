@@ -58,8 +58,9 @@ export default function LoginPage() {
         );
         return;
       }
-
-      router.replace("/dashboard");
+      localStorage.setItem("hisabdo_auth_token", result.token);
+localStorage.setItem("hisabdo_user", JSON.stringify(result.user));
+      window.location.href = "/dashboard";
     } catch (error) {
       console.error("Login error:", error);
 

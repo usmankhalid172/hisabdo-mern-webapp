@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/db";
-import User from "@/models/User";
+import { supabase } from "@/lib/db";
 import {
   verifyPassword,
   createAuthToken,
@@ -9,8 +8,6 @@ import {
 
 export async function POST(req: NextRequest) {
   try {
-    await connectDB();
-
     const body = await req.json();
     const { email, password } = body;
 
@@ -21,9 +18,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const user = await User.findOne({
-      email: email.toLowerCase().trim(),
-    });
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const { data: user, error } = await supabase
+      .from("users")
+      .select("id, name, email, password, role")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
+
+    if (error) {
+      console.error("User lookup error:", error);
+      return NextResponse.json(
+        { message: "Something went wrong during login" },
+        { status: 500 }
+      );
+    }
 
     if (!user) {
       return NextResponse.json(
@@ -32,10 +41,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const passwordValid = await verifyPassword(
-      password,
-      user.password
-    );
+    const passwordValid = await verifyPassword(password, user.password);
 
     if (!passwordValid) {
       return NextResponse.json(
@@ -45,11 +51,12 @@ export async function POST(req: NextRequest) {
     }
 
     const authUser = {
-      id: user._id.toString(),
+      id: user.id.toString(),
       name: user.name,
       email: user.email,
-      role: user.role,
+      role: user.role as "user" | "admin",
     };
+
     const accessToken = await createAuthToken(authUser);
     const refreshToken = await createRefreshToken(authUser);
 
@@ -60,6 +67,7 @@ export async function POST(req: NextRequest) {
       },
       { status: 200 }
     );
+
     response.cookies.set({
       name: "hisabdo_auth_token",
       value: accessToken,
@@ -69,6 +77,7 @@ export async function POST(req: NextRequest) {
       path: "/",
       maxAge: 60 * 15,
     });
+
     response.cookies.set({
       name: "hisabdo_refresh_token",
       value: refreshToken,
@@ -84,9 +93,7 @@ export async function POST(req: NextRequest) {
     console.error("Login error:", error);
 
     return NextResponse.json(
-      {
-        message: "Something went wrong during login",
-      },
+      { message: "Something went wrong during login" },
       { status: 500 }
     );
   }

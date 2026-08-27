@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/db";
-import User from "@/models/User";
+import { supabase } from "@/lib/db";
 import { hashPassword, createAuthToken } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
@@ -27,13 +26,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await connectDB();
-
     const normalizedEmail = email.toLowerCase().trim();
 
-    const existingUser = await User.findOne({
-      email: normalizedEmail,
-    });
+    const { data: existingUser, error: findError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
+
+    if (findError) {
+      console.error("User lookup error:", findError);
+
+      return NextResponse.json(
+        {
+          message: "Something went wrong during registration",
+        },
+        { status: 500 }
+      );
+    }
 
     if (existingUser) {
       return NextResponse.json(
@@ -46,15 +56,30 @@ export async function POST(request: NextRequest) {
 
     const hashedPassword = await hashPassword(password);
 
-    const user = await User.create({
-      name: name.trim(),
-      email: normalizedEmail,
-      password: hashedPassword,
-      role: "user",
-    });
+    const { data: user, error: insertError } = await supabase
+      .from("users")
+      .insert({
+        name: name.trim(),
+        email: normalizedEmail,
+        password: hashedPassword,
+        role: "user",
+      })
+      .select("id, name, email, role")
+      .single();
+
+    if (insertError || !user) {
+      console.error("User insert error:", insertError);
+
+      return NextResponse.json(
+        {
+          message: "Something went wrong during registration",
+        },
+        { status: 500 }
+      );
+    }
 
     const token = await createAuthToken({
-      id: user._id.toString(),
+      id: user.id.toString(),
       name: user.name,
       email: user.email,
       role: user.role,
@@ -65,7 +90,7 @@ export async function POST(request: NextRequest) {
         message: "Registration successful",
         token,
         user: {
-          id: user._id.toString(),
+          id: user.id.toString(),
           name: user.name,
           email: user.email,
           role: user.role,
