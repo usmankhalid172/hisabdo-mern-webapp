@@ -10,19 +10,20 @@ export function useAuth() {
   );
 
   useEffect(() => {
-    const token = localStorage.getItem("hisabdo_auth_token");
-
-    if (!token) {
-      setIsAuthenticated(false);
-      router.replace("/login");
-      return;
-    }
+    // Authentication is handled by the server-side middleware.
+    // The auth token is stored in an HttpOnly cookie,
+    // so it cannot be accessed from localStorage.
     setIsAuthenticated(true);
-  }, [router]);
+  }, []);
 
-  const logout = () => {
-    localStorage.removeItem("hisabdo_auth_token");
-    localStorage.removeItem("hisabdo_user");
+  const logout = async () => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
 
     setIsAuthenticated(false);
     router.replace("/login");

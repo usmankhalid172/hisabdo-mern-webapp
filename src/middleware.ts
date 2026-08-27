@@ -8,6 +8,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
   const user = await verifyAuthToken(token);
+  console.log("MIDDLEWARE TOKEN:", token ? "TOKEN EXISTS" : "NO TOKEN");
+console.log("MIDDLEWARE USER:", user);
   if (!user) {
     const response = NextResponse.redirect(
       new URL("/login", request.url)
