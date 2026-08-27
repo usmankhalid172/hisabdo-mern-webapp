@@ -1,110 +1,26 @@
-import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/db";
-import { hashPassword, createAuthToken } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase/client";
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const { name, email, password } = await request.json();
 
-    const { name, email, password } = body;
-
-    if (!name || !email || !password) {
-      return NextResponse.json(
-        {
-          message: "Name, email and password are required",
-        },
-        { status: 400 }
-      );
-    }
-
-    if (password.length < 6) {
-      return NextResponse.json(
-        {
-          message: "Password must be at least 6 characters",
-        },
-        { status: 400 }
-      );
-    }
-
-    const normalizedEmail = email.toLowerCase().trim();
-
-    const { data: existingUser, error: findError } = await supabase
-      .from("users")
-      .select("id")
-      .eq("email", normalizedEmail)
-      .maybeSingle();
-
-    if (findError) {
-      console.error("User lookup error:", findError);
-
-      return NextResponse.json(
-        {
-          message: "Something went wrong during registration",
-        },
-        { status: 500 }
-      );
-    }
-
-    if (existingUser) {
-      return NextResponse.json(
-        {
-          message: "User with this email already exists",
-        },
-        { status: 409 }
-      );
-    }
-
-    const hashedPassword = await hashPassword(password);
-
-    const { data: user, error: insertError } = await supabase
-      .from("users")
-      .insert({
-        name: name.trim(),
-        email: normalizedEmail,
-        password: hashedPassword,
-        role: "user",
-      })
-      .select("id, name, email, role")
-      .single();
-
-    if (insertError || !user) {
-      console.error("User insert error:", insertError);
-
-      return NextResponse.json(
-        {
-          message: "Something went wrong during registration",
-        },
-        { status: 500 }
-      );
-    }
-
-    const token = await createAuthToken({
-      id: user.id.toString(),
-      name: user.name,
-      email: user.email,
-      role: user.role,
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name },
+      },
     });
 
-    return NextResponse.json(
-      {
-        message: "Registration successful",
-        token,
-        user: {
-          id: user.id.toString(),
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        },
-      },
-      { status: 201 }
-    );
-  } catch (error) {
-    console.error("Registration error:", error);
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
 
+    return NextResponse.json({ user: data.user }, { status: 200 });
+  } catch (err) {
     return NextResponse.json(
-      {
-        message: "Something went wrong during registration",
-      },
+      { error: "Internal Server Error" },
       { status: 500 }
     );
   }
