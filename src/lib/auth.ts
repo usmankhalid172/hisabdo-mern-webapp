@@ -1,11 +1,7 @@
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 
-const JWT_SECRET = process.env.JWT_SECRET;
-
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET is not configured");
-}
+const JWT_SECRET = process.env.JWT_SECRET || "fallback_development_secret";
 
 const secretKey = new TextEncoder().encode(JWT_SECRET);
 

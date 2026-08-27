@@ -2,9 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
-import { SummaryCards } from "../../../components/dashboard-analytics/SummaryCards";
-import { CashFlowChart } from "../../../components/dashboard-analytics/CashFlowChart";
-import { ExpenseModal } from "../../../components/ExpenseModal";
 
 interface Transaction {
   id: string;
@@ -20,117 +17,52 @@ export default function DashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    try {
-      // 1. Read Expenses (Cash Outflow)
-      const savedExpenses = localStorage.getItem("hisabdo_expenses");
-      const expensesList = savedExpenses ? JSON.parse(savedExpenses) : [];
-
-      // 2. Read Customers/Khata (Cash Inflow / Receivables)
-      const savedCustomers = localStorage.getItem("hisabdo_customers");
-      const customersList = savedCustomers ? JSON.parse(savedCustomers) : [];
-
-      const normalizedExpenses: Transaction[] = expensesList.map((item: any) => ({
-        id: item.id || Date.now().toString(),
-        name: item.title || item.name || "Expense Entry",
-        type: "out",
-        amount: Number(item.amount || 0),
-        date: item.date || new Date().toLocaleDateString(),
-      }));
-
-      const normalizedCustomers: Transaction[] = customersList.map((item: any) => {
-        const amount = Number(item.openingBalance || item.amount || item.balance || 0);
-        
-        const rawType = String(item.type || "").toLowerCase();
-        const isCustomer = rawType === "customer" || rawType === "got" || rawType === "in" || !item.type;
-
-        return {
-          id: item.id || Date.now().toString(),
-          name: item.name || "Party Entry",
-          type: isCustomer ? "in" : "out",
-          amount: amount,
-          date: item.date || new Date().toLocaleDateString(),
-        };
-      });
-
-      setTransactions([...normalizedExpenses, ...normalizedCustomers]);
-    } catch (err) {
-      console.error("Failed to fetch metrics", err);
-    } finally {
-      setIsLoading(false);
-    }
+    const fetchData = async () => {
+      try {
+        setIsLoading(false);
+      } catch (err) {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
-  const totalCashIn = transactions
-    .filter((t) => t.type === "in")
-    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
-
-  const totalCashOut = transactions
-    .filter((t) => t.type === "out")
-    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
-
-  const netBalance = totalCashIn - totalCashOut;
-
-  const handleSaveExpense = (formData: any) => {
-    try {
-      const newTransaction: Transaction = {
-        id: Date.now().toString(),
-        name: formData.title || formData.name || "New Transaction",
-        type: formData.type === "in" || formData.type === "got" ? "in" : "out",
-        amount: Number(formData.amount || 0),
-        date: new Date().toLocaleDateString(),
-      };
-
-      const updated = [newTransaction, ...transactions];
-      setTransactions(updated);
-
-      const currentExpenses = JSON.parse(localStorage.getItem("hisabdo_expenses") || "[]");
-      localStorage.setItem("hisabdo_expenses", JSON.stringify([newTransaction, ...currentExpenses]));
-    } catch (err) {
-      console.error("Error saving transaction", err);
-    } finally {
-      setIsModalOpen(false);
-    }
-  };
-
   return (
-    <div className="space-y-8 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-6 text-slate-100">
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#111726]/80 border border-slate-800/80 p-6 rounded-2xl backdrop-blur-md shadow-xl">
         <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard Overview</h1>
-          <p className="text-sm text-slate-400">
-            Welcome back! Here is your business activity summary.
+          <h1 className="text-2xl font-bold tracking-tight text-white">Dashboard Overview</h1>
+          <p className="text-slate-400 text-sm mt-1">
+            Track your daily transactions, cash flow, and balances in real time.
           </p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-colors"
+          className="inline-flex items-center gap-2 py-2.5 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
         >
-          <Plus className="h-4 w-4" />
-          <span>New Transaction</span>
+          <Plus className="w-4 h-4 stroke-[2.5]" />
+          <span>Add Entry</span>
         </button>
       </div>
 
-      <SummaryCards
-        totalCashIn={totalCashIn}
-        totalCashOut={totalCashOut}
-        netBalance={netBalance}
-        isLoading={isLoading}
-      />
+      {/* Summary Stat Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="bg-[#111726]/80 border border-slate-800/80 p-5 rounded-2xl backdrop-blur-md">
+          <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Total Cash In</span>
+          <p className="text-2xl font-extrabold text-emerald-400 mt-2">Rs. 0.00</p>
+        </div>
 
-      <CashFlowChart
-        totalCashIn={totalCashIn}
-        totalCashOut={totalCashOut}
-        isLoading={isLoading}
-      />
+        <div className="bg-[#111726]/80 border border-slate-800/80 p-5 rounded-2xl backdrop-blur-md">
+          <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Total Cash Out</span>
+          <p className="text-2xl font-extrabold text-rose-400 mt-2">Rs. 0.00</p>
+        </div>
 
-      {isModalOpen && (
-        <ExpenseModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSubmit={handleSaveExpense}
-        />
-      )}
+        <div className="bg-[#111726]/80 border border-slate-800/80 p-5 rounded-2xl backdrop-blur-md">
+          <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Net Balance</span>
+          <p className="text-2xl font-extrabold text-white mt-2">Rs. 0.00</p>
+        </div>
+      </div>
     </div>
   );
 }
