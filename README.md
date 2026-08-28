@@ -49,8 +49,8 @@ npm install
 ### 3. Configure Environment Variables
 Create a .env.local file in the root directory and configure your Supabase credentials:
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_SUPABASE_URL=your_supabase_project_url
+NEXT_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 ### 4. Run Development Server
 ```bash

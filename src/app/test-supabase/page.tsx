@@ -21,7 +21,7 @@ export default function TestSupabasePage() {
         setDetails(error.message)
       } else {
         setStatus('Supabase Client Connected!')
-        setDetails(`Connected to project instance: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`)
+        setDetails(`Connected to project instance: ${process.env.NEXT_SUPABASE_URL}`)
       }
     }
 
