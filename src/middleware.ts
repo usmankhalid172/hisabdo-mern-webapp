@@ -1,23 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAuthToken } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get("hisabdo_auth_token")?.value;
-  const pathname = request.nextUrl.pathname;
+
   if (!token) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
-  const user = await verifyAuthToken(token);
-  console.log("MIDDLEWARE TOKEN:", token ? "TOKEN EXISTS" : "NO TOKEN");
-console.log("MIDDLEWARE USER:", user);
-  if (!user) {
-    const response = NextResponse.redirect(
-      new URL("/login", request.url)
-    );
-    response.cookies.delete("hisabdo_auth_token");
 
+  const supabase = createClient();
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+
+  if (error || !user) {
+    const response = NextResponse.redirect(new URL("/login", request.url));
+    response.cookies.delete("hisabdo_auth_token");
     return response;
   }
+
   return NextResponse.next();
 }
 

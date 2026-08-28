@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { Smartphone, Download, ShieldCheck, Check } from 'lucide-react';
-import { Card } from '../../../Customers & Khata CRUD/src/components/ui/Card';
-import Button from '../../../Customers & Khata CRUD/src/components/ui/Button';
-import Badge from '../../../Customers & Khata CRUD/src/components/ui/Badge';
+import { Card } from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
+import Badge from '@/components/ui/Badge';
 
 export default function DownloadPage() {
   return (

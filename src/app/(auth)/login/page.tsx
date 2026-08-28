@@ -55,12 +55,12 @@ export default function LoginPage() {
 
       if (!response.ok) {
         setAuthError(
-          result.message || "Invalid email or password. Please try again."
+          result.error || result.message || "Invalid email or password. Please try again."
         );
         return;
       }
-      localStorage.setItem("hisabdo_auth_token", result.token);
-localStorage.setItem("hisabdo_user", JSON.stringify(result.user));
+
+      localStorage.setItem("hisabdo_user", JSON.stringify(result.user));
       window.location.href = "/dashboard";
     } catch (error) {
       console.error("Login error:", error);

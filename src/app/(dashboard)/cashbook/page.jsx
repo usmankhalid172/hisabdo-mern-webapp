@@ -2,13 +2,13 @@
 
 import React, { useState } from 'react';
 import { BookOpen, PlusCircle, MinusCircle, Edit, Trash2, Calendar, FileText, Download } from 'lucide-react';
-import { Card, CardHeader, CardBody } from '../../../../Customers & Khata CRUD/src/components/ui/Card';
-import Button from '../../../../Customers & Khata CRUD/src/components/ui/Button';
-import Input from '../../../../Customers & Khata CRUD/src/components/ui/Input';
-import Table from '../../../../Customers & Khata CRUD/src/components/ui/Table';
-import Badge from '../../../../Customers & Khata CRUD/src/components/ui/Badge';
-import Modal from '../../../../Customers & Khata CRUD/src/components/ui/Modal';
-import { SuccessBanner } from '../../../../Customers & Khata CRUD/src/components/ui/StateAlert';
+import { Card, CardHeader, CardBody } from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import Table from '@/components/ui/Table';
+import Badge from '@/components/ui/Badge';
+import Modal from '@/components/ui/Modal';
+import { SuccessBanner } from '@/components/ui/StateAlert';
 
 export default function CashbookPage() {
   const [entries, setEntries] = useState([

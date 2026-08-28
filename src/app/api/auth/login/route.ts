@@ -7,27 +7,28 @@ export async function POST(request: NextRequest) {
 
     const supabase = createClient();
 
-    // Authenticate user via Supabase Auth
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       { user: data.user, session: data.session },
       { status: 200 }
     );
+
+    // Set cookie so middleware can verify auth
+    response.cookies.set("hisabdo_auth_token", data.session.access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60, // 1 hour
+    });
+
+    return response;
   } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Internal Server Error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: err.message || "Internal Server Error" }, { status: 500 });
   }
 }

@@ -2,13 +2,13 @@
 
 import React, { useState } from 'react';
 import { Building2, Plus, CheckCircle, Edit, Trash2, MapPin } from 'lucide-react';
-import { Card, CardHeader, CardBody } from '../../../../Customers & Khata CRUD/src/components/ui/Card';
-import Button from '../../../../Customers & Khata CRUD/src/components/ui/Button';
-import Input from '../../../../Customers & Khata CRUD/src/components/ui/Input';
-import Badge from '../../../../Customers & Khata CRUD/src/components/ui/Badge';
-import Modal from '../../../../Customers & Khata CRUD/src/components/ui/Modal';
-import { useAuth } from '../../../../Customers & Khata CRUD/src/context/AuthContext';
-import { SuccessBanner } from '../../../../Customers & Khata CRUD/src/components/ui/StateAlert';
+import { Card, CardHeader, CardBody } from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import Badge from '@/components/ui/Badge';
+import Modal from '@/components/ui/Modal';
+import { useAuth } from '@/context/AuthContext';
+import { SuccessBanner } from '@/components/ui/StateAlert';
 
 export default function BusinessesPage() {
   const { activeBranch, setActiveBranch } = useAuth();

@@ -50,7 +50,6 @@ export function TransactionModal({
       amount: 0,
       type: "Got Money",
       date: new Date().toISOString().split("T")[0],
-      amount: 0,
     },
   });
 

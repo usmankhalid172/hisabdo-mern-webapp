@@ -61,7 +61,6 @@ export function ExpenseModal({
       amount: 0,
       category: "Utilities",
       date: new Date().toISOString().split("T")[0],
-      amount: 0,
     },
   });
 
