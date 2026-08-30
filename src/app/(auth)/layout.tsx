@@ -11,7 +11,6 @@ export default function AuthLayout({
 }) {
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col justify-between p-4 sm:p-6">
-      {/* Top Navigation Bar */}
       <header className="max-w-6xl w-full mx-auto flex items-center justify-between py-2">
         <Link
           href="/"
@@ -30,13 +29,9 @@ export default function AuthLayout({
           </span>
         </div>
       </header>
-
-      {/* Main Auth Form Container */}
       <main className="flex-1 flex items-center justify-center my-auto">
         {children}
       </main>
-
-      {/* Auth Footer */}
       <footer className="text-center text-xs text-slate-600 py-2">
         &copy; {new Date().getFullYear()} HisabDo App. All rights reserved.
       </footer>

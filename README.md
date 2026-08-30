@@ -1,6 +1,21 @@
-## 🔐 Day 13: Authentication & User Management Foundation
+# 📊 HisabDo - Financial Management & Digital Khata App
 
-### 📊 Authentication Flow Diagram
+HisabDo is a modern, local-first web application designed for small business owners, freelancers, and shopkeepers to track cash flow, log digital khata transactions (Udhar/Got), and manage daily expenses seamlessly.
+
+---
+
+## 🛠️ Tech Stack & Architecture
+
+- **Framework:** Next.js 14 (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS (Dark Emerald Theme System)
+- **Database & Auth:** Supabase (PostgreSQL & Native Auth Services)
+- **State & Context:** React Context API (`AuthContext`)
+- **Icons:** Lucide React
+
+---
+
+## 🔐 Authentication & Security Flow
 
 ```mermaid
 flowchart TD
@@ -18,14 +33,43 @@ flowchart TD
     
     C --> I[Click Logout]
     I --> J[Clear Storage & Redirect to /login]
-
 ```
-### 📝 Progress Report
 
-#### **Completed Objectives**
-* **Auth Page UI**: Built responsive, dark-themed interfaces for Login, Register, and Forgot Password pages with intuitive layout navigation (`Back to Home` links).
-* **Form Validation**: Implemented strict schema validation using `react-hook-form` and `zod` for all authentication inputs (email formats, password minimum lengths, and password matching).
-* **Credential Verification & Feedback**: Added credential validation against stored user accounts, providing actionable UI error messages for unregistered users or incorrect passwords.
-* **Route Protection**: Developed a custom `useAuth` hook to guard private routes (`/dashboard`), automatically redirecting unauthenticated users to the login screen.
-* **Session & State Management**: Integrated local storage session handling along with a persistent **Log Out** mechanism in the main dashboard navigation.
-* **Full CRUD Operations**: Enhanced core transaction management on the dashboard to support full Create, Read, Update, and Delete operations with persistent browser storage.
+## 🚀 Getting Started
+
+### 1. Clone the Repository
+```bash
+git clone [https://github.com/usmankhalid172/hisabdo-mern-webapp.git](https://github.com/usmankhalid172/hisabdo-mern-webapp.git)
+cd hisabdo-mern-webapp
+```
+### 2. Install Dependencies
+```bash
+npm install
+```
+### 3. Configure Environment Variables
+Create a .env.local file in the root directory and configure your Supabase credentials:
+```bash
+NEXT_SUPABASE_URL=your_supabase_project_url
+NEXT_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+### 4. Run Development Server
+```bash
+npm run dev
+```
+Open http://localhost:3000 in your browser to view the application.
+
+## 📁 Key Folder Structure
+```text
+src/
+├── app/
+│   ├── (auth)/             # Authentication routes (/login, /register)
+│   ├── (dashboard)/        # App routes (/dashboard, /transactions)
+│   ├── api/                # API route handlers
+│   ├── layout.tsx          # Root layout wrapped with AuthProvider
+│   └── page.tsx            # Landing homepage
+├── components/             # Reusable UI components
+├── context/                # AuthContext & global providers
+├── lib/                    # Supabase client & utilities
+└── types/                  # TypeScript interface definitions
+```
+

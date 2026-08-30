@@ -10,14 +10,20 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
-    "lucide-react": "^1.37.0",
+    "@supabase/ssr": "^0.12.5",
+    "@supabase/supabase-js": "^2.112.4",
+    "axios": "^1.19.0",
+    "bcryptjs": "^3.0.3",
+    "jose": "^6.2.10",
+    "lucide-react": "^1.30.0",
     "next": "14.2.5",
     "react": "^18",
     "react-dom": "^18",
-    "react-hook-form": "^7.87.0",
-    "zod": "^3.25.76"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",
     "@types/react": "^18",
     "autoprefixer": "^10.5.4",
