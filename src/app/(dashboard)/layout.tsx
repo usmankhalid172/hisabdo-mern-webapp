@@ -14,8 +14,10 @@ import {
   ArrowLeft,
   Menu,
   X,
+  Shield,
+  Loader2,
 } from "lucide-react";
-import { useAuth } from "../../hooks/useAuth";
+import { useAuth } from "@/context/AuthContext";
 
 const NAV_ITEMS = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -32,17 +34,22 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { isAuthenticated, logout } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  if (isAuthenticated === false) {
-    return null;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400 gap-3">
+        <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+        <p className="text-xs font-medium tracking-wide">Loading your merchant account...</p>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row">
       {/* Mobile Top Header */}
-      <div className="md:hidden flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800">
+      <div className="md:hidden flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center text-slate-950 font-bold text-sm">
             H
@@ -65,13 +72,18 @@ export default function DashboardLayout({
       >
         <div className="space-y-6">
           {/* Logo (Desktop) */}
-          <div className="hidden md:flex items-center gap-2 px-3 py-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-slate-950 font-bold text-lg">
+          <div className="hidden md:flex items-center gap-2.5 px-3 py-2">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center text-slate-950 font-bold text-lg shadow-lg shadow-emerald-500/20">
               H
             </div>
-            <span className="font-bold text-lg tracking-tight text-white">
-              HisabDo App
-            </span>
+            <div>
+              <span className="font-bold text-base tracking-tight text-white block">
+                HisabDo Web
+              </span>
+              <span className="text-[10px] text-emerald-400 font-semibold block uppercase tracking-wider">
+                Merchant Portal
+              </span>
+            </div>
           </div>
 
           {/* Navigation Links */}
@@ -86,7 +98,7 @@ export default function DashboardLayout({
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     isActive
-                      ? "bg-emerald-500 text-slate-950 font-semibold shadow-md shadow-emerald-500/10"
+                      ? "bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/10"
                       : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
                   }`}
                 >
@@ -98,22 +110,42 @@ export default function DashboardLayout({
           </nav>
         </div>
 
-        {/* Bottom Actions */}
-        <div className="space-y-2 pt-4 border-t border-slate-800 mt-6 md:mt-0">
+        {/* Bottom Actions & Authenticated User Card */}
+        <div className="space-y-3 pt-4 border-t border-slate-800 mt-6 md:mt-0">
+          {user && (
+            <Link
+              href="/profile"
+              className="flex items-center gap-3 p-2.5 bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800/60 rounded-xl transition group"
+            >
+              <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-bold text-sm shrink-0">
+                {user.name ? user.name.charAt(0).toUpperCase() : "U"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-white truncate group-hover:text-emerald-400 transition">
+                  {user.name}
+                </p>
+                <p className="text-[10px] text-slate-400 truncate">{user.email}</p>
+              </div>
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase">
+                {user.role}
+              </span>
+            </Link>
+          )}
+
           <button
             onClick={logout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer"
+            className="w-full flex items-center gap-3 px-3 py-2 text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer"
           >
-            <LogOut className="w-4 h-4 shrink-0" />
-            <span>Log Out</span>
+            <LogOut className="w-3.5 h-3.5 shrink-0" />
+            <span>Sign Out</span>
           </button>
 
           <Link
             href="/"
-            className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-500 hover:text-slate-300 transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-300 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Home Website</span>
+            <span>Back to Main Website</span>
           </Link>
         </div>
       </aside>

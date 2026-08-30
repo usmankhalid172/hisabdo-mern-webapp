@@ -1,20 +1,57 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { verifyAuthToken } from "@/lib/auth-token";
+
+const PROTECTED_ROUTES = [
+  "/dashboard",
+  "/customers",
+  "/expenses",
+  "/reports",
+  "/profile",
+  "/settings",
+  "/businesses",
+  "/cashbook",
+  "/transactions",
+];
+
+const AUTH_ROUTES = ["/login", "/register", "/forgot-password"];
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
   const token = request.cookies.get("hisabdo_auth_token")?.value;
 
-  if (!token) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  const isProtectedRoute = PROTECTED_ROUTES.some((route) =>
+    pathname.startsWith(route)
+  );
+  const isAuthRoute = AUTH_ROUTES.some((route) => pathname.startsWith(route));
+
+  let isAuthenticated = false;
+
+  if (token) {
+    const user = await verifyAuthToken(token);
+    if (user) {
+      isAuthenticated = true;
+    }
   }
 
-  const supabase = createClient();
-  const { data: { user }, error } = await supabase.auth.getUser(token);
+  // 1. Protected Route Protection: Redirect unauthenticated users to login
+  if (isProtectedRoute && !isAuthenticated) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirect", pathname);
 
-  if (error || !user) {
-    const response = NextResponse.redirect(new URL("/login", request.url));
-    response.cookies.delete("hisabdo_auth_token");
+    const response = NextResponse.redirect(loginUrl);
+    if (token) {
+      // Clear invalid/expired cookie
+      response.cookies.set("hisabdo_auth_token", "", {
+        path: "/",
+        maxAge: 0,
+      });
+    }
     return response;
+  }
+
+  // 2. Auth Route Protection: Redirect already authenticated users to dashboard
+  if (isAuthRoute && isAuthenticated) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   return NextResponse.next();
@@ -28,5 +65,11 @@ export const config = {
     "/reports/:path*",
     "/profile/:path*",
     "/settings/:path*",
+    "/businesses/:path*",
+    "/cashbook/:path*",
+    "/transactions/:path*",
+    "/login",
+    "/register",
+    "/forgot-password",
   ],
 };
