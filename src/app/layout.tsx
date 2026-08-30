@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import ChatbotWidget from "../components/ChatbotWidget";
 
 export const metadata: Metadata = {
   title: "HisabDo — Digital Ledger & Expense Tracker",
@@ -15,6 +16,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="bg-slate-950 text-slate-100 antialiased min-h-screen">
         {children}
+        <ChatbotWidget />
       </body>
     </html>
   );
