@@ -4,13 +4,29 @@ export async function POST() {
   const response = NextResponse.json(
     {
       success: true,
-      message: "Logged out successfully",
+      message: "Logged out successfully.",
     },
     { status: 200 }
   );
 
-  response.cookies.delete("hisabdo_auth_token");
-  response.cookies.delete("hisabdo_refresh_token");
+  // Clear HTTP-only auth cookies
+  response.cookies.set("hisabdo_auth_token", "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+    expires: new Date(0),
+  });
+
+  response.cookies.set("hisabdo_refresh_token", "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+    expires: new Date(0),
+  });
 
   return response;
 }
