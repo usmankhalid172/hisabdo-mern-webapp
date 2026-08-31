@@ -10,6 +10,8 @@ const forgotSchema = z.object({
   email: z.string().email("Invalid email address"),
 });
 
+
+
 type ForgotFormData = z.infer<typeof forgotSchema>;
 
 export default function ForgotPasswordPage() {
