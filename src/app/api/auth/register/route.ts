@@ -1,84 +1,99 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/db";
-import User from "@/models/User";
-import { hashPassword, createAuthToken } from "@/lib/auth";
+import { registerSchema } from "@/lib/validations/auth";
+import { hashPassword, createAuthToken, createRefreshToken } from "@/lib/auth";
+import { userStore } from "@/lib/user-store";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const { name, email, password } = body;
-
-    if (!name || !email || !password) {
+    // Validate request body
+    const validation = registerSchema.safeParse(body);
+    if (!validation.success) {
+      const fieldErrors = validation.error.flatten().fieldErrors;
+      const firstError = Object.values(fieldErrors)[0]?.[0] || "Validation failed";
       return NextResponse.json(
         {
-          message: "Name, email and password are required",
+          success: false,
+          message: firstError,
+          fieldErrors,
         },
         { status: 400 }
       );
     }
 
-    if (password.length < 6) {
-      return NextResponse.json(
-        {
-          message: "Password must be at least 6 characters",
-        },
-        { status: 400 }
-      );
-    }
+    const { name, email, password, phone, shopName } = validation.data;
 
-    await connectDB();
-
-    const normalizedEmail = email.toLowerCase().trim();
-
-    const existingUser = await User.findOne({
-      email: normalizedEmail,
-    });
-
+    // Check if user already exists
+    const existingUser = await userStore.findByEmail(email);
     if (existingUser) {
       return NextResponse.json(
         {
-          message: "User with this email already exists",
+          success: false,
+          message: "An account with this email address already exists. Please log in.",
         },
-        { status: 409 }
+        { status: 400 }
       );
     }
 
-    const hashedPassword = await hashPassword(password);
-
-    const user = await User.create({
-      name: name.trim(),
-      email: normalizedEmail,
-      password: hashedPassword,
+    // Hash password and save user
+    const passwordHash = await hashPassword(password);
+    const newUser = await userStore.createUser({
+      name,
+      email,
+      passwordHash,
+      phone,
+      shopName,
       role: "user",
     });
 
-    const token = await createAuthToken({
-      id: user._id.toString(),
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    });
+    const authUser = {
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      phone: newUser.phone,
+      shopName: newUser.shopName,
+    };
 
-    return NextResponse.json(
+    // Generate JWT access & refresh tokens
+    const accessToken = await createAuthToken(authUser);
+    const refreshToken = await createRefreshToken(authUser);
+
+    const response = NextResponse.json(
       {
-        message: "Registration successful",
-        token,
-        user: {
-          id: user._id.toString(),
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        },
+        success: true,
+        message: "Account registered successfully!",
+        user: authUser,
+        token: accessToken,
       },
       { status: 201 }
     );
-  } catch (error) {
-    console.error("Registration error:", error);
 
+    // Set secure HTTP-only cookies
+    response.cookies.set("hisabdo_auth_token", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24, // 24 hours
+    });
+
+    response.cookies.set("hisabdo_refresh_token", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
+
+    return response;
+  } catch (error: any) {
+    console.error("Registration error:", error);
     return NextResponse.json(
       {
-        message: "Something went wrong during registration",
+        success: false,
+        message: error.message || "An unexpected error occurred during registration.",
       },
       { status: 500 }
     );

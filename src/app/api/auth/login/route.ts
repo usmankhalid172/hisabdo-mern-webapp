@@ -1,91 +1,100 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/db";
-import User from "@/models/User";
-import {
-  verifyPassword,
-  createAuthToken,
-  createRefreshToken,
-} from "@/lib/auth";
+import { loginSchema } from "@/lib/validations/auth";
+import { verifyPassword, createAuthToken, createRefreshToken } from "@/lib/auth";
+import { userStore } from "@/lib/user-store";
 
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    await connectDB();
+    const body = await request.json();
 
-    const body = await req.json();
-    const { email, password } = body;
-
-    if (!email || !password) {
+    // Validate request body
+    const validation = loginSchema.safeParse(body);
+    if (!validation.success) {
+      const fieldErrors = validation.error.flatten().fieldErrors;
+      const firstError = Object.values(fieldErrors)[0]?.[0] || "Validation failed";
       return NextResponse.json(
-        { message: "Email and password are required" },
+        {
+          success: false,
+          message: firstError,
+          fieldErrors,
+        },
         { status: 400 }
       );
     }
 
-    const user = await User.findOne({
-      email: email.toLowerCase().trim(),
-    });
+    const { email, password } = validation.data;
 
+    // Lookup user by email
+    const user = await userStore.findByEmail(email);
     if (!user) {
       return NextResponse.json(
-        { message: "Invalid email or password" },
+        {
+          success: false,
+          message: "Invalid email or password. Please check your credentials.",
+        },
         { status: 401 }
       );
     }
 
-    const passwordValid = await verifyPassword(
-      password,
-      user.password
-    );
-
-    if (!passwordValid) {
+    // Verify password against stored hash
+    const isPasswordValid = await verifyPassword(password, user.passwordHash);
+    if (!isPasswordValid) {
       return NextResponse.json(
-        { message: "Invalid email or password" },
+        {
+          success: false,
+          message: "Invalid email or password. Please check your credentials.",
+        },
         { status: 401 }
       );
     }
 
     const authUser = {
-      id: user._id.toString(),
+      id: user.id,
       name: user.name,
       email: user.email,
       role: user.role,
+      phone: user.phone,
+      shopName: user.shopName,
     };
+
+    // Generate JWT access & refresh tokens
     const accessToken = await createAuthToken(authUser);
     const refreshToken = await createRefreshToken(authUser);
 
     const response = NextResponse.json(
       {
-        message: "Login successful",
+        success: true,
+        message: "Login successful!",
         user: authUser,
+        token: accessToken,
       },
       { status: 200 }
     );
-    response.cookies.set({
-      name: "hisabdo_auth_token",
-      value: accessToken,
+
+    // Set secure HTTP-only cookies
+    response.cookies.set("hisabdo_auth_token", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 15,
+      maxAge: 60 * 60 * 24, // 24 hours
     });
-    response.cookies.set({
-      name: "hisabdo_refresh_token",
-      value: refreshToken,
+
+    response.cookies.set("hisabdo_refresh_token", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: 60 * 60 * 24 * 7, // 7 days
     });
 
     return response;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Login error:", error);
-
     return NextResponse.json(
       {
-        message: "Something went wrong during login",
+        success: false,
+        message: error.message || "An unexpected error occurred during login.",
       },
       { status: 500 }
     );

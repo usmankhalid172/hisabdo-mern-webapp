@@ -1,20 +1,24 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import type { Metadata } from 'next';
+import { AuthProvider } from '../context/AuthContext';
+// @ts-ignore
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "HisabDo — Digital Ledger & Expense Tracker",
-  description: "Local-first digital ledger, Khata, and daily expense management for businesses and individuals.",
+  title: 'HisabDo',
+  description: 'Financial Management App',
 };
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <html lang="en">
-      <body className="bg-slate-950 text-slate-100 antialiased min-h-screen">
-        {children}
+      <body className="min-h-screen w-full overflow-x-hidden">
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

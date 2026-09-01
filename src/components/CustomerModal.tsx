@@ -18,8 +18,11 @@ const customerSchema = z.object({
     .min(0, "Balance cannot be negative"),
 });
 
+// Input type = what React Hook Form receives
+export type CustomerFormInput = z.input<typeof customerSchema>;
+
+// Output type = validated data returned by Zod
 export type CustomerFormData = z.output<typeof customerSchema>;
-type CustomerFormInput = z.input<typeof customerSchema>;
 
 export interface CustomerItem extends CustomerFormData {
   id: string;
@@ -44,8 +47,9 @@ export function CustomerModal({
     reset,
     setValue,
     formState: { errors },
-  } = useForm<CustomerFormInput, unknown, CustomerFormData>({
+  } = useForm<CustomerFormInput, any, CustomerFormData>({
     resolver: zodResolver(customerSchema),
+
     defaultValues: {
       name: "",
       phone: "",
@@ -90,6 +94,8 @@ export function CustomerModal({
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-6 shadow-2xl relative">
+
+        {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
@@ -97,7 +103,8 @@ export function CustomerModal({
         >
           <X className="w-5 h-5" />
         </button>
-        
+
+        {/* Title */}
         <h2 className="text-xl font-bold text-white mb-4">
           {initialData
             ? "Edit Party Contact"
@@ -108,7 +115,8 @@ export function CustomerModal({
           onSubmit={handleSubmit(handleFormSubmit)}
           className="space-y-4"
         >
-  
+
+          {/* Name */}
           <div>
             <label className="block text-xs font-semibold text-slate-400 mb-1">
               Full Name / Business Name
@@ -126,6 +134,8 @@ export function CustomerModal({
               </p>
             )}
           </div>
+
+          {/* Phone */}
           <div>
             <label className="block text-xs font-semibold text-slate-400 mb-1">
               Phone Number
@@ -143,6 +153,8 @@ export function CustomerModal({
               </p>
             )}
           </div>
+
+          {/* Party Type */}
           <div>
             <label className="block text-xs font-semibold text-slate-400 mb-1">
               Party Type
@@ -161,6 +173,8 @@ export function CustomerModal({
               </option>
             </select>
           </div>
+
+          {/* Opening Balance */}
           <div>
             <label className="block text-xs font-semibold text-slate-400 mb-1">
               Opening Balance (Rs.)
@@ -180,7 +194,10 @@ export function CustomerModal({
               </p>
             )}
           </div>
+
+          {/* Buttons */}
           <div className="flex justify-end gap-2 pt-2">
+
             <button
               type="button"
               onClick={onClose}
@@ -195,6 +212,7 @@ export function CustomerModal({
             >
               {initialData ? "Update Party" : "Save Party"}
             </button>
+
           </div>
         </form>
       </div>
