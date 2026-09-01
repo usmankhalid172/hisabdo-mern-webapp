@@ -9,11 +9,17 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
     "axios": "^1.19.0",
+    "bcryptjs": "^3.0.3",
+    "jose": "^6.2.10",
     "lucide-react": "^1.30.0",
+    "mongoose": "^9.9.4",
     "next": "14.2.5",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "react-hook-form": "^7.87.0",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@types/node": "^20",

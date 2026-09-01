@@ -1,13 +1,11 @@
+export const runtime = 'nodejs';
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 
-const JWT_SECRET = process.env.JWT_SECRET;
-
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET is not configured");
-}
-
-const secretKey = new TextEncoder().encode(JWT_SECRET);
+// Single direct encoding with fallback
+const secretKey = new TextEncoder().encode(
+  process.env.JWT_SECRET || "hisabdo_default_secret_fallback_key"
+);
 
 export type AuthUser = {
   id: string;

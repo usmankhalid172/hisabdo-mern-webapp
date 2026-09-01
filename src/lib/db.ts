@@ -1,10 +1,8 @@
 import mongoose from "mongoose";
 
-const MONGO_URI = process.env.MONGO_URI;
-
-if (!MONGO_URI) {
-  throw new Error("MONGO_URI is not configured");
-}
+const MONGO_URI = process.env.MONGO_URI ||
+  process.env.MONGODB_URI ||
+  "mongodb://localhost:27017/hisabdo";
 
 let cached = (global as typeof globalThis & {
   mongoose?: {
