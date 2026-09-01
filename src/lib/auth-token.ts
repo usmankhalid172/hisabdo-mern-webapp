@@ -62,7 +62,7 @@ export async function verifyAuthToken(token: string): Promise<AuthUser | null> {
       shopName: (payload.shopName as string) || undefined,
       phone: (payload.phone as string) || undefined,
     };
-  } catch {
+  } catch (error) {
     return null;
   }
 }
@@ -83,7 +83,7 @@ export async function verifyRefreshToken(token: string): Promise<AuthUser | null
       shopName: (payload.shopName as string) || undefined,
       phone: (payload.phone as string) || undefined,
     };
-  } catch {
+  } catch (error) {
     return null;
   }
 }

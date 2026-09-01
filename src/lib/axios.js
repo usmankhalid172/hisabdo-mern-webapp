@@ -1,37 +1,11 @@
-﻿import axios from "axios";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+﻿import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: '/api',
   headers: {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
   },
-  timeout: 10000,
-  withCredentials: true,
+  withCredentials: true, // 👈 Essential: Pass cookies to Next.js API routes
 });
-
-apiClient.interceptors.request.use(
-  (config) => {
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      if (typeof window !== "undefined") {
-        window.location.href = "/login";
-      }
-    }
-
-    return Promise.reject(
-      error.response?.data?.message || "An unexpected error occurred"
-    );
-  }
-);
 
 export default apiClient;
