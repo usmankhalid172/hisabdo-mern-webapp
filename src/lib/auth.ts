@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 import bcrypt from "bcryptjs";
 
 export * from "./auth-token";
