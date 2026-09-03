@@ -4,7 +4,8 @@ import { verifyAuthToken } from '@/lib/auth-token';
 
 function getAdminSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_SUPABASE_URL || '';
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_SUPABASE_ANON_KEY || '';
+  if (!url || !serviceKey) return null;
   return createSupabaseClient(url, serviceKey);
 }
 
@@ -43,16 +44,18 @@ export async function GET(request) {
     }
 
     const supabase = getAdminSupabase();
+    let transactions = [];
 
-    const { data: transactions, error } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('❌ Supabase Dashboard Fetch Error:', error);
-      throw error;
+      if (!error && data) {
+        transactions = data;
+      }
     }
 
     let totalReceivables = 0;
