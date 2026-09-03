@@ -10,6 +10,7 @@ const PROTECTED_ROUTES = [
   "/settings",
   "/businesses",
   "/cashbook",
+  "/vendors",
   "/transactions",
 ];
 
@@ -67,6 +68,7 @@ export const config = {
     "/settings/:path*",
     "/businesses/:path*",
     "/cashbook/:path*",
+    "/vendors/:path*",
     "/transactions/:path*",
     "/login",
     "/register",

@@ -16,12 +16,18 @@ import {
   X,
   Shield,
   Loader2,
+  BookOpen,
+  Truck,
+  Building2,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 const NAV_ITEMS = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Digital Cashbook", href: "/cashbook", icon: BookOpen },
   { name: "Customers (Khata)", href: "/customers", icon: Users },
+  { name: "Vendors & Suppliers", href: "/vendors", icon: Truck },
+  { name: "Business Branches", href: "/businesses", icon: Building2 },
   { name: "Expenses", href: "/expenses", icon: Receipt },
   { name: "Reports", href: "/reports", icon: BarChart3 },
   { name: "User Profile", href: "/profile", icon: User },
