@@ -1,4 +1,5 @@
-import { SignJWT, jwtVerify } from "jose";
+import { SignJWT } from "jose/jwt/sign";
+import { jwtVerify } from "jose/jwt/verify";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "hisabdo_jwt_secret_key_2026_production_safe_string_32chars";
@@ -62,7 +63,7 @@ export async function verifyAuthToken(token: string): Promise<AuthUser | null> {
       shopName: (payload.shopName as string) || undefined,
       phone: (payload.phone as string) || undefined,
     };
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -83,7 +84,7 @@ export async function verifyRefreshToken(token: string): Promise<AuthUser | null
       shopName: (payload.shopName as string) || undefined,
       phone: (payload.phone as string) || undefined,
     };
-  } catch (error) {
+  } catch {
     return null;
   }
 }
