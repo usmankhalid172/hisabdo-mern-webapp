@@ -1,212 +1,190 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { ArrowUpRight, ArrowDownLeft, Wallet, Plus, Pencil, Trash2 } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
+import { dashboardService } from "@/services/dashboardService";
+import { transactionService } from "@/services/transactionService";
+import { SummaryCards } from "@/components/dashboard-analytics/SummaryCards";
+import { CashFlowChart } from "@/components/dashboard-analytics/CashFlowChart";
 import {
   TransactionModal,
   TransactionFormData,
-  TransactionItem,
-} from "../../../components/TransactionModal";
+} from "@/components/TransactionModal";
 
-const DEFAULT_TRANSACTIONS: TransactionItem[] = [
-  { id: "1", partyName: "Ali Traders", type: "Got Money", amount: 5000, date: "Today, 2:15 PM" },
-  { id: "2", partyName: "Shop Rent (Monthly)", type: "Gave Money", amount: 15000, date: "Yesterday" },
-  { id: "3", partyName: "Usman Khan", type: "Gave Money", amount: 2500, date: "08 Aug 2026" },
-];
+interface DashboardSummary {
+  totalCashIn: number;
+  totalCashOut: number;
+  netBalance: number;
+}
+
+interface TransactionItem {
+  id: string;
+  user_id: string;
+  type: string;
+  amount: number;
+  description: string;
+  date: string;
+  created_at?: string;
+}
 
 export default function DashboardPage() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [summary, setSummary] = useState<DashboardSummary>({
+    totalCashIn: 0,
+    totalCashOut: 0,
+    netBalance: 0,
+  });
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
-  const [editingItem, setEditingItem] = useState<TransactionItem | null>(null);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const fetchSummary = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const data = await dashboardService.getSummary();
+
+      setSummary({
+        totalCashIn: Number(data.totalCashIn || data.totalReceivables) || 0,
+        totalCashOut: Number(data.totalCashOut || data.totalPayables) || 0,
+        netBalance: Number(data.netBalance) || 0,
+      });
+
+      if (data.transactions && Array.isArray(data.transactions)) {
+        setTransactions(data.transactions);
+      }
+    } catch (err) {
+      console.error("Failed to load dashboard summary:", err);
+      setError("Unable to load dashboard data.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const saved = localStorage.getItem("hisabdo_dashboard_transactions");
-    if (saved) {
-      setTransactions(JSON.parse(saved));
-    } else {
-      setTransactions(DEFAULT_TRANSACTIONS);
-      localStorage.setItem("hisabdo_dashboard_transactions", JSON.stringify(DEFAULT_TRANSACTIONS));
-    }
+    fetchSummary();
   }, []);
 
-  const saveToStorage = (updated: TransactionItem[]) => {
-    setTransactions(updated);
-    localStorage.setItem("hisabdo_dashboard_transactions", JSON.stringify(updated));
-  };
+  const handleAddEntry = async (data: TransactionFormData) => {
+    try {
+      setError(null);
 
-  const handleCreateOrUpdate = (data: TransactionFormData) => {
-    if (editingItem) {
-      const updated = transactions.map((item) =>
-        item.id === editingItem.id ? { ...data, id: editingItem.id } : item
-      );
-      saveToStorage(updated);
-    } else {
-      const newItem: TransactionItem = {
-        ...data,
-        id: Date.now().toString(),
+      const apiData = {
+        type: data.type === "Got Money" ? "income" : "expense",
+        amount: data.amount,
+        description: data.partyName,
+        date: data.date,
       };
-      saveToStorage([newItem, ...transactions]);
-    }
-    setEditingItem(null);
-  };
 
-  const handleEdit = (item: TransactionItem) => {
-    setEditingItem(item);
-    setIsModalOpen(true);
-  };
-
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this transaction?")) {
-      const updated = transactions.filter((item) => item.id !== id);
-      saveToStorage(updated);
+      await transactionService.create(apiData);
+      await fetchSummary();
+    } catch (err) {
+      console.error("Failed to add transaction:", err);
+      setError("Failed to save transaction. Please try again.");
     }
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto px-1 sm:px-4">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-6 text-slate-100">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#111726]/80 border border-slate-800/80 p-6 rounded-2xl">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white">Dashboard Overview</h1>
-          <p className="text-xs sm:text-sm text-slate-400">
-            Welcome back! Here is your business activity summary.
+          <h1 className="text-2xl font-bold tracking-tight text-white">
+            Dashboard Overview
+          </h1>
+          <p className="text-slate-400 text-sm mt-1">
+            Track your daily transactions, cash flow, and balances in real time.
           </p>
         </div>
 
-        <div className="flex space-x-3">
-          <button
-            onClick={() => {
-              setEditingItem(null);
-              setIsModalOpen(true);
-            }}
-            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-3 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer text-sm w-full sm:w-auto"
-          >
-            <Plus className="h-4 w-4" />
-            <span>New Transaction</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setError(null);
+            setIsModalOpen(true);
+          }}
+          className="inline-flex items-center gap-2 py-2.5 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold rounded-xl text-sm transition-colors"
+        >
+          <Plus className="w-4 h-4 stroke-[2.5]" />
+          <span>Add Entry</span>
+        </button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-xl">
-          <div className="flex justify-between items-center text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            <span>Total Receivables</span>
-            <ArrowUpRight className="w-4 h-4 text-emerald-400" />
-          </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-emerald-400 mt-2">Rs. 45,200</h2>
-          <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Across pending entries</p>
+      {error && (
+        <div className="bg-rose-950/30 border border-rose-900/50 text-rose-400 px-4 py-3 rounded-xl text-sm">
+          {error}
         </div>
+      )}
 
-        <div className="bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-xl">
-          <div className="flex justify-between items-center text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            <span>Total Payables</span>
-            <ArrowDownLeft className="w-4 h-4 text-rose-400" />
-          </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-rose-400 mt-2">Rs. 12,800</h2>
-          <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Across supplier invoices</p>
-        </div>
+      <SummaryCards
+        totalCashIn={summary.totalCashIn}
+        totalCashOut={summary.totalCashOut}
+        netBalance={summary.netBalance}
+        isLoading={isLoading}
+      />
 
-        <div className="bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-xl">
-          <div className="flex justify-between items-center text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            <span>Net Balance</span>
-            <Wallet className="w-4 h-4 text-blue-400" />
-          </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-white mt-2">Rs. 32,400</h2>
-          <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Positive net liquidity</p>
-        </div>
-      </div>
+      <CashFlowChart
+        totalCashIn={summary.totalCashIn}
+        totalCashOut={summary.totalCashOut}
+        isLoading={isLoading}
+      />
 
-      {/* Responsive Table (Image Layout Match) */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-slate-800 flex justify-between items-center">
-          <h3 className="font-bold text-white text-base">Recent Transactions</h3>
-          <span className="text-xs text-slate-400 hover:text-emerald-400 cursor-pointer">
-            View All
-          </span>
-        </div>
-
-        <div className="w-full">
-          <table className="w-full text-left text-xs sm:text-sm border-collapse">
-            <thead className="bg-slate-950/50 text-slate-400 uppercase text-[10px] sm:text-xs">
+      {/* Recent Activity Section */}
+      <div className="rounded-2xl border border-slate-800/80 bg-[#111726]/80 p-6 shadow-lg">
+        <h3 className="mb-4 text-lg font-bold text-white">Recent Transactions</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm text-slate-300">
+            <thead className="border-b border-slate-800 text-xs uppercase text-slate-400">
               <tr>
-                <th className="py-3 px-2 sm:px-4 font-semibold">NAME</th>
-                <th className="py-3 px-2 sm:px-4 font-semibold">TYPE</th>
-                <th className="py-3 px-2 sm:px-4 font-semibold hidden md:table-cell">DATE</th>
-                <th className="py-3 px-2 sm:px-4 font-semibold">AMOUNT</th>
-                <th className="py-3 px-2 sm:px-4 font-semibold text-right">ACTIONS</th>
+                <th className="py-3 px-4">Date</th>
+                <th className="py-3 px-4">Party / Description</th>
+                <th className="py-3 px-4">Type</th>
+                <th className="py-3 px-4 text-right">Amount</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/80">
-              {transactions.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-800/30 transition-colors">
-                  {/* Name */}
-                  <td className="py-3.5 px-2 sm:px-4 font-medium text-white max-w-[95px] sm:max-w-none truncate">
-                    {item.partyName}
-                  </td>
-
-                  {/* Type Badge */}
-                  <td className="py-3.5 px-2 sm:px-4">
-                    <span
-                      className={`inline-block px-1.5 sm:px-2.5 py-0.5 rounded-full text-[9px] sm:text-xs font-medium border ${
-                        item.type === "Got Money"
-                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                          : "bg-rose-500/10 text-rose-400 border-rose-500/20"
-                      }`}
-                    >
-                      {item.type}
-                    </span>
-                  </td>
-
-                  {/* Date (Hidden on mobile) */}
-                  <td className="py-3.5 px-2 sm:px-4 text-slate-400 text-xs hidden md:table-cell">
-                    {item.date}
-                  </td>
-
-                  {/* Amount */}
-                  <td
-                    className={`py-3.5 px-2 sm:px-4 font-semibold text-xs sm:text-sm whitespace-nowrap ${
-                      item.type === "Got Money" ? "text-emerald-400" : "text-rose-400"
-                    }`}
-                  >
-                    {item.type === "Got Money" ? "+ " : "- "}Rs. {Number(item.amount).toLocaleString()}
-                  </td>
-
-                  {/* Actions */}
-                  <td className="py-3.5 px-2 sm:px-4 text-right">
-                    <div className="flex items-center justify-end space-x-1 sm:space-x-2">
-                      <button
-                        onClick={() => handleEdit(item)}
-                        className="p-1 text-slate-400 hover:text-emerald-400 rounded transition"
-                        title="Edit Transaction"
+            <tbody className="divide-y divide-slate-800">
+              {transactions && transactions.length > 0 ? (
+                transactions.map((tx) => (
+                  <tr key={tx.id} className="hover:bg-slate-800/40">
+                    <td className="py-3.5 px-4 text-slate-400">{tx.date}</td>
+                    <td className="py-3.5 px-4 font-semibold text-white">
+                      {tx.description || "N/A"}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span
+                        className={`inline-block rounded-md px-2.5 py-1 text-xs font-semibold ${
+                          tx.type === "income" || tx.type === "inflow"
+                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                            : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                        }`}
                       >
-                        <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        className="p-1 text-slate-400 hover:text-rose-400 rounded transition"
-                        title="Delete Transaction"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </button>
-                    </div>
+                        {tx.type === "income" || tx.type === "inflow"
+                          ? "Cash In"
+                          : "Cash Out"}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-right font-bold text-white">
+                      Rs. {Number(tx.amount).toLocaleString()}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="py-8 text-center text-slate-500">
+                    No transaction entries found.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Modal */}
       <TransactionModal
         isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingItem(null);
-        }}
-        onSubmit={handleCreateOrUpdate}
-        initialData={editingItem}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleAddEntry}
       />
     </div>
   );
