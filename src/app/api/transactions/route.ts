@@ -1,124 +1,112 @@
 import { NextRequest, NextResponse } from "next/server";
-import connectDB from "@/lib/db";
-import Transaction from "@/models/Transaction";
-import { requireAuth } from "@/lib/server-auth";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { verifyAuthToken } from "@/lib/auth-token";
 
-// GET all transactions
+// Admin client that bypasses Postgres role restrictions
+function getAdminSupabase() {
+  const url =
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.NEXT_SUPABASE_URL ||
+    "";
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  return createSupabaseClient(url, serviceKey);
+}
+
+async function getAuthenticatedUser(request: NextRequest) {
+  // 1. Check Bearer token from Authorization header
+  const authHeader = request.headers.get("authorization");
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.split(" ")[1];
+    if (token && token !== "null" && token !== "undefined") {
+      const user = await verifyAuthToken(token);
+      if (user) return user;
+    }
+  }
+
+  // 2. Check HTTP-only cookies
+  const cookieToken =
+    request.cookies.get("hisabdo_auth_token")?.value ||
+    request.cookies.get("token")?.value ||
+    request.cookies.get("accessToken")?.value;
+
+  if (cookieToken) {
+    const user = await verifyAuthToken(cookieToken);
+    if (user) return user;
+  }
+
+  return null;
+}
+
 export async function GET(request: NextRequest) {
   try {
-    await connectDB();
+    const user = await getAuthenticatedUser(request);
 
-    const user = await requireAuth(request);
-
-    const transactions = await Transaction.find({
-      user: user.id,
-    }).sort({ date: -1 });
-
-    return NextResponse.json(
-      {
-        success: true,
-        transactions,
-      },
-      { status: 200 }
-    );
-  } catch (error) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") {
+    if (!user) {
+      console.log("❌ GET /api/transactions: Unauthorized");
       return NextResponse.json(
-        {
-          success: false,
-          message: "Unauthorized",
-        },
+        { success: false, message: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    console.error("GET transactions error:", error);
+    const supabase = getAdminSupabase();
+    const { data: transactions, error } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("date", { ascending: false });
 
+    if (error) {
+      console.error("❌ Supabase Fetch Error:", error);
+      throw error;
+    }
+
+    return NextResponse.json({ success: true, transactions }, { status: 200 });
+  } catch (error) {
+    console.error("GET transactions error:", error);
     return NextResponse.json(
-      {
-        success: false,
-        message: "Failed to fetch transactions",
-      },
+      { success: false, message: "Failed to fetch transactions" },
       { status: 500 }
     );
   }
 }
 
-// CREATE a transaction
 export async function POST(request: NextRequest) {
   try {
-    await connectDB();
+    const user = await getAuthenticatedUser(request);
 
-    const user = await requireAuth(request);
-
-    const body = await request.json();
-
-    const { type, amount, description, date } = body;
-
-    if (!type || amount === undefined || !description) {
+    if (!user) {
+      console.log("❌ POST /api/transactions: Unauthorized");
       return NextResponse.json(
-        {
-          success: false,
-          message: "Type, amount and description are required",
-        },
-        { status: 400 }
-      );
-    }
-
-    if (!["income", "expense"].includes(type)) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Type must be income or expense",
-        },
-        { status: 400 }
-      );
-    }
-
-    if (Number(amount) < 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Amount cannot be negative",
-        },
-        { status: 400 }
-      );
-    }
-
-    const transaction = await Transaction.create({
-      user: user.id,
-      type,
-      amount: Number(amount),
-      description,
-      date: date || new Date(),
-    });
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: "Transaction created successfully",
-        transaction,
-      },
-      { status: 201 }
-    );
-  } catch (error) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Unauthorized",
-        },
+        { success: false, message: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    console.error("POST transaction error:", error);
+    const body = await request.json();
+    console.log("📦 Incoming transaction payload:", body);
 
+    const supabase = getAdminSupabase();
+    const { data: newTransaction, error } = await supabase
+      .from("transactions")
+      .insert([{ ...body, user_id: user.id }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error("❌ Supabase DB Insert Error:", error);
+      throw error;
+    }
+
+    console.log("✅ Transaction created successfully:", newTransaction);
     return NextResponse.json(
-      {
-        success: false,
-        message: "Failed to create transaction",
-      },
+      { success: true, transaction: newTransaction },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("POST transaction catch block error:", error);
+    return NextResponse.json(
+      { success: false, message: "Failed to create transaction" },
       { status: 500 }
     );
   }
