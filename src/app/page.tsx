@@ -23,6 +23,23 @@ export default function Home() {
           <Link href="/register" className="py-2 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/20">
             Get Started
           </Link>
+
+          {/* Navigation */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              href="/login"
+              className="px-3 sm:px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors"
+            >
+              Log In
+            </Link>
+
+            <Link
+              href="/register"
+              className="px-4 py-2 text-sm font-semibold bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-lg transition-colors"
+            >
+              Get Started
+            </Link>
+          </div>
         </div>
       </header>
 
