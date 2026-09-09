@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/db";
+import { supabaseServer } from "@/lib/supabase/server";
 import {
   verifyPassword,
   createAuthToken,
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    const { data: user, error } = await supabase
+  const { data: user, error } = await supabaseServer
       .from("users")
       .select("id, name, email, password, role")
       .eq("email", normalizedEmail)
