@@ -10,29 +10,39 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-between p-4 sm:p-6">
-      <header className="max-w-6xl w-full mx-auto flex items-center justify-between py-2">
+    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col p-4 sm:p-6">
+      {/* Header */}
+      <header className="w-full max-w-6xl mx-auto flex flex-col gap-4 py-2 sm:flex-row sm:items-center sm:justify-between">
+        {/* Back to Home */}
         <Link
           href="/"
-          className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white bg-slate-900 border border-slate-800 px-3 py-2 rounded-lg transition-colors"
+          className="self-start inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-400 hover:text-white bg-slate-900 border border-slate-800 px-3 py-2 rounded-lg transition-colors"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
+          <ArrowLeft className="w-3.5 h-3.5 shrink-0" />
           <span>Back to Home</span>
         </Link>
 
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-md bg-emerald-500 flex items-center justify-center text-slate-950 font-bold text-xs">
+        {/* Logo */}
+        <div className="flex items-center gap-2 self-center sm:self-auto">
+          <div className="w-7 h-7 rounded-md bg-emerald-500 flex items-center justify-center text-slate-950 font-bold text-sm shrink-0">
             H
           </div>
-          <span className="font-bold text-sm tracking-tight text-white">
+
+          <span className="font-bold text-base tracking-tight text-white whitespace-nowrap">
             HisabDo
           </span>
         </div>
       </header>
-      <main className="flex-1 flex items-center justify-center my-auto">
-        {children}
+
+      {/* Main Content */}
+      <main className="flex-1 w-full flex items-center justify-center py-8 sm:py-10">
+        <div className="w-full max-w-md">
+          {children}
+        </div>
       </main>
-      <footer className="text-center text-xs text-slate-600 py-2">
+
+      {/* Footer */}
+      <footer className="w-full text-center text-xs text-slate-600 py-2">
         &copy; {new Date().getFullYear()} HisabDo App. All rights reserved.
       </footer>
     </div>
