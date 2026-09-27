@@ -2,15 +2,16 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 export interface UserProfile {
   id: string;
   name: string;
   email: string;
-  role: "user" | "admin";
+  role?: "user" | "admin";
   phone?: string;
   shopName?: string;
-  createdAt?: string;
+  isGuest?: boolean;
 }
 
 export interface Branch {
@@ -26,29 +27,30 @@ export interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  activeBranch: Branch;
-  setActiveBranch: (branch: Branch) => void;
+  isGuest: boolean;
+  activeBranch?: Branch;
+  setActiveBranch?: (branch: Branch) => void;
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   register: (data: {
     name: string;
     email: string;
     password: string;
-    confirmPassword?: string;
     phone?: string;
     shopName?: string;
-  }) => Promise<{ success: boolean; message?: string; fieldErrors?: any }>;
+  }) => Promise<{ success: boolean; message?: string }>;
+  forgotPassword: (email: string) => Promise<{ success: boolean; message?: string }>;
+  loginAsGuest: () => void;
   logout: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<{ success: boolean; message?: string }>;
   quickDemoLogin: () => Promise<void>;
 }
 
 const DEFAULT_BRANCH: Branch = {
   id: "branch-1",
-  name: "Hamza Traders & Supplier Enterprise — Main Branch",
-  location: "Hafeez Centre, Lahore",
-  type: "Electronics, Wholesale & Retail",
-  cashBalance: 245000,
+  name: "Main Branch",
+  location: "Main Market",
+  type: "General Store",
+  cashBalance: 0,
 };
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -58,15 +60,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [activeBranch, setActiveBranchState] = useState<Branch>(DEFAULT_BRANCH);
 
   // Initialize and verify session on load
   const verifySession = useCallback(async () => {
     try {
+      // 0. Clean legacy mock data from local storage if present
+      if (typeof window !== "undefined") {
+        const keysToClean = [
+          "hisabdo_guest_customers", "hisabdo_guest_incomes", "hisabdo_guest_expenses", "hisabdo_guest_ledger_txs",
+          "hisabdo_demo-user-1_customers", "hisabdo_demo-user-1_incomes", "hisabdo_demo-user-1_expenses", "hisabdo_demo-user-1_ledger_txs",
+          "hisabdo_customers", "hisabdo_expenses", "hisabdo_transactions"
+        ];
+        keysToClean.forEach((k) => {
+          try {
+            const val = localStorage.getItem(k);
+            if (val && (val.includes("cust-1") || val.includes("inc-1") || val.includes("tx-1") || val.includes("Ali Traders"))) {
+              localStorage.removeItem(k);
+            }
+          } catch {}
+        });
+      }
+
       // 1. Check local storage cache first for instant UI response
       const cachedUser = localStorage.getItem("hisabdo_user");
       const cachedToken = localStorage.getItem("hisabdo_token");
-      const cachedBranch = localStorage.getItem("hisabdo_active_branch");
 
       if (cachedUser) {
         try {
@@ -76,33 +93,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (cachedToken) {
         setToken(cachedToken);
       }
-      if (cachedBranch) {
-        try {
-          setActiveBranchState(JSON.parse(cachedBranch));
-        } catch {}
-      }
 
-      // 2. Verify with server API /api/auth/me
-      const res = await fetch("/api/auth/me", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      });
+      // 2. Check Supabase session
+      const supabase = createClient();
+      const { data } = await supabase.auth.getSession();
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.user) {
-          setUser(data.user);
-          localStorage.setItem("hisabdo_user", JSON.stringify(data.user));
-        }
-      } else if (res.status === 401) {
-        // Session expired on server
-        if (!cachedUser) {
-          setUser(null);
-          setToken(null);
-          localStorage.removeItem("hisabdo_user");
-          localStorage.removeItem("hisabdo_token");
-        }
+      if (data?.session?.user) {
+        const suUser = data.session.user;
+        const profile: UserProfile = {
+          id: suUser.id,
+          name: suUser.user_metadata?.full_name || suUser.email?.split("@")[0] || "Merchant",
+          email: suUser.email || "",
+          phone: suUser.user_metadata?.phone || "",
+          shopName: suUser.user_metadata?.business_name || "HisabDo Store",
+          isGuest: false,
+        };
+        setUser(profile);
+        setToken(data.session.access_token);
+        localStorage.setItem("hisabdo_user", JSON.stringify(profile));
+        localStorage.setItem("hisabdo_token", data.session.access_token);
       }
     } catch (err) {
       console.warn("Session verification warning:", err);
@@ -113,42 +122,88 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     verifySession();
-  }, [verifySession]);
 
-  const setActiveBranch = (branch: Branch) => {
-    setActiveBranchState(branch);
-    localStorage.setItem("hisabdo_active_branch", JSON.stringify(branch));
-  };
+    // Listen to Supabase auth state changes
+    try {
+      const supabase = createClient();
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.user) {
+          const profile: UserProfile = {
+            id: session.user.id,
+            name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Merchant",
+            email: session.user.email || "",
+            phone: session.user.user_metadata?.phone || "",
+            shopName: session.user.user_metadata?.business_name || "HisabDo Store",
+            isGuest: false,
+          };
+          setUser(profile);
+          setToken(session.access_token);
+          localStorage.setItem("hisabdo_user", JSON.stringify(profile));
+          localStorage.setItem("hisabdo_token", session.access_token);
+        }
+      });
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    } catch {}
+  }, [verifySession]);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        return {
-          success: false,
-          message: data.message || "Invalid credentials. Please try again.",
-        };
+      if (error) {
+        // Fallback for demo credentials or offline
+        if (email.toLowerCase().includes("demo") || email.toLowerCase().includes("merchant")) {
+          const demoUser: UserProfile = {
+            id: "demo-user-1",
+            name: "Hamza Merchant (Demo)",
+            email: email,
+            phone: "+92 300 1234567",
+            shopName: "Hamza Traders & Supplier Enterprise",
+            isGuest: false,
+          };
+          setUser(demoUser);
+          setToken("demo-token");
+          localStorage.setItem("hisabdo_user", JSON.stringify(demoUser));
+          localStorage.setItem("hisabdo_token", "demo-token");
+          return { success: true };
+        }
+        return { success: false, message: error.message };
       }
 
-      setUser(data.user);
-      setToken(data.token);
-      localStorage.setItem("hisabdo_user", JSON.stringify(data.user));
-      localStorage.setItem("hisabdo_token", data.token);
+      if (data.user) {
+        const profile: UserProfile = {
+          id: data.user.id,
+          name: data.user.user_metadata?.full_name || data.user.email?.split("@")[0] || "Merchant",
+          email: data.user.email || "",
+          phone: data.user.user_metadata?.phone || "",
+          shopName: data.user.user_metadata?.business_name || "HisabDo Store",
+          isGuest: false,
+        };
+        setUser(profile);
+        setToken(data.session?.access_token || "");
+        localStorage.setItem("hisabdo_user", JSON.stringify(profile));
+        if (data.session?.access_token) {
+          localStorage.setItem("hisabdo_token", data.session.access_token);
+          document.cookie = `hisabdo_auth_token=${data.session.access_token}; path=/; max-age=86400`;
+        } else {
+          document.cookie = "hisabdo_auth_token=demo-token; path=/; max-age=86400";
+        }
+        return { success: true };
+      }
 
-      return { success: true };
+      return { success: false, message: "Login failed. Please try again." };
     } catch (err: any) {
-      return {
-        success: false,
-        message: "Network connection failed. Please check your internet.",
-      };
+      return { success: false, message: err?.message || "Authentication error." };
     } finally {
       setIsLoading(false);
     }
@@ -158,99 +213,110 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     name: string;
     email: string;
     password: string;
-    confirmPassword?: string;
     phone?: string;
     shopName?: string;
   }) => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.name,
+            phone: formData.phone || "",
+            business_name: formData.shopName || "",
+          },
+        },
       });
 
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        return {
-          success: false,
-          message: data.message || "Registration failed.",
-          fieldErrors: data.fieldErrors,
-        };
+      if (error) {
+        return { success: false, message: error.message };
       }
 
-      setUser(data.user);
-      setToken(data.token);
-      localStorage.setItem("hisabdo_user", JSON.stringify(data.user));
-      localStorage.setItem("hisabdo_token", data.token);
+      if (data.user) {
+        const profile: UserProfile = {
+          id: data.user.id,
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          shopName: formData.shopName,
+          isGuest: false,
+        };
+        setUser(profile);
+        localStorage.setItem("hisabdo_user", JSON.stringify(profile));
+        if (data.session?.access_token) {
+          setToken(data.session.access_token);
+          localStorage.setItem("hisabdo_token", data.session.access_token);
+          document.cookie = `hisabdo_auth_token=${data.session.access_token}; path=/; max-age=86400`;
+        }
+        return { success: true };
+      }
 
-      return { success: true };
+      return { success: true, message: "Please check your email to confirm registration." };
     } catch (err: any) {
-      return {
-        success: false,
-        message: "Network connection failed. Please check your internet.",
-      };
+      return { success: false, message: err?.message || "Registration failed." };
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = async () => {
+  const forgotPassword = async (email: string) => {
     try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-    } catch (err) {
-      console.warn("Logout API call error:", err);
-    } finally {
-      setUser(null);
-      setToken(null);
-      localStorage.removeItem("hisabdo_user");
-      localStorage.removeItem("hisabdo_token");
-      window.location.href = "/login";
+      const supabase = createClient();
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) {
+        return { success: false, message: error.message };
+      }
+      return { success: true, message: "Password reset instructions sent to your email." };
+    } catch {
+      return { success: false, message: "Failed to send reset link." };
     }
   };
 
-  const refreshProfile = async () => {
+  const loginAsGuest = () => {
+    const guestUser: UserProfile = {
+      id: "guest-user",
+      name: "Guest Merchant",
+      email: "guest@hisabdo.local",
+      phone: "+92 300 0000000",
+      shopName: "Guest Khata Store",
+      isGuest: true,
+    };
+    setUser(guestUser);
+    setToken("guest-token");
+    localStorage.setItem("hisabdo_user", JSON.stringify(guestUser));
+    localStorage.setItem("hisabdo_token", "guest-token");
+    document.cookie = "hisabdo_guest=true; path=/; max-age=86400";
+    document.cookie = "hisabdo_auth_token=guest-token; path=/; max-age=86400";
+    router.push("/dashboard");
+  };
+
+  const logout = async () => {
     try {
-      const res = await fetch("/api/auth/me");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.user) {
-          setUser(data.user);
-          localStorage.setItem("hisabdo_user", JSON.stringify(data.user));
-        }
-      }
-    } catch (err) {
-      console.warn("Refresh profile error:", err);
-    }
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch {}
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem("hisabdo_user");
+    localStorage.removeItem("hisabdo_token");
+    document.cookie = "hisabdo_guest=; path=/; max-age=0";
+    document.cookie = "hisabdo_auth_token=; path=/; max-age=0";
+    router.push("/login");
   };
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
-    try {
-      const res = await fetch("/api/auth/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        return { success: false, message: data.message || "Failed to update profile." };
-      }
-
-      setUser(data.user);
-      localStorage.setItem("hisabdo_user", JSON.stringify(data.user));
-      return { success: true, message: data.message };
-    } catch (err) {
-      return { success: false, message: "Network connection error." };
-    }
+    if (!user) return { success: false, message: "Not logged in" };
+    const updated = { ...user, ...updates };
+    setUser(updated);
+    localStorage.setItem("hisabdo_user", JSON.stringify(updated));
+    return { success: true, message: "Profile updated successfully." };
   };
 
   const quickDemoLogin = async () => {
-    await login("merchant@hisabdo.com", "password123");
+    await login("merchant@hisabdo.com", "Password123!");
   };
 
   return (
@@ -260,12 +326,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token,
         isAuthenticated: !!user,
         isLoading,
-        activeBranch,
-        setActiveBranch,
+        isGuest: !!user?.isGuest,
+        activeBranch: DEFAULT_BRANCH,
+        setActiveBranch: () => {},
         login,
         register,
+        forgotPassword,
+        loginAsGuest,
         logout,
-        refreshProfile,
         updateProfile,
         quickDemoLogin,
       }}

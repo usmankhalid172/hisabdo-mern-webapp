@@ -14,6 +14,7 @@ import {
   Loader2,
   Send,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function ForgotPasswordPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,20 +29,16 @@ export default function ForgotPasswordPage() {
     resolver: zodResolver(forgotSchema),
   });
 
+  const { forgotPassword } = useAuth();
+
   const onSubmit = async (data: ForgotFormData) => {
     setIsSubmitting(true);
     setErrorMessage(null);
 
     try {
-      const res = await fetch("/api/auth/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: data.email }),
-      });
+      const result = await forgotPassword(data.email);
 
-      const result = await res.json();
-
-      if (!res.ok || !result.success) {
+      if (!result.success) {
         setErrorMessage(result.message || "Failed to process password reset.");
         return;
       }

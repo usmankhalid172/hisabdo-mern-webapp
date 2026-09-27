@@ -11,11 +11,7 @@ import Modal from '@/components/ui/Modal';
 import { SuccessBanner } from '@/components/ui/StateAlert';
 
 export default function CashbookPage() {
-  const [entries, setEntries] = useState([
-    { id: 1, type: 'in', amount: 35000, category: 'Counter Daily Sales', description: 'Cash collected from counter', date: '2026-08-19', balanceAfter: 35000 },
-    { id: 2, type: 'out', amount: 4500, category: 'Shop Utilities', description: 'Electricity bill payment', date: '2026-08-19', balanceAfter: 30500 },
-    { id: 3, type: 'in', amount: 12000, category: 'Udhar Recovery', description: 'Recovery from Ali Traders', date: '2026-08-19', balanceAfter: 42500 }
-  ]);
+  const [entries, setEntries] = useState([]);
 
   const [type, setType] = useState('in');
   const [amount, setAmount] = useState('');

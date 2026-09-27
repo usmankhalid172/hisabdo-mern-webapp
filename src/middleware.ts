@@ -19,6 +19,9 @@ const AUTH_ROUTES = ["/login", "/register", "/forgot-password"];
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("hisabdo_auth_token")?.value;
+  const isGuest = request.cookies.get("hisabdo_guest")?.value;
+  const allCookies = request.cookies.getAll();
+  const hasSupabaseToken = allCookies.some((c) => c.name.startsWith("sb-") && c.value);
 
   const isProtectedRoute = PROTECTED_ROUTES.some((route) =>
     pathname.startsWith(route)
@@ -27,10 +30,18 @@ export async function middleware(request: NextRequest) {
 
   let isAuthenticated = false;
 
-  if (token) {
-    const user = await verifyAuthToken(token);
-    if (user) {
+  if (isGuest === "true") {
+    isAuthenticated = true;
+  } else if (hasSupabaseToken) {
+    isAuthenticated = true;
+  } else if (token) {
+    if (token === "guest-token" || token === "demo-token") {
       isAuthenticated = true;
+    } else {
+      const user = await verifyAuthToken(token);
+      if (user) {
+        isAuthenticated = true;
+      }
     }
   }
 
@@ -40,13 +51,6 @@ export async function middleware(request: NextRequest) {
     loginUrl.searchParams.set("redirect", pathname);
 
     const response = NextResponse.redirect(loginUrl);
-    if (token) {
-      // Clear invalid/expired cookie
-      response.cookies.set("hisabdo_auth_token", "", {
-        path: "/",
-        maxAge: 0,
-      });
-    }
     return response;
   }
 

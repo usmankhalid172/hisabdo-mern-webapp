@@ -24,7 +24,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get("redirect") || "/dashboard";
 
-  const { login } = useAuth();
+  const { login, loginAsGuest } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,6 +55,7 @@ function LoginForm() {
         return;
       }
 
+      document.cookie = "hisabdo_auth_token=valid-token; path=/; max-age=86400";
       router.replace(redirectUrl);
     } catch (err) {
       setAuthError("Unable to connect to the authentication server.");
@@ -72,6 +73,8 @@ function LoginForm() {
     try {
       const result = await login(demoEmail, demoPass);
       if (result.success) {
+        document.cookie = "hisabdo_auth_token=demo-token; path=/; max-age=86400";
+        document.cookie = "hisabdo_guest=true; path=/; max-age=86400";
         router.replace(redirectUrl);
       } else {
         setAuthError(result.message || "Demo login failed.");
@@ -196,24 +199,24 @@ function LoginForm() {
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => handleDemoLogin("merchant@hisabdo.com", "password123")}
+              onClick={() => handleDemoLogin("merchant@hisabdo.com", "Password123!")}
               disabled={isSubmitting || isDemoLoggingIn}
               className="px-3 py-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1.5 hover:border-slate-700 cursor-pointer"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Demo Merchant</span>
+              <span>Demo Account</span>
             </button>
 
             <button
               type="button"
-              onClick={() =>
-                handleDemoLogin("hamza.merchant@hisabdo.com", "password123")
-              }
+              onClick={() => {
+                loginAsGuest();
+              }}
               disabled={isSubmitting || isDemoLoggingIn}
-              className="px-3 py-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1.5 hover:border-slate-700 cursor-pointer"
+              className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-              <span>Hamza Admin</span>
+              <Zap className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Guest Mode</span>
             </button>
           </div>
         </div>
