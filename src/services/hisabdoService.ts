@@ -126,15 +126,25 @@ export class HisabDoService {
   // ==================== CUSTOMERS ====================
   async getCustomers(userId: string): Promise<Customer[]> {
     const fallback = this.getLocal<Customer[]>(userId, "customers", DEFAULT_CUSTOMERS);
+    if (userId === "guest") return fallback;
     try {
       const supabase = createClient();
-      const { data, error } = await supabase.from("customers").select("*").order("created_at", { ascending: false });
-      if (!error && data && data.length > 0) {
-        this.setLocal(userId, "customers", data);
-        return data as Customer[];
-      }
+      const { data, error } = await supabase
+        .from("customers")
+        .select("*")
+        .eq("user_id", userId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const customers = (data ?? []).map((row) => ({
+        ...row,
+        opening_balance: Number(row.metadata?.opening_balance ?? 0),
+        currency: row.metadata?.currency ?? "PKR",
+      })) as Customer[];
+      this.setLocal(userId, "customers", customers);
+      return customers;
     } catch {
-      // Fallback to local
+      // Fall back to the last locally cached data while offline.
     }
     return fallback;
   }
@@ -197,14 +207,28 @@ export class HisabDoService {
   // ==================== INCOMES ====================
   async getIncomes(userId: string): Promise<Income[]> {
     const fallback = this.getLocal<Income[]>(userId, "incomes", DEFAULT_INCOMES);
+    if (userId === "guest") return fallback;
     try {
       const supabase = createClient();
-      const { data, error } = await supabase.from("income").select("*").order("income_date", { ascending: false });
-      if (!error && data && data.length > 0) {
-        this.setLocal(userId, "incomes", data);
-        return data as Income[];
-      }
-    } catch {}
+      const { data, error } = await supabase
+        .from("income")
+        .select("*")
+        .eq("user_id", userId)
+        .is("deleted_at", null)
+        .order("date", { ascending: false });
+      if (error) throw error;
+      const incomes = (data ?? []).map((row) => ({
+        ...row,
+        income_date: row.date,
+        description: row.note ?? "",
+        payment_method: row.metadata?.payment_method ?? "cash",
+        category_id: row.metadata?.legacy_category ?? row.category_id ?? "Sales",
+      })) as Income[];
+      this.setLocal(userId, "incomes", incomes);
+      return incomes;
+    } catch {
+      // Fall back to the last locally cached data while offline.
+    }
     return fallback;
   }
 
@@ -265,14 +289,28 @@ export class HisabDoService {
   // ==================== EXPENSES ====================
   async getExpenses(userId: string): Promise<Expense[]> {
     const fallback = this.getLocal<Expense[]>(userId, "expenses", DEFAULT_EXPENSES);
+    if (userId === "guest") return fallback;
     try {
       const supabase = createClient();
-      const { data, error } = await supabase.from("expenses").select("*").order("expense_date", { ascending: false });
-      if (!error && data && data.length > 0) {
-        this.setLocal(userId, "expenses", data);
-        return data as Expense[];
-      }
-    } catch {}
+      const { data, error } = await supabase
+        .from("expenses")
+        .select("*")
+        .eq("user_id", userId)
+        .is("deleted_at", null)
+        .order("date", { ascending: false });
+      if (error) throw error;
+      const expenses = (data ?? []).map((row) => ({
+        ...row,
+        expense_date: row.date,
+        description: row.note ?? "",
+        payment_method: row.metadata?.payment_method ?? "cash",
+        category_id: row.metadata?.legacy_category ?? row.category_id ?? "General",
+      })) as Expense[];
+      this.setLocal(userId, "expenses", expenses);
+      return expenses;
+    } catch {
+      // Fall back to the last locally cached data while offline.
+    }
     return fallback;
   }
 
@@ -333,14 +371,31 @@ export class HisabDoService {
   // ==================== DIRECT LEDGER PAYMENTS ====================
   async getLedgerTransactions(userId: string): Promise<LedgerTransaction[]> {
     const fallback = this.getLocal<LedgerTransaction[]>(userId, "ledger_txs", DEFAULT_LEDGER_TXS);
+    if (userId === "guest") return fallback;
     try {
       const supabase = createClient();
-      const { data, error } = await supabase.from("ledger_transactions").select("*").order("date", { ascending: false });
-      if (!error && data && data.length > 0) {
-        this.setLocal(userId, "ledger_txs", data);
-        return data as LedgerTransaction[];
-      }
-    } catch {}
+      const { data, error } = await supabase
+        .from("ledger_transactions")
+        .select("*")
+        .eq("user_id", userId)
+        .is("deleted_at", null)
+        .order("date", { ascending: false });
+      if (error) throw error;
+      const transactions = (data ?? []).map((row) => ({
+        id: row.id,
+        customerId: row.customer_id,
+        amount: Number(row.amount),
+        type: row.type,
+        category: row.category ?? "Payment",
+        date: row.date,
+        note: row.note ?? "",
+        imagePath: row.image_path ?? undefined,
+      })) as LedgerTransaction[];
+      this.setLocal(userId, "ledger_txs", transactions);
+      return transactions;
+    } catch {
+      // Fall back to the last locally cached data while offline.
+    }
     return fallback;
   }
 

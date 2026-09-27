@@ -12,6 +12,7 @@ export function createClient() {
     SUPABASE_URL,
     SUPABASE_ANON_KEY,
     {
+      db: { schema: "app" },
       cookies: {
         getAll() {
           return cookieStore.getAll();
@@ -30,4 +31,4 @@ export function createClient() {
   );
 }
 
-export const supabaseServer = createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const supabaseServer = createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY, { db: { schema: "app" } });
