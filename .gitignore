@@ -39,16 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-<<<<<<< Updated upstream
 !.env.example
-=======
-
-hisabdo_new_updated/
-
-# Environment local files
 .env.local
 .env*.local
 
-# Ignored cloned repositories
+# Ignored cloned repositories & temporary assets
 hisabdo_new_updated/
->>>>>>> Stashed changes
+*.ogg
+*.mp3
+*.wav
+

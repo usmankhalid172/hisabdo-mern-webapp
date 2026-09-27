@@ -9,9 +9,11 @@ export default function Home() {
       {/* Top Navigation */}
       <header className="relative z-10 flex justify-between items-center px-6 py-6 max-w-7xl mx-auto w-full">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center border border-emerald-500/30 shadow-lg shadow-emerald-500/10">
-            H
-          </div>
+          <img
+            src="/logo.png"
+            alt="HisabDo Logo"
+            className="w-9 h-9 rounded-xl object-contain shadow-lg shadow-emerald-500/10"
+          />
           <span className="font-bold text-xl tracking-tight text-white">HisabDo</span>
         </div>
 
