@@ -21,9 +21,12 @@ import {
   UserCheck,
   ShieldAlert,
   Calculator,
+  FileText,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings, LanguageCode } from "@/context/SettingsContext";
+import { AiChatbotWidget } from "@/components/AiChatbotWidget";
 
 export default function DashboardLayout({
   children,
@@ -42,8 +45,10 @@ export default function DashboardLayout({
     { name: t("customers"), href: "/customers", icon: Users },
     { name: t("transactions"), href: "/transactions", icon: ArrowRightLeft },
     { name: t("expenses"), href: "/expenses", icon: Receipt },
+    { name: "Invoices & Bills", href: "/invoices", icon: FileText },
     { name: t("reports"), href: "/reports", icon: BarChart3 },
     { name: "Retail Calculator", href: "/calculator", icon: Calculator },
+    { name: "Pricing & Pro", href: "/subscription", icon: Sparkles },
     { name: t("settings"), href: "/settings", icon: Settings },
   ];
 
@@ -60,9 +65,11 @@ export default function DashboardLayout({
       {/* Mobile Top Header */}
       <header className={`md:hidden flex items-center justify-between px-4 py-3 border-b sticky top-0 z-50 ${theme === "dark" ? "bg-[#1A1A1A] border-[#2A2A2A]" : "bg-white border-slate-200 shadow-sm"}`}>
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[#1A237E] flex items-center justify-center text-white font-bold text-sm shadow">
-            H
-          </div>
+          <img
+            src="/logo.png"
+            alt="HisabDo"
+            className="w-8 h-8 rounded-lg object-contain shadow"
+          />
           <div>
             <span className="font-bold text-base tracking-tight block">HisabDo</span>
             <span className="text-[10px] text-emerald-500 font-semibold block leading-none">
@@ -111,9 +118,11 @@ export default function DashboardLayout({
         <div className="p-4 space-y-6">
           {/* Logo & Shop Info (Desktop) */}
           <div className="hidden md:flex items-center gap-3 px-2 py-1">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1A237E] to-[#0D47A1] flex items-center justify-center text-white font-extrabold text-xl shadow-md shadow-indigo-900/30">
-              H
-            </div>
+            <img
+              src="/logo.png"
+              alt="HisabDo Logo"
+              className="w-10 h-10 rounded-xl object-contain shadow-md shadow-indigo-900/30"
+            />
             <div className="overflow-hidden">
               <span className="font-extrabold text-lg tracking-tight block">HisabDo</span>
               <span className="text-[11px] text-emerald-500 font-semibold truncate block">
@@ -303,6 +312,9 @@ export default function DashboardLayout({
           })}
         </div>
       </div>
+
+      {/* Floating AI Chatbot Widget */}
+      <AiChatbotWidget />
     </div>
   );
 }

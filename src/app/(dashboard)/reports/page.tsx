@@ -23,6 +23,8 @@ import autoTable from "jspdf-autotable";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { hisabDoService, Income, Expense, Customer } from "@/services/hisabdoService";
+import { subscriptionService } from "@/services/subscriptionService";
+import { UpgradeProModal } from "@/components/UpgradeProModal";
 
 export default function ReportsPage() {
   const { user } = useAuth();
@@ -32,6 +34,7 @@ export default function ReportsPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
   // Filters
   const [period, setPeriod] = useState<"all" | "monthly" | "weekly" | "yearly" | "custom">("monthly");
@@ -173,6 +176,12 @@ export default function ReportsPage() {
 
   // PDF Export
   const handleExportPDF = () => {
+    const userId = user?.id || "guest";
+    if (!subscriptionService.canPerform(userId, "summary_pdf")) {
+      setUpgradeModalOpen(true);
+      return;
+    }
+
     const doc = new jsPDF();
 
     // Banner Header
@@ -243,6 +252,7 @@ export default function ReportsPage() {
     });
 
     doc.save(`HisabDo_Financial_Report_${period}.pdf`);
+    subscriptionService.incrementUsage(userId, "summary_pdf");
   };
 
   const chartColors = ["#00E676", "#1565C0", "#F57C00", "#7C3AED", "#EC4899", "#3B82F6"];
@@ -578,6 +588,14 @@ export default function ReportsPage() {
           )}
         </div>
       </div>
+
+      {/* Upgrade Pro Modal */}
+      <UpgradeProModal
+        isOpen={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
+        userId={user?.id || "guest"}
+        featureName="PDF Statement Exports"
+      />
     </div>
   );
 }
