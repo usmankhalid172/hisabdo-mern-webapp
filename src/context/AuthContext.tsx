@@ -87,7 +87,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (cachedUser) {
         try {
-          setUser(JSON.parse(cachedUser));
+          const parsed = JSON.parse(cachedUser);
+          if (parsed && (parsed.id === "demo-user-1" || parsed.email === "merchant@hisabdo.com")) {
+            parsed.id = "54fed992-4a4f-4669-9c52-161ae531dfe0";
+            localStorage.setItem("hisabdo_user", JSON.stringify(parsed));
+          }
+          setUser(parsed);
         } catch {}
       }
       if (cachedToken) {
@@ -164,7 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Fallback for demo credentials or offline
         if (email.toLowerCase().includes("demo") || email.toLowerCase().includes("merchant")) {
           const demoUser: UserProfile = {
-            id: "demo-user-1",
+            id: "54fed992-4a4f-4669-9c52-161ae531dfe0",
             name: "Hamza Merchant (Demo)",
             email: email,
             phone: "+92 300 1234567",

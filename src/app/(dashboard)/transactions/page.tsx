@@ -71,6 +71,7 @@ export default function TransactionsPage() {
     date: new Date().toISOString().split("T")[0],
   });
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -121,14 +122,15 @@ export default function TransactionsPage() {
 
       pmts.forEach((p) => {
         const c = custs.find((c) => c.id === p.customerId);
+        const isReceived = p.type === "received" || p.type === "GOT_PAYMENT";
         combined.push({
           id: p.id,
           sourceTable: "ledger_transactions",
-          type: p.type === "received" ? "payment_received" : "payment_sent",
+          type: isReceived ? "payment_received" : "payment_sent",
           amount: Number(p.amount),
           date: p.date,
-          category: p.category || "Payment",
-          description: p.note || (p.type === "received" ? "Payment Received" : "Payment Sent"),
+          category: p.category || (p.type === "GAVE_CREDIT" ? "Credit (Udhar)" : "Payment"),
+          description: p.note || (isReceived ? "Payment Received" : "Credit Given (Udhar)"),
           customerId: p.customerId,
           customerName: c?.name || "Direct Customer",
           paymentMethod: p.category || "Cash",
@@ -158,13 +160,18 @@ export default function TransactionsPage() {
   // Handle Create Transaction
   const handleSaveTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.amount) return;
+    const parsedAmount = Number(formData.amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setFormError("Please enter a valid transaction amount greater than zero.");
+      return;
+    }
+    setFormError(null);
     setSubmitting(true);
     const userId = user?.id || "guest";
     try {
       if (modalType === "income") {
         await hisabDoService.addIncome(userId, {
-          amount: Number(formData.amount),
+          amount: parsedAmount,
           customer_id: formData.customerId || null,
           description: formData.description,
           category_id: formData.category,
@@ -173,7 +180,7 @@ export default function TransactionsPage() {
         });
       } else {
         await hisabDoService.addExpense(userId, {
-          amount: Number(formData.amount),
+          amount: parsedAmount,
           customer_id: formData.customerId || null,
           description: formData.description,
           category_id: formData.category,
@@ -192,6 +199,9 @@ export default function TransactionsPage() {
         date: new Date().toISOString().split("T")[0],
       });
       await loadData();
+    } catch (err: any) {
+      console.error("Save transaction error:", err);
+      setFormError(err?.message || "Failed to save transaction. Please check your connection and try again.");
     } finally {
       setSubmitting(false);
     }
@@ -286,6 +296,7 @@ export default function TransactionsPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
+              setFormError(null);
               setModalType("income");
               setIsModalOpen(true);
             }}
@@ -297,6 +308,7 @@ export default function TransactionsPage() {
 
           <button
             onClick={() => {
+              setFormError(null);
               setModalType("expense");
               setIsModalOpen(true);
             }}
@@ -619,6 +631,11 @@ export default function TransactionsPage() {
             </div>
 
             <form onSubmit={handleSaveTransaction} className="space-y-3">
+              {formError && (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs">
+                  {formError}
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold mb-1">Amount ({currencySymbol}) *</label>
                 <input
