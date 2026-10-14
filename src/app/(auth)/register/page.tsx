@@ -28,6 +28,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const {
@@ -48,6 +49,7 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: RegisterFormData) => {
     setServerError(null);
+    setInfoMessage(null);
     setLoading(true);
 
     try {
@@ -55,6 +57,14 @@ export default function RegisterPage() {
 
       if (!result.success) {
         setServerError(result.message || "Registration failed. Please try again.");
+        return;
+      }
+
+      if (result.requiresConfirmation) {
+        setInfoMessage(
+          result.message ||
+            "Registration submitted! Please check your email inbox to confirm your account before logging in."
+        );
         return;
       }
 
@@ -80,11 +90,43 @@ export default function RegisterPage() {
           </p>
         </div>
 
+        {/* Info / Confirmation Alert */}
+        {infoMessage && (
+          <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex flex-col gap-2.5 text-emerald-300 text-xs">
+            <div className="flex items-start gap-2.5">
+              <Mail className="w-5 h-5 shrink-0 mt-0.5 text-emerald-400" />
+              <div className="flex-1 leading-relaxed">{infoMessage}</div>
+            </div>
+            <div className="pt-1">
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-semibold transition"
+              >
+                Go to Sign In
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Error Alert */}
         {serverError && (
-          <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-3 text-rose-400 text-xs animate-shake">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <div className="flex-1">{serverError}</div>
+          <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl flex flex-col gap-2 text-rose-400 text-xs animate-shake">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="flex-1">{serverError}</div>
+            </div>
+            {(serverError.toLowerCase().includes("already") || serverError.toLowerCase().includes("log in")) && (
+              <div className="pl-7">
+                <Link
+                  href="/login"
+                  className="inline-flex items-center gap-1 text-emerald-400 hover:text-emerald-300 underline font-semibold text-xs"
+                >
+                  Sign in to your existing account
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            )}
           </div>
         )}
 

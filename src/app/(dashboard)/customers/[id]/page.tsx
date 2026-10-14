@@ -69,6 +69,7 @@ export default function CustomerLedgerPage() {
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<LedgerRow | null>(null);
   const [deletingRow, setDeletingRow] = useState<LedgerRow | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Add Income Form (Lene / Wusooli)
   const [incomeForm, setIncomeForm] = useState({
@@ -134,6 +135,7 @@ export default function CustomerLedgerPage() {
     }
     setModalError(null);
     setSubmitting(true);
+    setFormError(null);
     const userId = user?.id || "guest";
     try {
       await hisabDoService.addIncome(userId, {
@@ -153,8 +155,12 @@ export default function CustomerLedgerPage() {
       });
       await loadLedger();
     } catch (err: any) {
+<<<<<<< Updated upstream
       console.error("Error adding income transaction:", err);
       setModalError(err?.message || "Failed to add income. Please check your connection and try again.");
+=======
+      setFormError(err?.message || "Failed to record income entry. Please try again.");
+>>>>>>> Stashed changes
     } finally {
       setSubmitting(false);
     }
@@ -170,6 +176,7 @@ export default function CustomerLedgerPage() {
     }
     setModalError(null);
     setSubmitting(true);
+    setFormError(null);
     const userId = user?.id || "guest";
     try {
       await hisabDoService.addExpense(userId, {
@@ -189,8 +196,12 @@ export default function CustomerLedgerPage() {
       });
       await loadLedger();
     } catch (err: any) {
+<<<<<<< Updated upstream
       console.error("Error adding expense transaction:", err);
       setModalError(err?.message || "Failed to add expense. Please check your connection and try again.");
+=======
+      setFormError(err?.message || "Failed to record expense entry. Please try again.");
+>>>>>>> Stashed changes
     } finally {
       setSubmitting(false);
     }
@@ -705,9 +716,15 @@ export default function CustomerLedgerPage() {
             </div>
 
             <form onSubmit={handleAddIncome} className="space-y-4">
+<<<<<<< Updated upstream
               {modalError && (
                 <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs">
                   {modalError}
+=======
+              {formError && (
+                <div className="p-3 text-xs rounded-xl bg-red-950/50 border border-red-800 text-red-200">
+                  {formError}
+>>>>>>> Stashed changes
                 </div>
               )}
               <div>
@@ -802,9 +819,15 @@ export default function CustomerLedgerPage() {
             </div>
 
             <form onSubmit={handleAddExpense} className="space-y-4">
+<<<<<<< Updated upstream
               {modalError && (
                 <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs">
                   {modalError}
+=======
+              {formError && (
+                <div className="p-3 text-xs rounded-xl bg-red-950/50 border border-red-800 text-red-200">
+                  {formError}
+>>>>>>> Stashed changes
                 </div>
               )}
               <div>

@@ -167,6 +167,7 @@ export default function TransactionsPage() {
     }
     setFormError(null);
     setSubmitting(true);
+    setFormError(null);
     const userId = user?.id || "guest";
     try {
       if (modalType === "income") {
@@ -200,8 +201,12 @@ export default function TransactionsPage() {
       });
       await loadData();
     } catch (err: any) {
+<<<<<<< Updated upstream
       console.error("Save transaction error:", err);
       setFormError(err?.message || "Failed to save transaction. Please check your connection and try again.");
+=======
+      setFormError(err?.message || "Failed to record transaction. Please try again.");
+>>>>>>> Stashed changes
     } finally {
       setSubmitting(false);
     }
@@ -632,7 +637,11 @@ export default function TransactionsPage() {
 
             <form onSubmit={handleSaveTransaction} className="space-y-3">
               {formError && (
+<<<<<<< Updated upstream
                 <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs">
+=======
+                <div className="p-3 text-xs rounded-xl bg-red-950/50 border border-red-800 text-red-200">
+>>>>>>> Stashed changes
                   {formError}
                 </div>
               )}

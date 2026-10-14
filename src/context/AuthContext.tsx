@@ -37,7 +37,7 @@ export interface AuthContextType {
     password: string;
     phone?: string;
     shopName?: string;
-  }) => Promise<{ success: boolean; message?: string }>;
+  }) => Promise<{ success: boolean; message?: string; requiresConfirmation?: boolean }>;
   forgotPassword: (email: string) => Promise<{ success: boolean; message?: string }>;
   loginAsGuest: () => void;
   logout: () => Promise<void>;
@@ -85,18 +85,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const cachedUser = localStorage.getItem("hisabdo_user");
       const cachedToken = localStorage.getItem("hisabdo_token");
 
-      if (cachedUser) {
+      if (cachedUser && cachedToken) {
         try {
+<<<<<<< Updated upstream
           const parsed = JSON.parse(cachedUser);
           if (parsed && (parsed.id === "demo-user-1" || parsed.email === "merchant@hisabdo.com")) {
             parsed.id = "54fed992-4a4f-4669-9c52-161ae531dfe0";
             localStorage.setItem("hisabdo_user", JSON.stringify(parsed));
           }
           setUser(parsed);
+=======
+          setUser(JSON.parse(cachedUser));
+          setToken(cachedToken);
+>>>>>>> Stashed changes
         } catch {}
-      }
-      if (cachedToken) {
-        setToken(cachedToken);
       }
 
       // 2. Check Supabase session
@@ -117,6 +119,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setToken(data.session.access_token);
         localStorage.setItem("hisabdo_user", JSON.stringify(profile));
         localStorage.setItem("hisabdo_token", data.session.access_token);
+      } else if (!cachedToken || (cachedToken !== "demo-token" && cachedToken !== "guest-token")) {
+        // If Supabase has no active session and not demo/guest, clean up stale unauthenticated state
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem("hisabdo_user");
+        localStorage.removeItem("hisabdo_token");
       }
     } catch (err) {
       console.warn("Session verification warning:", err);
@@ -220,7 +228,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password: string;
     phone?: string;
     shopName?: string;
-  }) => {
+  }): Promise<{ success: boolean; message?: string; requiresConfirmation?: boolean }> => {
     setIsLoading(true);
     try {
       const supabase = createClient();
@@ -237,10 +245,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
+        const msg = error.message.toLowerCase();
+        if (
+          msg.includes("already registered") ||
+          msg.includes("already exists") ||
+          msg.includes("user already") ||
+          error.status === 400
+        ) {
+          return {
+            success: false,
+            message: "An account with this email address already exists. Please log in.",
+          };
+        }
         return { success: false, message: error.message };
       }
 
-      if (data.user) {
+      if (data?.user) {
+        // Detect whether this is an existing account (duplicate registration attempt)
+        // 1. Under Supabase User Enumeration Defense, duplicate signup returns user with identities: []
+        const hasEmptyIdentities = Array.isArray(data.user.identities) && data.user.identities.length === 0;
+
+        // 2. Account was created prior to this signup request (identities or user created_at is in the past)
+        const userCreatedAt = data.user.created_at ? new Date(data.user.created_at).getTime() : 0;
+        const identityCreatedAt =
+          data.user.identities?.[0]?.created_at ? new Date(data.user.identities[0].created_at).getTime() : 0;
+        const isPastUser =
+          (userCreatedAt > 0 && Date.now() - userCreatedAt > 15000) ||
+          (identityCreatedAt > 0 && Date.now() - identityCreatedAt > 15000);
+
+        if (hasEmptyIdentities || (isPastUser && !data.session)) {
+          return {
+            success: false,
+            message: "An account with this email address already exists. Please log in.",
+          };
+        }
+
+        // 3. New registration awaiting email confirmation (no active session returned)
+        if (!data.session?.access_token) {
+          return {
+            success: true,
+            requiresConfirmation: true,
+            message: "Registration successful! Please check your email to confirm your account before logging in.",
+          };
+        }
+
+        // 4. Confirmed active authenticated session
         const profile: UserProfile = {
           id: data.user.id,
           name: formData.name,
@@ -250,16 +299,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isGuest: false,
         };
         setUser(profile);
+        setToken(data.session.access_token);
         localStorage.setItem("hisabdo_user", JSON.stringify(profile));
-        if (data.session?.access_token) {
-          setToken(data.session.access_token);
-          localStorage.setItem("hisabdo_token", data.session.access_token);
-          document.cookie = `hisabdo_auth_token=${data.session.access_token}; path=/; max-age=86400`;
-        }
-        return { success: true };
+        localStorage.setItem("hisabdo_token", data.session.access_token);
+        document.cookie = `hisabdo_auth_token=${data.session.access_token}; path=/; max-age=86400`;
+
+        return { success: true, requiresConfirmation: false };
       }
 
-      return { success: true, message: "Please check your email to confirm registration." };
+      return {
+        success: true,
+        requiresConfirmation: true,
+        message: "Please check your email to confirm registration.",
+      };
     } catch (err: any) {
       return { success: false, message: err?.message || "Registration failed." };
     } finally {
@@ -329,7 +381,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         token,
-        isAuthenticated: !!user,
+        isAuthenticated: !!user && (!!token || !!user?.isGuest),
         isLoading,
         isGuest: !!user?.isGuest,
         activeBranch: DEFAULT_BRANCH,

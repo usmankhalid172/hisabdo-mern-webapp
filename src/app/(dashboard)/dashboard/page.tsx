@@ -67,6 +67,7 @@ export default function DashboardPage() {
 
   // Modals state
   const [activeModal, setActiveModal] = useState<"income" | "expense" | "customer" | "payment" | "calculator" | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
 
   // Form states
   const [formCustomer, setFormCustomer] = useState({ name: "", phone: "", opening_balance: 0, notes: "", address: "" });
@@ -159,6 +160,7 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!formCustomer.name.trim()) return;
     setSubmitting(true);
+    setModalError(null);
     try {
       await hisabDoService.addCustomer(user?.id || "guest", {
         name: formCustomer.name,
@@ -171,6 +173,8 @@ export default function DashboardPage() {
       setFormCustomer({ name: "", phone: "", opening_balance: 0, notes: "", address: "" });
       setActiveModal(null);
       await loadData();
+    } catch (err: any) {
+      setModalError(err?.message || "Failed to add customer. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -180,6 +184,7 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!formIncome.amount) return;
     setSubmitting(true);
+    setModalError(null);
     try {
       await hisabDoService.addIncome(user?.id || "guest", {
         amount: Number(formIncome.amount),
@@ -192,6 +197,8 @@ export default function DashboardPage() {
       setFormIncome({ amount: "", customer_id: "", description: "", payment_method: "cash", category_id: "Sales", date: new Date().toISOString().split("T")[0] });
       setActiveModal(null);
       await loadData();
+    } catch (err: any) {
+      setModalError(err?.message || "Failed to record income entry. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -201,6 +208,7 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!formExpense.amount) return;
     setSubmitting(true);
+    setModalError(null);
     try {
       await hisabDoService.addExpense(user?.id || "guest", {
         amount: Number(formExpense.amount),
@@ -213,6 +221,8 @@ export default function DashboardPage() {
       setFormExpense({ amount: "", customer_id: "", description: "", payment_method: "cash", category_id: "Rent", date: new Date().toISOString().split("T")[0] });
       setActiveModal(null);
       await loadData();
+    } catch (err: any) {
+      setModalError(err?.message || "Failed to record expense entry. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -555,6 +565,11 @@ export default function DashboardPage() {
             </div>
 
             <form onSubmit={handleAddIncome} className="space-y-3.5">
+              {modalError && (
+                <div className="p-3 text-xs rounded-xl bg-red-950/50 border border-red-800 text-red-200">
+                  {modalError}
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Amount ({currencySymbol}) *
@@ -661,6 +676,11 @@ export default function DashboardPage() {
             </div>
 
             <form onSubmit={handleAddExpense} className="space-y-3.5">
+              {modalError && (
+                <div className="p-3 text-xs rounded-xl bg-red-950/50 border border-red-800 text-red-200">
+                  {modalError}
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Amount ({currencySymbol}) *

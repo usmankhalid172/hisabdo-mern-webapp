@@ -66,6 +66,7 @@ const DEFAULT_EXPENSES: Expense[] = [];
 const DEFAULT_LEDGER_TXS: LedgerTransaction[] = [];
 
 
+<<<<<<< Updated upstream
 const DEMO_USER_UUID = "54fed992-4a4f-4669-9c52-161ae531dfe0";
 
 export function resolveUserId(userId: string): string {
@@ -73,6 +74,11 @@ export function resolveUserId(userId: string): string {
     return DEMO_USER_UUID;
   }
   return userId;
+=======
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isUuid(val?: string | null): boolean {
+  return typeof val === "string" && UUID_REGEX.test(val);
+>>>>>>> Stashed changes
 }
 
 export class HisabDoService {
@@ -80,6 +86,7 @@ export class HisabDoService {
     return `hisabdo_${userId || "guest"}_${key}`;
   }
 
+<<<<<<< Updated upstream
   private async getAuthenticatedClient(userId: string) {
     const supabase = createClient();
     const effectiveUserId = resolveUserId(userId);
@@ -97,6 +104,30 @@ export class HisabDoService {
       }
     }
     return supabase;
+=======
+  private isLocalOnly(userId: string): boolean {
+    if (!userId) return true;
+    if (userId === "guest" || userId === "demo-user-1" || userId.startsWith("demo")) return true;
+    return !isUuid(userId);
+  }
+
+  private async getAuthenticatedSupabaseClient(userId: string) {
+    if (this.isLocalOnly(userId) || typeof window === "undefined") {
+      return null;
+    }
+    try {
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session && session.user && session.user.id === userId) {
+        return supabase;
+      }
+    } catch (err) {
+      console.warn("Supabase auth session check failed:", err);
+    }
+    return null;
+>>>>>>> Stashed changes
   }
 
   // Load state from local storage or defaults
@@ -155,6 +186,7 @@ export class HisabDoService {
   async getCustomers(userId: string): Promise<Customer[]> {
     const effectiveUserId = resolveUserId(userId);
     const fallback = this.getLocal<Customer[]>(userId, "customers", DEFAULT_CUSTOMERS);
+<<<<<<< Updated upstream
     try {
       const supabase = await this.getAuthenticatedClient(userId);
       const { data, error } = await supabase
@@ -168,14 +200,41 @@ export class HisabDoService {
         ...row,
         opening_balance: Number(row.metadata?.opening_balance ?? row.metadata?.initialBalance ?? 0),
         currency: row.metadata?.currency ?? "PKR",
+=======
+    const supabase = await this.getAuthenticatedSupabaseClient(userId);
+    if (!supabase) return fallback;
+
+    try {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.warn("Supabase getCustomers warning:", error.message);
+        return fallback;
+      }
+
+      const customers = (data ?? []).map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        phone: row.phone || "",
+        email: row.email || "",
+        address: row.address || "",
+        opening_balance: Number(row.opening_balance ?? row.metadata?.opening_balance ?? 0),
+        currency: row.currency ?? row.metadata?.currency ?? "PKR",
+        notes: row.notes || "",
+        created_at: row.created_at,
+>>>>>>> Stashed changes
       })) as Customer[];
+
       this.setLocal(userId, "customers", customers);
       this.setLocal(effectiveUserId, "customers", customers);
       return customers;
     } catch {
-      // Fall back to the last locally cached data while offline.
+      return fallback;
     }
-    return fallback;
   }
 
   async addCustomer(userId: string, customer: Omit<Customer, "id" | "created_at">): Promise<Customer> {
@@ -202,6 +261,7 @@ export class HisabDoService {
       },
     };
 
+<<<<<<< Updated upstream
     let savedId = "cust-" + Date.now();
     let savedCreatedAt = new Date().toISOString();
 
@@ -229,8 +289,38 @@ export class HisabDoService {
       id: savedId,
       created_at: savedCreatedAt,
     };
+=======
+    const supabase = await this.getAuthenticatedSupabaseClient(userId);
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from("customers")
+          .insert([{
+            user_id: userId,
+            name: customer.name,
+            phone: customer.phone ? String(customer.phone).trim() : null,
+            email: customer.email ? String(customer.email).trim() : null,
+            address: customer.address ? String(customer.address).trim() : null,
+            opening_balance: Number(customer.opening_balance || 0),
+            currency: customer.currency || "PKR",
+            notes: customer.notes || null,
+          }])
+          .select()
+          .single();
+>>>>>>> Stashed changes
 
-    const list = await this.getCustomers(userId);
+        if (!error && data) {
+          newCust.id = data.id;
+          newCust.created_at = data.created_at;
+        } else if (error) {
+          console.warn("Supabase addCustomer warning:", error.message);
+        }
+      } catch (err) {
+        console.warn("Supabase addCustomer network error:", err);
+      }
+    }
+
+    const list = this.getLocal<Customer[]>(userId, "customers", DEFAULT_CUSTOMERS);
     const updated = [newCust, ...list.filter((c) => c.id !== newCust.id)];
     this.setLocal(userId, "customers", updated);
     this.setLocal(effectiveUserId, "customers", updated);
@@ -238,7 +328,7 @@ export class HisabDoService {
   }
 
   async updateCustomer(userId: string, id: string, updates: Partial<Customer>): Promise<Customer> {
-    const list = await this.getCustomers(userId);
+    const list = this.getLocal<Customer[]>(userId, "customers", DEFAULT_CUSTOMERS);
     let updatedCust: Customer | null = null;
     const updatedList = list.map((c) => {
       if (c.id === id) {
@@ -248,32 +338,53 @@ export class HisabDoService {
       return c;
     });
 
-    try {
-      const supabase = createClient();
-      await supabase.from("customers").update(updates).eq("id", id);
-    } catch {}
-
-    if (updatedCust) {
-      this.setLocal(userId, "customers", updatedList);
-      return updatedCust;
+    if (!updatedCust) {
+      throw new Error("Customer not found");
     }
-    throw new Error("Customer not found");
+
+    this.setLocal(userId, "customers", updatedList);
+
+    const supabase = await this.getAuthenticatedSupabaseClient(userId);
+    if (supabase && isUuid(id)) {
+      try {
+        const dbUpdates: Record<string, any> = {};
+        if (updates.name !== undefined) dbUpdates.name = updates.name;
+        if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
+        if (updates.email !== undefined) dbUpdates.email = updates.email;
+        if (updates.address !== undefined) dbUpdates.address = updates.address;
+        if (updates.opening_balance !== undefined) dbUpdates.opening_balance = Number(updates.opening_balance);
+        if (updates.currency !== undefined) dbUpdates.currency = updates.currency;
+        if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+        dbUpdates.updated_at = new Date().toISOString();
+
+        await supabase.from("customers").update(dbUpdates).eq("id", id).eq("user_id", userId);
+      } catch (err) {
+        console.warn("Supabase updateCustomer warning:", err);
+      }
+    }
+
+    return updatedCust;
   }
 
   async deleteCustomer(userId: string, id: string): Promise<void> {
-    try {
-      const supabase = createClient();
-      await supabase.from("customers").delete().eq("id", id);
-    } catch {}
-
-    const list = await this.getCustomers(userId);
+    const list = this.getLocal<Customer[]>(userId, "customers", DEFAULT_CUSTOMERS);
     this.setLocal(userId, "customers", list.filter((c) => c.id !== id));
+
+    const supabase = await this.getAuthenticatedSupabaseClient(userId);
+    if (supabase && isUuid(id)) {
+      try {
+        await supabase.from("customers").delete().eq("id", id).eq("user_id", userId);
+      } catch (err) {
+        console.warn("Supabase deleteCustomer warning:", err);
+      }
+    }
   }
 
   // ==================== INCOMES ====================
   async getIncomes(userId: string): Promise<Income[]> {
     const effectiveUserId = resolveUserId(userId);
     const fallback = this.getLocal<Income[]>(userId, "incomes", DEFAULT_INCOMES);
+<<<<<<< Updated upstream
     try {
       const supabase = await this.getAuthenticatedClient(userId);
       const { data, error } = await supabase
@@ -289,14 +400,40 @@ export class HisabDoService {
         description: row.note ?? "",
         payment_method: row.metadata?.payment_method ?? "cash",
         category_id: row.metadata?.category ?? row.metadata?.legacy_category ?? row.category_id ?? "Sales",
+=======
+    const supabase = await this.getAuthenticatedSupabaseClient(userId);
+    if (!supabase) return fallback;
+
+    try {
+      const { data, error } = await supabase
+        .from("income")
+        .select("*")
+        .eq("user_id", userId)
+        .order("income_date", { ascending: false });
+
+      if (error) {
+        console.warn("Supabase getIncomes warning:", error.message);
+        return fallback;
+      }
+
+      const incomes = (data ?? []).map((row: any) => ({
+        id: row.id,
+        amount: Number(row.amount),
+        customer_id: row.customer_id || undefined,
+        category_id: row.category_id || undefined,
+        income_date: row.income_date || row.date || new Date().toISOString().split("T")[0],
+        description: row.description || row.note || "",
+        payment_method: row.payment_method || row.metadata?.payment_method || "cash",
+        created_at: row.created_at,
+>>>>>>> Stashed changes
       })) as Income[];
+
       this.setLocal(userId, "incomes", incomes);
       this.setLocal(effectiveUserId, "incomes", incomes);
       return incomes;
     } catch {
-      // Fall back to the last locally cached data while offline.
+      return fallback;
     }
-    return fallback;
   }
 
   async addIncome(userId: string, income: Omit<Income, "id" | "created_at">): Promise<Income> {
@@ -321,6 +458,7 @@ export class HisabDoService {
       },
     };
 
+<<<<<<< Updated upstream
     let savedId = "inc-" + Date.now();
     let savedCreatedAt = new Date().toISOString();
 
@@ -350,6 +488,49 @@ export class HisabDoService {
     };
 
     const list = await this.getIncomes(userId);
+=======
+    const supabase = await this.getAuthenticatedSupabaseClient(userId);
+    if (supabase) {
+      try {
+        const dateVal = income.income_date
+          ? income.income_date.split("T")[0]
+          : new Date().toISOString().split("T")[0];
+
+        const validMethods = ["cash", "bank_transfer", "credit", "cheque", "other"];
+        const method = (income.payment_method || "cash").toLowerCase();
+        const payment_method = validMethods.includes(method) ? method : "cash";
+
+        const { data, error } = await supabase
+          .from("income")
+          .insert([{
+            user_id: userId,
+            customer_id: isUuid(income.customer_id) ? income.customer_id : null,
+            category_id: isUuid(income.category_id) ? income.category_id : null,
+            amount: Number(income.amount),
+            base_amount: Number(income.amount),
+            currency: "PKR",
+            base_currency: "PKR",
+            exchange_rate: 1,
+            income_date: dateVal,
+            description: income.description || "",
+            payment_method,
+          }])
+          .select()
+          .single();
+
+        if (!error && data) {
+          newInc.id = data.id;
+          newInc.created_at = data.created_at;
+        } else if (error) {
+          console.warn("Supabase addIncome warning:", error.message);
+        }
+      } catch (err) {
+        console.warn("Supabase addIncome network error:", err);
+      }
+    }
+
+    const list = this.getLocal<Income[]>(userId, "incomes", DEFAULT_INCOMES);
+>>>>>>> Stashed changes
     const updated = [newInc, ...list.filter((i) => i.id !== newInc.id)];
     this.setLocal(userId, "incomes", updated);
     this.setLocal(effectiveUserId, "incomes", updated);
@@ -357,17 +538,30 @@ export class HisabDoService {
   }
 
   async deleteIncome(userId: string, id: string): Promise<void> {
+<<<<<<< Updated upstream
     try {
       const supabase = await this.getAuthenticatedClient(userId);
       await supabase.from("income").delete().eq("id", id);
     } catch {}
 
     const list = await this.getIncomes(userId);
+=======
+    const list = this.getLocal<Income[]>(userId, "incomes", DEFAULT_INCOMES);
+>>>>>>> Stashed changes
     this.setLocal(userId, "incomes", list.filter((i) => i.id !== id));
+
+    const supabase = await this.getAuthenticatedSupabaseClient(userId);
+    if (supabase && isUuid(id)) {
+      try {
+        await supabase.from("income").delete().eq("id", id).eq("user_id", userId);
+      } catch (err) {
+        console.warn("Supabase deleteIncome warning:", err);
+      }
+    }
   }
 
   async updateIncome(userId: string, id: string, updates: Partial<Income>): Promise<Income> {
-    const list = await this.getIncomes(userId);
+    const list = this.getLocal<Income[]>(userId, "incomes", DEFAULT_INCOMES);
     let updatedItem: Income | null = null;
     const updatedList = list.map((i) => {
       if (i.id === id) {
@@ -377,6 +571,7 @@ export class HisabDoService {
       return i;
     });
 
+<<<<<<< Updated upstream
     try {
       const supabase = await this.getAuthenticatedClient(userId);
       await supabase.from("income").update(updates).eq("id", id);
@@ -385,14 +580,55 @@ export class HisabDoService {
     if (updatedItem) {
       this.setLocal(userId, "incomes", updatedList);
       return updatedItem;
+=======
+    if (!updatedItem) {
+      throw new Error("Income record not found");
+>>>>>>> Stashed changes
     }
-    throw new Error("Income record not found");
+
+    this.setLocal(userId, "incomes", updatedList);
+
+    const supabase = await this.getAuthenticatedSupabaseClient(userId);
+    if (supabase && isUuid(id)) {
+      try {
+        const dbUpdates: Record<string, any> = {};
+        if (updates.amount !== undefined) {
+          dbUpdates.amount = Number(updates.amount);
+          dbUpdates.base_amount = Number(updates.amount);
+        }
+        if (updates.customer_id !== undefined) {
+          dbUpdates.customer_id = isUuid(updates.customer_id) ? updates.customer_id : null;
+        }
+        if (updates.category_id !== undefined) {
+          dbUpdates.category_id = isUuid(updates.category_id) ? updates.category_id : null;
+        }
+        if (updates.income_date !== undefined) {
+          dbUpdates.income_date = updates.income_date.split("T")[0];
+        }
+        if (updates.description !== undefined) {
+          dbUpdates.description = updates.description;
+        }
+        if (updates.payment_method !== undefined) {
+          const validMethods = ["cash", "bank_transfer", "credit", "cheque", "other"];
+          const method = updates.payment_method.toLowerCase();
+          dbUpdates.payment_method = validMethods.includes(method) ? method : "cash";
+        }
+        dbUpdates.updated_at = new Date().toISOString();
+
+        await supabase.from("income").update(dbUpdates).eq("id", id).eq("user_id", userId);
+      } catch (err) {
+        console.warn("Supabase updateIncome warning:", err);
+      }
+    }
+
+    return updatedItem;
   }
 
   // ==================== EXPENSES ====================
   async getExpenses(userId: string): Promise<Expense[]> {
     const effectiveUserId = resolveUserId(userId);
     const fallback = this.getLocal<Expense[]>(userId, "expenses", DEFAULT_EXPENSES);
+<<<<<<< Updated upstream
     try {
       const supabase = await this.getAuthenticatedClient(userId);
       const { data, error } = await supabase
@@ -408,14 +644,40 @@ export class HisabDoService {
         description: row.note ?? "",
         payment_method: row.metadata?.payment_method ?? "cash",
         category_id: row.metadata?.category ?? row.metadata?.legacy_category ?? row.category_id ?? "General",
+=======
+    const supabase = await this.getAuthenticatedSupabaseClient(userId);
+    if (!supabase) return fallback;
+
+    try {
+      const { data, error } = await supabase
+        .from("expenses")
+        .select("*")
+        .eq("user_id", userId)
+        .order("expense_date", { ascending: false });
+
+      if (error) {
+        console.warn("Supabase getExpenses warning:", error.message);
+        return fallback;
+      }
+
+      const expenses = (data ?? []).map((row: any) => ({
+        id: row.id,
+        amount: Number(row.amount),
+        customer_id: row.customer_id || undefined,
+        category_id: row.category_id || undefined,
+        expense_date: row.expense_date || row.date || new Date().toISOString().split("T")[0],
+        description: row.description || row.note || "",
+        payment_method: row.payment_method || row.metadata?.payment_method || "cash",
+        created_at: row.created_at,
+>>>>>>> Stashed changes
       })) as Expense[];
+
       this.setLocal(userId, "expenses", expenses);
       this.setLocal(effectiveUserId, "expenses", expenses);
       return expenses;
     } catch {
-      // Fall back to the last locally cached data while offline.
+      return fallback;
     }
-    return fallback;
   }
 
   async addExpense(userId: string, expense: Omit<Expense, "id" | "created_at">): Promise<Expense> {
@@ -440,6 +702,7 @@ export class HisabDoService {
       },
     };
 
+<<<<<<< Updated upstream
     let savedId = "exp-" + Date.now();
     let savedCreatedAt = new Date().toISOString();
 
@@ -469,6 +732,48 @@ export class HisabDoService {
     };
 
     const list = await this.getExpenses(userId);
+=======
+    const supabase = await this.getAuthenticatedSupabaseClient(userId);
+    if (supabase) {
+      try {
+        const dateVal = expense.expense_date
+          ? expense.expense_date.split("T")[0]
+          : new Date().toISOString().split("T")[0];
+
+        const validMethods = ["cash", "bank_transfer", "credit", "cheque", "other"];
+        const method = (expense.payment_method || "cash").toLowerCase();
+        const payment_method = validMethods.includes(method) ? method : "cash";
+
+        const { data, error } = await supabase
+          .from("expenses")
+          .insert([{
+            user_id: userId,
+            category_id: isUuid(expense.category_id) ? expense.category_id : null,
+            amount: Number(expense.amount),
+            base_amount: Number(expense.amount),
+            currency: "PKR",
+            base_currency: "PKR",
+            exchange_rate: 1,
+            expense_date: dateVal,
+            description: expense.description || "",
+            payment_method,
+          }])
+          .select()
+          .single();
+
+        if (!error && data) {
+          newExp.id = data.id;
+          newExp.created_at = data.created_at;
+        } else if (error) {
+          console.warn("Supabase addExpense warning:", error.message);
+        }
+      } catch (err) {
+        console.warn("Supabase addExpense network error:", err);
+      }
+    }
+
+    const list = this.getLocal<Expense[]>(userId, "expenses", DEFAULT_EXPENSES);
+>>>>>>> Stashed changes
     const updated = [newExp, ...list.filter((e) => e.id !== newExp.id)];
     this.setLocal(userId, "expenses", updated);
     this.setLocal(effectiveUserId, "expenses", updated);
@@ -476,17 +781,30 @@ export class HisabDoService {
   }
 
   async deleteExpense(userId: string, id: string): Promise<void> {
+<<<<<<< Updated upstream
     try {
       const supabase = await this.getAuthenticatedClient(userId);
       await supabase.from("expenses").delete().eq("id", id);
     } catch {}
 
     const list = await this.getExpenses(userId);
+=======
+    const list = this.getLocal<Expense[]>(userId, "expenses", DEFAULT_EXPENSES);
+>>>>>>> Stashed changes
     this.setLocal(userId, "expenses", list.filter((e) => e.id !== id));
+
+    const supabase = await this.getAuthenticatedSupabaseClient(userId);
+    if (supabase && isUuid(id)) {
+      try {
+        await supabase.from("expenses").delete().eq("id", id).eq("user_id", userId);
+      } catch (err) {
+        console.warn("Supabase deleteExpense warning:", err);
+      }
+    }
   }
 
   async updateExpense(userId: string, id: string, updates: Partial<Expense>): Promise<Expense> {
-    const list = await this.getExpenses(userId);
+    const list = this.getLocal<Expense[]>(userId, "expenses", DEFAULT_EXPENSES);
     let updatedItem: Expense | null = null;
     const updatedList = list.map((e) => {
       if (e.id === id) {
@@ -496,6 +814,7 @@ export class HisabDoService {
       return e;
     });
 
+<<<<<<< Updated upstream
     try {
       const supabase = await this.getAuthenticatedClient(userId);
       await supabase.from("expenses").update(updates).eq("id", id);
@@ -504,24 +823,73 @@ export class HisabDoService {
     if (updatedItem) {
       this.setLocal(userId, "expenses", updatedList);
       return updatedItem;
+=======
+    if (!updatedItem) {
+      throw new Error("Expense record not found");
+>>>>>>> Stashed changes
     }
-    throw new Error("Expense record not found");
+
+    this.setLocal(userId, "expenses", updatedList);
+
+    const supabase = await this.getAuthenticatedSupabaseClient(userId);
+    if (supabase && isUuid(id)) {
+      try {
+        const dbUpdates: Record<string, any> = {};
+        if (updates.amount !== undefined) {
+          dbUpdates.amount = Number(updates.amount);
+          dbUpdates.base_amount = Number(updates.amount);
+        }
+        if (updates.category_id !== undefined) {
+          dbUpdates.category_id = isUuid(updates.category_id) ? updates.category_id : null;
+        }
+        if (updates.expense_date !== undefined) {
+          dbUpdates.expense_date = updates.expense_date.split("T")[0];
+        }
+        if (updates.description !== undefined) {
+          dbUpdates.description = updates.description;
+        }
+        if (updates.payment_method !== undefined) {
+          const validMethods = ["cash", "bank_transfer", "credit", "cheque", "other"];
+          const method = updates.payment_method.toLowerCase();
+          dbUpdates.payment_method = validMethods.includes(method) ? method : "cash";
+        }
+        dbUpdates.updated_at = new Date().toISOString();
+
+        await supabase.from("expenses").update(dbUpdates).eq("id", id).eq("user_id", userId);
+      } catch (err) {
+        console.warn("Supabase updateExpense warning:", err);
+      }
+    }
+
+    return updatedItem;
   }
 
   // ==================== DIRECT LEDGER PAYMENTS ====================
   async getLedgerTransactions(userId: string): Promise<LedgerTransaction[]> {
     const effectiveUserId = resolveUserId(userId);
     const fallback = this.getLocal<LedgerTransaction[]>(userId, "ledger_txs", DEFAULT_LEDGER_TXS);
+<<<<<<< Updated upstream
     try {
       const supabase = await this.getAuthenticatedClient(userId);
+=======
+    const supabase = await this.getAuthenticatedSupabaseClient(userId);
+    if (!supabase) return fallback;
+
+    try {
+>>>>>>> Stashed changes
       const { data, error } = await supabase
         .from("ledger_transactions")
         .select("*")
         .eq("user_id", effectiveUserId)
         .is("deleted_at", null)
         .order("date", { ascending: false });
-      if (error) throw error;
-      const transactions = (data ?? []).map((row) => ({
+
+      if (error) {
+        console.warn("Supabase getLedgerTransactions warning:", error.message);
+        return fallback;
+      }
+
+      const transactions = (data ?? []).map((row: any) => ({
         id: row.id,
         customerId: row.customer_id,
         amount: Number(row.amount),
@@ -531,13 +899,13 @@ export class HisabDoService {
         note: row.note ?? row.metadata?.description ?? "",
         imagePath: row.image_path ?? undefined,
       })) as LedgerTransaction[];
+
       this.setLocal(userId, "ledger_txs", transactions);
       this.setLocal(effectiveUserId, "ledger_txs", transactions);
       return transactions;
     } catch {
-      // Fall back to the last locally cached data while offline.
+      return fallback;
     }
-    return fallback;
   }
 
   async addLedgerTransaction(userId: string, tx: Omit<LedgerTransaction, "id">): Promise<LedgerTransaction> {
@@ -564,6 +932,7 @@ export class HisabDoService {
       },
     };
 
+<<<<<<< Updated upstream
     let savedId = "ltx-" + Date.now();
 
     try {
@@ -591,6 +960,44 @@ export class HisabDoService {
     };
 
     const list = await this.getLedgerTransactions(userId);
+=======
+    const supabase = await this.getAuthenticatedSupabaseClient(userId);
+    if (supabase) {
+      try {
+        const clientUuid = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : "00000000-0000-4000-8000-" + Date.now().toString(16).padStart(12, "0");
+
+        const dateVal = tx.date ? tx.date.split("T")[0] : new Date().toISOString().split("T")[0];
+
+        const { data, error } = await supabase
+          .from("ledger_transactions")
+          .insert([{
+            client_uuid: clientUuid,
+            user_id: userId,
+            customer_id: isUuid(tx.customerId) ? tx.customerId : null,
+            amount: Number(tx.amount),
+            type: tx.type,
+            category: tx.category || "Payment",
+            date: dateVal,
+            note: tx.note || null,
+            image_path: tx.imagePath || null,
+          }])
+          .select()
+          .single();
+
+        if (!error && data) {
+          newTx.id = data.id;
+        } else if (error) {
+          console.warn("Supabase addLedgerTransaction warning:", error.message);
+        }
+      } catch (err) {
+        console.warn("Supabase addLedgerTransaction network error:", err);
+      }
+    }
+
+    const list = this.getLocal<LedgerTransaction[]>(userId, "ledger_txs", DEFAULT_LEDGER_TXS);
+>>>>>>> Stashed changes
     const updated = [newTx, ...list.filter((t) => t.id !== newTx.id)];
     this.setLocal(userId, "ledger_txs", updated);
     this.setLocal(effectiveUserId, "ledger_txs", updated);
@@ -598,17 +1005,25 @@ export class HisabDoService {
   }
 
   async deleteLedgerTransaction(userId: string, id: string): Promise<void> {
-    try {
-      const supabase = createClient();
-      await supabase.from("ledger_transactions").delete().eq("id", id);
-    } catch {}
-
-    const list = await this.getLedgerTransactions(userId);
+    const list = this.getLocal<LedgerTransaction[]>(userId, "ledger_txs", DEFAULT_LEDGER_TXS);
     this.setLocal(userId, "ledger_txs", list.filter((t) => t.id !== id));
+
+    const supabase = await this.getAuthenticatedSupabaseClient(userId);
+    if (supabase && isUuid(id)) {
+      try {
+        await supabase
+          .from("ledger_transactions")
+          .update({ deleted_at: new Date().toISOString() })
+          .eq("id", id)
+          .eq("user_id", userId);
+      } catch (err) {
+        console.warn("Supabase deleteLedgerTransaction warning:", err);
+      }
+    }
   }
 
   async updateLedgerTransaction(userId: string, id: string, updates: Partial<LedgerTransaction>): Promise<LedgerTransaction> {
-    const list = await this.getLedgerTransactions(userId);
+    const list = this.getLocal<LedgerTransaction[]>(userId, "ledger_txs", DEFAULT_LEDGER_TXS);
     let updatedItem: LedgerTransaction | null = null;
     const updatedList = list.map((t) => {
       if (t.id === id) {
@@ -618,16 +1033,31 @@ export class HisabDoService {
       return t;
     });
 
-    try {
-      const supabase = createClient();
-      await supabase.from("ledger_transactions").update(updates).eq("id", id);
-    } catch {}
-
-    if (updatedItem) {
-      this.setLocal(userId, "ledger_txs", updatedList);
-      return updatedItem;
+    if (!updatedItem) {
+      throw new Error("Ledger transaction record not found");
     }
-    throw new Error("Ledger transaction record not found");
+
+    this.setLocal(userId, "ledger_txs", updatedList);
+
+    const supabase = await this.getAuthenticatedSupabaseClient(userId);
+    if (supabase && isUuid(id)) {
+      try {
+        const dbUpdates: Record<string, any> = {};
+        if (updates.amount !== undefined) dbUpdates.amount = Number(updates.amount);
+        if (updates.type !== undefined) dbUpdates.type = updates.type;
+        if (updates.category !== undefined) dbUpdates.category = updates.category;
+        if (updates.date !== undefined) dbUpdates.date = updates.date.split("T")[0];
+        if (updates.note !== undefined) dbUpdates.note = updates.note;
+        if (updates.imagePath !== undefined) dbUpdates.image_path = updates.imagePath;
+        dbUpdates.updated_at = new Date().toISOString();
+
+        await supabase.from("ledger_transactions").update(dbUpdates).eq("id", id).eq("user_id", userId);
+      } catch (err) {
+        console.warn("Supabase updateLedgerTransaction warning:", err);
+      }
+    }
+
+    return updatedItem;
   }
 
   // ==================== COMPUTED CUSTOMER LEDGER & RUNNING BALANCE ====================
