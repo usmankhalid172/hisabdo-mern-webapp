@@ -83,8 +83,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+        const body = await request.json();
     console.log("📦 Incoming transaction payload:", body);
+
+    // Amount must be greater than 0 (always on)
+    const amount = Number(body.amount);
+    if (!amount || amount <= 0) {
+      return NextResponse.json(
+        { success: false, message: "Amount must be greater than 0" },
+        { status: 400 }
+      );
+    }
 
     const supabase = getAdminSupabase();
     const { data: newTransaction, error } = await supabase
