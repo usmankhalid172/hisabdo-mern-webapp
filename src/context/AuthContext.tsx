@@ -217,13 +217,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: {
-            full_name: formData.name,
-            phone: formData.phone || "",
-            business_name: formData.shopName || "",
-          },
-        },
+  emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+  data: {
+    full_name: formData.name,
+    phone: formData.phone || "",
+    business_name: formData.shopName || "",
+  },
+},
       });
 
       if (error) {
