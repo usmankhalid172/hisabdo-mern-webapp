@@ -66,19 +66,21 @@ const DEFAULT_EXPENSES: Expense[] = [];
 const DEFAULT_LEDGER_TXS: LedgerTransaction[] = [];
 
 
-<<<<<<< Updated upstream
-const DEMO_USER_UUID = "54fed992-4a4f-4669-9c52-161ae531dfe0";
+export const DEMO_USER_UUID = "54fed992-4a4f-4669-9c52-161ae531dfe0";
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function isUuid(val?: string | null): boolean {
+  return typeof val === "string" && UUID_REGEX.test(val);
+}
 
 export function resolveUserId(userId: string): string {
-  if (!userId || userId === "demo-user-1" || userId === "guest" || userId === "guest-user") {
+  if (!userId || userId === "guest" || userId === "guest-user") {
+    return "guest";
+  }
+  if (userId === "demo-user-1") {
     return DEMO_USER_UUID;
   }
   return userId;
-=======
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-function isUuid(val?: string | null): boolean {
-  return typeof val === "string" && UUID_REGEX.test(val);
->>>>>>> Stashed changes
 }
 
 export class HisabDoService {
@@ -86,48 +88,37 @@ export class HisabDoService {
     return `hisabdo_${userId || "guest"}_${key}`;
   }
 
-<<<<<<< Updated upstream
-  private async getAuthenticatedClient(userId: string) {
-    const supabase = createClient();
-    const effectiveUserId = resolveUserId(userId);
-    if (effectiveUserId === DEMO_USER_UUID) {
-      try {
-        const { data } = await supabase.auth.getSession();
-        if (!data?.session) {
-          await supabase.auth.signInWithPassword({
-            email: "merchant@hisabdo.com",
-            password: "Password123!",
-          });
-        }
-      } catch (err) {
-        console.warn("Demo auto-login warning:", err);
-      }
-    }
-    return supabase;
-=======
   private isLocalOnly(userId: string): boolean {
     if (!userId) return true;
-    if (userId === "guest" || userId === "demo-user-1" || userId.startsWith("demo")) return true;
-    return !isUuid(userId);
+    const effective = resolveUserId(userId);
+    if (effective === "guest" || effective === "guest-user") return true;
+    if (effective === DEMO_USER_UUID) return false;
+    return !isUuid(effective);
   }
 
   private async getAuthenticatedSupabaseClient(userId: string) {
-    if (this.isLocalOnly(userId) || typeof window === "undefined") {
+    if (typeof window === "undefined") return null;
+    const effectiveUserId = resolveUserId(userId);
+    if (this.isLocalOnly(effectiveUserId)) {
       return null;
     }
     try {
       const supabase = createClient();
-      const {
+      let {
         data: { session },
       } = await supabase.auth.getSession();
-      if (session && session.user && session.user.id === userId) {
+
+      if (session && session.user && (session.user.id === effectiveUserId || effectiveUserId === DEMO_USER_UUID)) {
         return supabase;
       }
     } catch (err) {
       console.warn("Supabase auth session check failed:", err);
     }
     return null;
->>>>>>> Stashed changes
+  }
+
+  private async getAuthenticatedClient(userId: string) {
+    return this.getAuthenticatedSupabaseClient(userId);
   }
 
   // Load state from local storage or defaults
@@ -186,21 +177,6 @@ export class HisabDoService {
   async getCustomers(userId: string): Promise<Customer[]> {
     const effectiveUserId = resolveUserId(userId);
     const fallback = this.getLocal<Customer[]>(userId, "customers", DEFAULT_CUSTOMERS);
-<<<<<<< Updated upstream
-    try {
-      const supabase = await this.getAuthenticatedClient(userId);
-      const { data, error } = await supabase
-        .from("customers")
-        .select("*")
-        .eq("user_id", effectiveUserId)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      const customers = (data ?? []).map((row) => ({
-        ...row,
-        opening_balance: Number(row.metadata?.opening_balance ?? row.metadata?.initialBalance ?? 0),
-        currency: row.metadata?.currency ?? "PKR",
-=======
     const supabase = await this.getAuthenticatedSupabaseClient(userId);
     if (!supabase) return fallback;
 
@@ -208,7 +184,7 @@ export class HisabDoService {
       const { data, error } = await supabase
         .from("customers")
         .select("*")
-        .eq("user_id", userId)
+        .eq("user_id", effectiveUserId)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -222,11 +198,10 @@ export class HisabDoService {
         phone: row.phone || "",
         email: row.email || "",
         address: row.address || "",
-        opening_balance: Number(row.opening_balance ?? row.metadata?.opening_balance ?? 0),
+        opening_balance: Number(row.opening_balance ?? row.metadata?.opening_balance ?? row.metadata?.initialBalance ?? 0),
         currency: row.currency ?? row.metadata?.currency ?? "PKR",
         notes: row.notes || "",
         created_at: row.created_at,
->>>>>>> Stashed changes
       })) as Customer[];
 
       this.setLocal(userId, "customers", customers);
@@ -261,42 +236,20 @@ export class HisabDoService {
       },
     };
 
-<<<<<<< Updated upstream
-    let savedId = "cust-" + Date.now();
-    let savedCreatedAt = new Date().toISOString();
-
-    // Try Supabase first
-    try {
-      const supabase = await this.getAuthenticatedClient(userId);
-      const { data, error } = await supabase
-        .from("customers")
-        .insert([dbPayload])
-        .select()
-        .single();
-
-      if (!error && data) {
-        savedId = data.id;
-        savedCreatedAt = data.created_at;
-      } else if (error) {
-        console.warn("Supabase addCustomer warning:", error.message);
-      }
-    } catch (e) {
-      console.warn("addCustomer network exception:", e);
-    }
-
     const newCust: Customer = {
       ...customer,
-      id: savedId,
-      created_at: savedCreatedAt,
+      id: "cust-" + Date.now(),
+      created_at: new Date().toISOString(),
     };
-=======
+
     const supabase = await this.getAuthenticatedSupabaseClient(userId);
     if (supabase) {
       try {
         const { data, error } = await supabase
           .from("customers")
           .insert([{
-            user_id: userId,
+            client_uuid: isUuid(clientUuid) ? clientUuid : undefined,
+            user_id: effectiveUserId,
             name: customer.name,
             phone: customer.phone ? String(customer.phone).trim() : null,
             email: customer.email ? String(customer.email).trim() : null,
@@ -307,7 +260,6 @@ export class HisabDoService {
           }])
           .select()
           .single();
->>>>>>> Stashed changes
 
         if (!error && data) {
           newCust.id = data.id;
@@ -384,23 +336,6 @@ export class HisabDoService {
   async getIncomes(userId: string): Promise<Income[]> {
     const effectiveUserId = resolveUserId(userId);
     const fallback = this.getLocal<Income[]>(userId, "incomes", DEFAULT_INCOMES);
-<<<<<<< Updated upstream
-    try {
-      const supabase = await this.getAuthenticatedClient(userId);
-      const { data, error } = await supabase
-        .from("income")
-        .select("*")
-        .eq("user_id", effectiveUserId)
-        .is("deleted_at", null)
-        .order("date", { ascending: false });
-      if (error) throw error;
-      const incomes = (data ?? []).map((row) => ({
-        ...row,
-        income_date: row.date,
-        description: row.note ?? "",
-        payment_method: row.metadata?.payment_method ?? "cash",
-        category_id: row.metadata?.category ?? row.metadata?.legacy_category ?? row.category_id ?? "Sales",
-=======
     const supabase = await this.getAuthenticatedSupabaseClient(userId);
     if (!supabase) return fallback;
 
@@ -408,7 +343,7 @@ export class HisabDoService {
       const { data, error } = await supabase
         .from("income")
         .select("*")
-        .eq("user_id", userId)
+        .eq("user_id", effectiveUserId)
         .order("income_date", { ascending: false });
 
       if (error) {
@@ -420,12 +355,11 @@ export class HisabDoService {
         id: row.id,
         amount: Number(row.amount),
         customer_id: row.customer_id || undefined,
-        category_id: row.category_id || undefined,
+        category_id: row.category_id || row.metadata?.category || "Sales",
         income_date: row.income_date || row.date || new Date().toISOString().split("T")[0],
         description: row.description || row.note || "",
         payment_method: row.payment_method || row.metadata?.payment_method || "cash",
         created_at: row.created_at,
->>>>>>> Stashed changes
       })) as Income[];
 
       this.setLocal(userId, "incomes", incomes);
@@ -458,44 +392,15 @@ export class HisabDoService {
       },
     };
 
-<<<<<<< Updated upstream
-    let savedId = "inc-" + Date.now();
-    let savedCreatedAt = new Date().toISOString();
-
-    try {
-      const supabase = await this.getAuthenticatedClient(userId);
-      const { data, error } = await supabase
-        .from("income")
-        .insert([dbPayload])
-        .select()
-        .single();
-      if (!error && data) {
-        savedId = data.id;
-        savedCreatedAt = data.created_at;
-      } else if (error) {
-        console.warn("Supabase addIncome warning:", error.message);
-        throw new Error(error.message);
-      }
-    } catch (e: any) {
-      console.warn("addIncome network exception:", e);
-      throw e;
-    }
-
     const newInc: Income = {
       ...income,
-      id: savedId,
-      created_at: savedCreatedAt,
+      id: "inc-" + Date.now(),
+      created_at: new Date().toISOString(),
     };
 
-    const list = await this.getIncomes(userId);
-=======
     const supabase = await this.getAuthenticatedSupabaseClient(userId);
     if (supabase) {
       try {
-        const dateVal = income.income_date
-          ? income.income_date.split("T")[0]
-          : new Date().toISOString().split("T")[0];
-
         const validMethods = ["cash", "bank_transfer", "credit", "cheque", "other"];
         const method = (income.payment_method || "cash").toLowerCase();
         const payment_method = validMethods.includes(method) ? method : "cash";
@@ -503,7 +408,8 @@ export class HisabDoService {
         const { data, error } = await supabase
           .from("income")
           .insert([{
-            user_id: userId,
+            client_uuid: isUuid(clientUuid) ? clientUuid : undefined,
+            user_id: effectiveUserId,
             customer_id: isUuid(income.customer_id) ? income.customer_id : null,
             category_id: isUuid(income.category_id) ? income.category_id : null,
             amount: Number(income.amount),
@@ -511,7 +417,7 @@ export class HisabDoService {
             currency: "PKR",
             base_currency: "PKR",
             exchange_rate: 1,
-            income_date: dateVal,
+            income_date: dateStr,
             description: income.description || "",
             payment_method,
           }])
@@ -530,7 +436,6 @@ export class HisabDoService {
     }
 
     const list = this.getLocal<Income[]>(userId, "incomes", DEFAULT_INCOMES);
->>>>>>> Stashed changes
     const updated = [newInc, ...list.filter((i) => i.id !== newInc.id)];
     this.setLocal(userId, "incomes", updated);
     this.setLocal(effectiveUserId, "incomes", updated);
@@ -538,16 +443,7 @@ export class HisabDoService {
   }
 
   async deleteIncome(userId: string, id: string): Promise<void> {
-<<<<<<< Updated upstream
-    try {
-      const supabase = await this.getAuthenticatedClient(userId);
-      await supabase.from("income").delete().eq("id", id);
-    } catch {}
-
-    const list = await this.getIncomes(userId);
-=======
     const list = this.getLocal<Income[]>(userId, "incomes", DEFAULT_INCOMES);
->>>>>>> Stashed changes
     this.setLocal(userId, "incomes", list.filter((i) => i.id !== id));
 
     const supabase = await this.getAuthenticatedSupabaseClient(userId);
@@ -571,19 +467,8 @@ export class HisabDoService {
       return i;
     });
 
-<<<<<<< Updated upstream
-    try {
-      const supabase = await this.getAuthenticatedClient(userId);
-      await supabase.from("income").update(updates).eq("id", id);
-    } catch {}
-
-    if (updatedItem) {
-      this.setLocal(userId, "incomes", updatedList);
-      return updatedItem;
-=======
     if (!updatedItem) {
       throw new Error("Income record not found");
->>>>>>> Stashed changes
     }
 
     this.setLocal(userId, "incomes", updatedList);
@@ -628,23 +513,6 @@ export class HisabDoService {
   async getExpenses(userId: string): Promise<Expense[]> {
     const effectiveUserId = resolveUserId(userId);
     const fallback = this.getLocal<Expense[]>(userId, "expenses", DEFAULT_EXPENSES);
-<<<<<<< Updated upstream
-    try {
-      const supabase = await this.getAuthenticatedClient(userId);
-      const { data, error } = await supabase
-        .from("expenses")
-        .select("*")
-        .eq("user_id", effectiveUserId)
-        .is("deleted_at", null)
-        .order("date", { ascending: false });
-      if (error) throw error;
-      const expenses = (data ?? []).map((row) => ({
-        ...row,
-        expense_date: row.date,
-        description: row.note ?? "",
-        payment_method: row.metadata?.payment_method ?? "cash",
-        category_id: row.metadata?.category ?? row.metadata?.legacy_category ?? row.category_id ?? "General",
-=======
     const supabase = await this.getAuthenticatedSupabaseClient(userId);
     if (!supabase) return fallback;
 
@@ -652,7 +520,7 @@ export class HisabDoService {
       const { data, error } = await supabase
         .from("expenses")
         .select("*")
-        .eq("user_id", userId)
+        .eq("user_id", effectiveUserId)
         .order("expense_date", { ascending: false });
 
       if (error) {
@@ -664,12 +532,11 @@ export class HisabDoService {
         id: row.id,
         amount: Number(row.amount),
         customer_id: row.customer_id || undefined,
-        category_id: row.category_id || undefined,
+        category_id: row.category_id || row.metadata?.category || "General",
         expense_date: row.expense_date || row.date || new Date().toISOString().split("T")[0],
         description: row.description || row.note || "",
         payment_method: row.payment_method || row.metadata?.payment_method || "cash",
         created_at: row.created_at,
->>>>>>> Stashed changes
       })) as Expense[];
 
       this.setLocal(userId, "expenses", expenses);
@@ -702,44 +569,15 @@ export class HisabDoService {
       },
     };
 
-<<<<<<< Updated upstream
-    let savedId = "exp-" + Date.now();
-    let savedCreatedAt = new Date().toISOString();
-
-    try {
-      const supabase = await this.getAuthenticatedClient(userId);
-      const { data, error } = await supabase
-        .from("expenses")
-        .insert([dbPayload])
-        .select()
-        .single();
-      if (!error && data) {
-        savedId = data.id;
-        savedCreatedAt = data.created_at;
-      } else if (error) {
-        console.warn("Supabase addExpense warning:", error.message);
-        throw new Error(error.message);
-      }
-    } catch (e: any) {
-      console.warn("addExpense network exception:", e);
-      throw e;
-    }
-
     const newExp: Expense = {
       ...expense,
-      id: savedId,
-      created_at: savedCreatedAt,
+      id: "exp-" + Date.now(),
+      created_at: new Date().toISOString(),
     };
 
-    const list = await this.getExpenses(userId);
-=======
     const supabase = await this.getAuthenticatedSupabaseClient(userId);
     if (supabase) {
       try {
-        const dateVal = expense.expense_date
-          ? expense.expense_date.split("T")[0]
-          : new Date().toISOString().split("T")[0];
-
         const validMethods = ["cash", "bank_transfer", "credit", "cheque", "other"];
         const method = (expense.payment_method || "cash").toLowerCase();
         const payment_method = validMethods.includes(method) ? method : "cash";
@@ -747,14 +585,15 @@ export class HisabDoService {
         const { data, error } = await supabase
           .from("expenses")
           .insert([{
-            user_id: userId,
+            client_uuid: isUuid(clientUuid) ? clientUuid : undefined,
+            user_id: effectiveUserId,
             category_id: isUuid(expense.category_id) ? expense.category_id : null,
             amount: Number(expense.amount),
             base_amount: Number(expense.amount),
             currency: "PKR",
             base_currency: "PKR",
             exchange_rate: 1,
-            expense_date: dateVal,
+            expense_date: dateStr,
             description: expense.description || "",
             payment_method,
           }])
@@ -773,7 +612,6 @@ export class HisabDoService {
     }
 
     const list = this.getLocal<Expense[]>(userId, "expenses", DEFAULT_EXPENSES);
->>>>>>> Stashed changes
     const updated = [newExp, ...list.filter((e) => e.id !== newExp.id)];
     this.setLocal(userId, "expenses", updated);
     this.setLocal(effectiveUserId, "expenses", updated);
@@ -781,16 +619,7 @@ export class HisabDoService {
   }
 
   async deleteExpense(userId: string, id: string): Promise<void> {
-<<<<<<< Updated upstream
-    try {
-      const supabase = await this.getAuthenticatedClient(userId);
-      await supabase.from("expenses").delete().eq("id", id);
-    } catch {}
-
-    const list = await this.getExpenses(userId);
-=======
     const list = this.getLocal<Expense[]>(userId, "expenses", DEFAULT_EXPENSES);
->>>>>>> Stashed changes
     this.setLocal(userId, "expenses", list.filter((e) => e.id !== id));
 
     const supabase = await this.getAuthenticatedSupabaseClient(userId);
@@ -814,19 +643,8 @@ export class HisabDoService {
       return e;
     });
 
-<<<<<<< Updated upstream
-    try {
-      const supabase = await this.getAuthenticatedClient(userId);
-      await supabase.from("expenses").update(updates).eq("id", id);
-    } catch {}
-
-    if (updatedItem) {
-      this.setLocal(userId, "expenses", updatedList);
-      return updatedItem;
-=======
     if (!updatedItem) {
       throw new Error("Expense record not found");
->>>>>>> Stashed changes
     }
 
     this.setLocal(userId, "expenses", updatedList);
@@ -868,15 +686,10 @@ export class HisabDoService {
   async getLedgerTransactions(userId: string): Promise<LedgerTransaction[]> {
     const effectiveUserId = resolveUserId(userId);
     const fallback = this.getLocal<LedgerTransaction[]>(userId, "ledger_txs", DEFAULT_LEDGER_TXS);
-<<<<<<< Updated upstream
-    try {
-      const supabase = await this.getAuthenticatedClient(userId);
-=======
     const supabase = await this.getAuthenticatedSupabaseClient(userId);
     if (!supabase) return fallback;
 
     try {
->>>>>>> Stashed changes
       const { data, error } = await supabase
         .from("ledger_transactions")
         .select("*")
@@ -932,54 +745,30 @@ export class HisabDoService {
       },
     };
 
-<<<<<<< Updated upstream
-    let savedId = "ltx-" + Date.now();
-
-    try {
-      const supabase = await this.getAuthenticatedClient(userId);
-      const { data, error } = await supabase
-        .from("ledger_transactions")
-        .insert([dbPayload])
-        .select()
-        .single();
-
-      if (!error && data) {
-        savedId = data.id;
-      } else if (error) {
-        console.warn("Supabase addLedgerTransaction warning:", error.message);
-        throw new Error(error.message);
-      }
-    } catch (e: any) {
-      console.warn("addLedgerTransaction network exception:", e);
-      throw e;
-    }
-
     const newTx: LedgerTransaction = {
       ...tx,
-      id: savedId,
+      id: "ltx-" + Date.now(),
+      date: dateStr,
     };
 
-    const list = await this.getLedgerTransactions(userId);
-=======
     const supabase = await this.getAuthenticatedSupabaseClient(userId);
     if (supabase) {
       try {
-        const clientUuid = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-          ? crypto.randomUUID()
-          : "00000000-0000-4000-8000-" + Date.now().toString(16).padStart(12, "0");
-
-        const dateVal = tx.date ? tx.date.split("T")[0] : new Date().toISOString().split("T")[0];
+        const clientUuid =
+          typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+            ? crypto.randomUUID()
+            : "00000000-0000-4000-8000-" + Date.now().toString(16).padStart(12, "0");
 
         const { data, error } = await supabase
           .from("ledger_transactions")
           .insert([{
-            client_uuid: clientUuid,
-            user_id: userId,
+            client_uuid: isUuid(clientUuid) ? clientUuid : undefined,
+            user_id: effectiveUserId,
             customer_id: isUuid(tx.customerId) ? tx.customerId : null,
             amount: Number(tx.amount),
             type: tx.type,
             category: tx.category || "Payment",
-            date: dateVal,
+            date: dateStr,
             note: tx.note || null,
             image_path: tx.imagePath || null,
           }])
@@ -997,7 +786,6 @@ export class HisabDoService {
     }
 
     const list = this.getLocal<LedgerTransaction[]>(userId, "ledger_txs", DEFAULT_LEDGER_TXS);
->>>>>>> Stashed changes
     const updated = [newTx, ...list.filter((t) => t.id !== newTx.id)];
     this.setLocal(userId, "ledger_txs", updated);
     this.setLocal(effectiveUserId, "ledger_txs", updated);
@@ -1189,28 +977,50 @@ export class HisabDoService {
     };
   }
 
-  // Calculate high-level summary for the dashboard
-  async getDashboardMetrics(userId: string) {
-    const [customers, incomes, expenses, payments] = await Promise.all([
-      this.getCustomers(userId),
-      this.getIncomes(userId),
-      this.getExpenses(userId),
-      this.getLedgerTransactions(userId),
-    ]);
-
+  // Helper to compute metrics synchronously from in-memory arrays (0ms CPU time)
+  computeMetricsSync(
+    customers: Customer[],
+    incomes: Income[],
+    expenses: Expense[],
+    payments: LedgerTransaction[]
+  ) {
     let totalReceivable = 0; // Lene (Customers who owe us)
     let totalPayable = 0; // Dene (Customers to whom we owe advance/credit)
 
     for (const cust of customers) {
-      const { summary } = await this.getCustomerLedgerTimeline(userId, cust.id);
-      if (summary.netBalance > 0) {
-        totalReceivable += summary.netBalance;
-      } else if (summary.netBalance < 0) {
-        totalPayable += Math.abs(summary.netBalance);
+      let running = Number(cust.opening_balance || 0);
+
+      for (const i of incomes) {
+        if (i.customer_id === cust.id) {
+          running += Number(i.amount || 0);
+        }
+      }
+      for (const e of expenses) {
+        if (e.customer_id === cust.id) {
+          running -= Number(e.amount || 0);
+        }
+      }
+      for (const p of payments) {
+        if (p.customerId === cust.id) {
+          const isReceived = p.type === "received" || p.type === "GOT_PAYMENT" || p.type === "PAID_PAYMENT";
+          const isCredit = p.type === "GAVE_CREDIT" || p.type === "PURCHASE_BILL";
+          if (isCredit) {
+            running += Number(p.amount || 0);
+          } else if (isReceived) {
+            running -= Number(p.amount || 0);
+          } else {
+            running += Number(p.amount || 0);
+          }
+        }
+      }
+
+      if (running > 0) {
+        totalReceivable += running;
+      } else if (running < 0) {
+        totalPayable += Math.abs(running);
       }
     }
 
-    // Current Month Income & Expenses
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
@@ -1220,14 +1030,14 @@ export class HisabDoService {
         const d = new Date(i.income_date);
         return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
       })
-      .reduce((sum, i) => sum + Number(i.amount), 0);
+      .reduce((sum, i) => sum + Number(i.amount || 0), 0);
 
     const monthlyExpenses = expenses
       .filter((e) => {
         const d = new Date(e.expense_date);
         return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
       })
-      .reduce((sum, e) => sum + Number(e.amount), 0);
+      .reduce((sum, e) => sum + Number(e.amount || 0), 0);
 
     return {
       totalReceivable,
@@ -1239,6 +1049,40 @@ export class HisabDoService {
       totalCustomers: customers.length,
       totalTransactions: incomes.length + expenses.length + payments.length,
     };
+  }
+
+  // Calculate high-level summary for the dashboard
+  async getDashboardMetrics(
+    userId: string,
+    preloadedData?: {
+      customers: Customer[];
+      incomes: Income[];
+      expenses: Expense[];
+      payments: LedgerTransaction[];
+    }
+  ) {
+    const customers = preloadedData?.customers ?? (await this.getCustomers(userId));
+    const incomes = preloadedData?.incomes ?? (await this.getIncomes(userId));
+    const expenses = preloadedData?.expenses ?? (await this.getExpenses(userId));
+    const payments = preloadedData?.payments ?? (await this.getLedgerTransactions(userId));
+
+    return this.computeMetricsSync(customers, incomes, expenses, payments);
+  }
+
+  getCachedCustomers(userId: string): Customer[] {
+    return this.getLocal<Customer[]>(userId, "customers", DEFAULT_CUSTOMERS);
+  }
+
+  getCachedIncomes(userId: string): Income[] {
+    return this.getLocal<Income[]>(userId, "incomes", DEFAULT_INCOMES);
+  }
+
+  getCachedExpenses(userId: string): Expense[] {
+    return this.getLocal<Expense[]>(userId, "expenses", DEFAULT_EXPENSES);
+  }
+
+  getCachedLedgerTransactions(userId: string): LedgerTransaction[] {
+    return this.getLocal<LedgerTransaction[]>(userId, "ledger_txs", DEFAULT_LEDGER_TXS);
   }
 
   // ==================== REMINDER MESSAGES (WHATSAPP & SMS) ====================

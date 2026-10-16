@@ -86,15 +86,37 @@ export default function DashboardPage() {
 
   const loadData = useCallback(async () => {
     try {
-      setIsLoading(true);
       const userId = user?.id || "guest";
-      const [m, custs, incs, exps, pmts] = await Promise.all([
-        hisabDoService.getDashboardMetrics(userId),
+
+      // 1. Instant Cache-First load for zero-latency initial UI
+      const cachedCusts = hisabDoService.getCachedCustomers(userId);
+      const cachedIncs = hisabDoService.getCachedIncomes(userId);
+      const cachedExps = hisabDoService.getCachedExpenses(userId);
+      const cachedPmts = hisabDoService.getCachedLedgerTransactions(userId);
+
+      if (cachedCusts.length || cachedIncs.length || cachedExps.length || cachedPmts.length) {
+        const cachedMetrics = hisabDoService.computeMetricsSync(cachedCusts, cachedIncs, cachedExps, cachedPmts);
+        setMetrics(cachedMetrics);
+        setCustomers(cachedCusts);
+        setIncomes(cachedIncs);
+        setExpenses(cachedExps);
+        setIsLoading(false);
+      }
+
+      // 2. Fetch fresh data in parallel
+      const [custs, incs, exps, pmts] = await Promise.all([
         hisabDoService.getCustomers(userId),
         hisabDoService.getIncomes(userId),
         hisabDoService.getExpenses(userId),
         hisabDoService.getLedgerTransactions(userId),
       ]);
+
+      const m = await hisabDoService.getDashboardMetrics(userId, {
+        customers: custs,
+        incomes: incs,
+        expenses: exps,
+        payments: pmts,
+      });
 
       setMetrics(m);
       setCustomers(custs);

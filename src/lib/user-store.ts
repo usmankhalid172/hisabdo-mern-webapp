@@ -83,7 +83,7 @@ export const userStore = {
     const emailKey = userData.email.toLowerCase();
 
     if (users.has(emailKey)) {
-      throw new Error("An account with this email address already exists.");
+      throw new Error("This account already exists. Please log in instead.");
     }
 
     const newUser: StoredUser = {
