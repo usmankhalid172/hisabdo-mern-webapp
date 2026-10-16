@@ -149,7 +149,15 @@ export class HisabDoService {
     return fallback;
   }
 
-  async addCustomer(userId: string, customer: Omit<Customer, "id" | "created_at">): Promise<Customer> {
+    async addCustomer(userId: string, customer: Omit<Customer, "id" | "created_at">): Promise<Customer> {
+    // Feature flag: opening balance validation
+    if (process.env.NEXT_PUBLIC_FEATURE_AMOUNT_VALIDATION === "true") {
+      const ob = Number(customer.opening_balance);
+      if (isNaN(ob) || ob < 0) {
+        throw new Error("Opening balance cannot be negative");
+      }
+    }
+
     const newCust: Customer = {
       ...customer,
       id: "cust-" + Date.now(),
@@ -171,7 +179,18 @@ export class HisabDoService {
     return newCust;
   }
 
-  async updateCustomer(userId: string, id: string, updates: Partial<Customer>): Promise<Customer> {
+    async updateCustomer(userId: string, id: string, updates: Partial<Customer>): Promise<Customer> {
+    // Feature flag: opening balance validation
+    if (
+      process.env.NEXT_PUBLIC_FEATURE_AMOUNT_VALIDATION === "true" &&
+      updates.opening_balance !== undefined
+    ) {
+      const ob = Number(updates.opening_balance);
+      if (isNaN(ob) || ob < 0) {
+        throw new Error("Opening balance cannot be negative");
+      }
+    }
+
     const list = await this.getCustomers(userId);
     let updatedCust: Customer | null = null;
     const updatedList = list.map((c) => {

@@ -155,7 +155,7 @@ export default function DashboardPage() {
   }, [loadData]);
 
   // Handle Form Submits
-  const handleAddCustomer = async (e: React.FormEvent) => {
+    const handleAddCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formCustomer.name.trim()) return;
     setSubmitting(true);
@@ -171,6 +171,8 @@ export default function DashboardPage() {
       setFormCustomer({ name: "", phone: "", opening_balance: 0, notes: "", address: "" });
       setActiveModal(null);
       await loadData();
+    } catch (error: any) {
+      alert(error?.message || "Failed to save customer. Please try again.");
     } finally {
       setSubmitting(false);
     }

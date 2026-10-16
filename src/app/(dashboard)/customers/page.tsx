@@ -85,7 +85,7 @@ export default function CustomersPage() {
   }, [loadData]);
 
   // Add / Edit submit
-  const handleSaveCustomer = async (e: React.FormEvent) => {
+    const handleSaveCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
     setSubmitting(true);
@@ -108,6 +108,8 @@ export default function CustomersPage() {
       setEditingCustomer(null);
       setFormData({ name: "", phone: "", email: "", address: "", opening_balance: 0, notes: "" });
       await loadData();
+    } catch (error: any) {
+      alert(error?.message || "Failed to save customer. Please try again.");
     } finally {
       setSubmitting(false);
     }
