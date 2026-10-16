@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { registerSchema, RegisterFormData } from "@/lib/validations/auth";
@@ -19,16 +19,25 @@ import {
   Loader2,
   ArrowRight,
   UserPlus,
+  CheckCircle2,
 } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register: registerUser } = useAuth();
+  const { register: registerUser, isGuest, token, endDemoSession } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // If a user navigated to Register while in demo or guest mode, cleanly terminate the demo session
+  useEffect(() => {
+    if (isGuest || token === "demo-token" || token === "guest-token") {
+      endDemoSession();
+    }
+  }, [isGuest, token, endDemoSession]);
 
   const {
     register,
@@ -48,6 +57,7 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: RegisterFormData) => {
     setServerError(null);
+    setInfoMessage(null);
     setLoading(true);
 
     try {
@@ -58,8 +68,16 @@ export default function RegisterPage() {
         return;
       }
 
+      if (result.requiresConfirmation) {
+        setInfoMessage(
+          result.message ||
+            "Registration submitted! Please check your email inbox to verify your account before logging in."
+        );
+        return;
+      }
+
       router.replace("/dashboard");
-    } catch (error) {
+    } catch {
       setServerError("Unable to connect to the authentication server.");
     } finally {
       setLoading(false);
@@ -80,11 +98,43 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        {/* Error Alert */}
+        {/* Info / Email Verification Confirmation Alert */}
+        {infoMessage && (
+          <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex flex-col gap-2.5 text-emerald-300 text-xs">
+            <div className="flex items-start gap-2.5">
+              <Mail className="w-5 h-5 shrink-0 mt-0.5 text-emerald-400" />
+              <div className="flex-1 leading-relaxed font-medium">{infoMessage}</div>
+            </div>
+            <div className="pt-1">
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition shadow-md shadow-emerald-500/20"
+              >
+                Go to Sign In
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Server / Validation Error Alert */}
         {serverError && (
-          <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-3 text-rose-400 text-xs animate-shake">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <div className="flex-1">{serverError}</div>
+          <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl flex flex-col gap-2.5 text-rose-400 text-xs animate-shake">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="flex-1 font-medium">{serverError}</div>
+            </div>
+            {(serverError.toLowerCase().includes("already") || serverError.toLowerCase().includes("log in")) && (
+              <div className="pl-7">
+                <Link
+                  href="/login"
+                  className="inline-flex items-center gap-1 text-emerald-400 hover:text-emerald-300 underline font-semibold text-xs"
+                >
+                  Log in to your existing account
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            )}
           </div>
         )}
 
@@ -154,7 +204,7 @@ export default function RegisterPage() {
             {/* Shop Name */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Business / Store Name
+                Business / Store Name (Optional)
               </label>
               <div className="relative">
                 <Store className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
@@ -186,7 +236,7 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 p-0.5 transition"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 p-0.5 transition cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -215,7 +265,7 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 p-0.5 transition"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 p-0.5 transition cursor-pointer"
                 >
                   {showConfirmPassword ? (
                     <EyeOff className="w-4 h-4" />

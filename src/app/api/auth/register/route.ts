@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "An account with this email address already exists. Please log in.",
+          message: "This account already exists. Please log in instead.",
         },
         { status: 400 }
       );
