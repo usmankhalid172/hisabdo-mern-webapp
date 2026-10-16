@@ -87,11 +87,11 @@ export async function POST(request: NextRequest) {
     console.log("📦 Incoming transaction payload:", body);
 
     // Feature flag: amount > 0 validation
-    if (process.env.FEATURE_AMOUNT_VALIDATION === "true") {
+    if (process.env.NEXT_PUBLIC_FEATURE_AMOUNT_VALIDATION === "true") {
       const amount = Number(body.amount);
       if (!amount || amount <= 0) {
         return NextResponse.json(
-          { success: false, message: "Amount 0 se zyada hona chahiye" },
+          { success: false, message: "Amount must be greater than 0" },
           { status: 400 }
         );
       }
