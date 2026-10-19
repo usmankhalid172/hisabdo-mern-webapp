@@ -83,8 +83,7 @@ export function AiChatbotWidget() {
   ];
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
-      {/* Expanded Chat Box */}
+<div className="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-50 flex flex-col items-end">      {/* Expanded Chat Box */}
       {isOpen && (
         <div className="w-[360px] sm:w-[400px] h-[520px] rounded-2xl bg-[#14141E] border border-indigo-500/30 shadow-2xl flex flex-col overflow-hidden mb-4 animate-scaleUp text-slate-100">
           {/* Header */}
