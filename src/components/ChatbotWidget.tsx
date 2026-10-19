@@ -83,7 +83,7 @@ export default function ChatbotWidget() {
       {isOpen && (
         <div className="w-80 sm:w-96 h-[500px] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
           {/* Header */}
-          <div className="bg-slate-800 p-4 border-b border-slate-700 flex items-center justify-between">
+          <div className="bg-slate-800  p-4 border-b border-slate-700 flex items-center justify-between">
             <div className="flex items-center gap-2 text-white font-semibold">
               <Bot className="w-5 h-5 text-emerald-400" />
               <span>HisabDo AI Assistant</span>

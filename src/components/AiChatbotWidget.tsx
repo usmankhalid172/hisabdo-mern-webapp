@@ -83,7 +83,7 @@ export function AiChatbotWidget() {
   ];
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end max-sm:bottom-20">
       {/* Expanded Chat Box */}
       {isOpen && (
         <div className="w-[360px] sm:w-[400px] h-[520px] rounded-2xl bg-[#14141E] border border-indigo-500/30 shadow-2xl flex flex-col overflow-hidden mb-4 animate-scaleUp text-slate-100">
@@ -220,16 +220,16 @@ export function AiChatbotWidget() {
       )}
 
       {/* Floating Trigger Button */}
-      {!isOpen && (
+       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="group relative flex items-center gap-2.5 py-3 px-4 rounded-2xl bg-gradient-to-r from-[#1A237E] to-[#6A1B9A] hover:from-[#283593] hover:to-[#7B1FA2] text-white shadow-xl shadow-indigo-900/40 border border-white/20 transition-all duration-300 hover:scale-105"
+          className="group relative flex items-center gap-2.5 py-3  px-4 rounded-2xl bg-gradient-to-r from-[#1A237E] to-[#6A1B9A] hover:from-[#283593] hover:to-[#7B1FA2] text-white shadow-xl shadow-indigo-900/40 border border-white/20 transition-all duration-300 hover:scale-105"
         >
           <div className="relative">
             <Bot className="w-5 h-5 text-emerald-400" />
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
           </div>
-          <span className="font-bold text-xs tracking-tight">AI Assistant</span>
+          <span className="font-bold text-xs tracking-tight">AI Assistant </span>
           <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded-md font-semibold">
             Online
           </span>
