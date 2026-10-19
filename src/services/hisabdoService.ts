@@ -40,7 +40,7 @@ export interface LedgerTransaction {
   id: string;
   customerId: string;
   amount: number;
-  type: "received" | "paid"; // received = Jama (customer paid), paid = Naam (we paid)
+  type: "received" | "paid";
   category: string;
   date: string;
   note?: string;
@@ -59,19 +59,16 @@ export interface LedgerRow {
   sourceTable: "income" | "expenses" | "ledger_transactions";
 }
 
-// Clean empty initial state
 const DEFAULT_CUSTOMERS: Customer[] = [];
 const DEFAULT_INCOMES: Income[] = [];
 const DEFAULT_EXPENSES: Expense[] = [];
 const DEFAULT_LEDGER_TXS: LedgerTransaction[] = [];
-
 
 export class HisabDoService {
   private getStorageKey(userId: string, key: string) {
     return `hisabdo_${userId || "guest"}_${key}`;
   }
 
-  // Load state from local storage or defaults
   private getLocal<T>(userId: string, key: string, fallback: T): T {
     if (typeof window === "undefined") return fallback;
     try {
@@ -143,8 +140,8 @@ export class HisabDoService {
       })) as Customer[];
       this.setLocal(userId, "customers", customers);
       return customers;
-    } catch {
-      // Fall back to the last locally cached data while offline.
+    } catch (err) {
+      console.error("getCustomers failed, using local cache:", err);
     }
     return fallback;
   }
@@ -156,14 +153,19 @@ export class HisabDoService {
       created_at: new Date().toISOString(),
     };
 
-    // Try Supabase first
     try {
       const supabase = createClient();
-      const { data, error } = await supabase.from("customers").insert([newCust]).select().single();
+      const { data, error } = await supabase
+        .from("customers")
+        .insert([{ ...newCust, user_id: userId }])
+        .select()
+        .single();
       if (!error && data) {
         newCust.id = data.id;
       }
-    } catch {}
+    } catch (err) {
+      console.error("addCustomer failed:", err);
+    }
 
     const list = await this.getCustomers(userId);
     const updated = [newCust, ...list.filter((c) => c.id !== newCust.id)];
@@ -185,7 +187,9 @@ export class HisabDoService {
     try {
       const supabase = createClient();
       await supabase.from("customers").update(updates).eq("id", id);
-    } catch {}
+    } catch (err) {
+      console.error("updateCustomer failed:", err);
+    }
 
     if (updatedCust) {
       this.setLocal(userId, "customers", updatedList);
@@ -198,13 +202,15 @@ export class HisabDoService {
     try {
       const supabase = createClient();
       await supabase.from("customers").delete().eq("id", id);
-    } catch {}
+    } catch (err) {
+      console.error("deleteCustomer failed:", err);
+    }
 
     const list = await this.getCustomers(userId);
     this.setLocal(userId, "customers", list.filter((c) => c.id !== id));
   }
 
-  // ==================== INCOMES ====================
+  // ==================== INCOMES (supports counter sales with customer_id = null) ====================
   async getIncomes(userId: string): Promise<Income[]> {
     const fallback = this.getLocal<Income[]>(userId, "incomes", DEFAULT_INCOMES);
     if (userId === "guest") return fallback;
@@ -224,10 +230,16 @@ export class HisabDoService {
         payment_method: row.metadata?.payment_method ?? "cash",
         category_id: row.metadata?.legacy_category ?? row.category_id ?? "Sales",
       })) as Income[];
-      this.setLocal(userId, "incomes", incomes);
-      return incomes;
-    } catch {
-      // Fall back to the last locally cached data while offline.
+
+      // Preserve any local-only records that haven't synced to Supabase yet
+      const remoteIds = new Set(incomes.map((i) => i.id));
+      const localOnly = fallback.filter((i) => !remoteIds.has(i.id));
+      const merged = [...incomes, ...localOnly];
+
+      this.setLocal(userId, "incomes", merged);
+      return merged;
+    } catch (err) {
+      console.error("getIncomes failed, using local cache:", err);
     }
     return fallback;
   }
@@ -241,14 +253,20 @@ export class HisabDoService {
 
     try {
       const supabase = createClient();
-      const { data, error } = await supabase.from("income").insert([newInc]).select().single();
+      const { data, error } = await supabase
+        .from("income")
+        .insert([{ ...newInc, user_id: userId }])
+        .select()
+        .single();
       if (!error && data) {
         newInc.id = data.id;
       }
-    } catch {}
+    } catch (err) {
+      console.error("addIncome failed, keeping local copy:", err);
+    }
 
     const list = await this.getIncomes(userId);
-    const updated = [newInc, ...list];
+    const updated = [newInc, ...list.filter((i) => i.id !== newInc.id)];
     this.setLocal(userId, "incomes", updated);
     return newInc;
   }
@@ -257,7 +275,9 @@ export class HisabDoService {
     try {
       const supabase = createClient();
       await supabase.from("income").delete().eq("id", id);
-    } catch {}
+    } catch (err) {
+      console.error("deleteIncome failed:", err);
+    }
 
     const list = await this.getIncomes(userId);
     this.setLocal(userId, "incomes", list.filter((i) => i.id !== id));
@@ -277,7 +297,9 @@ export class HisabDoService {
     try {
       const supabase = createClient();
       await supabase.from("income").update(updates).eq("id", id);
-    } catch {}
+    } catch (err) {
+      console.error("updateIncome failed:", err);
+    }
 
     if (updatedItem) {
       this.setLocal(userId, "incomes", updatedList);
@@ -306,10 +328,15 @@ export class HisabDoService {
         payment_method: row.metadata?.payment_method ?? "cash",
         category_id: row.metadata?.legacy_category ?? row.category_id ?? "General",
       })) as Expense[];
-      this.setLocal(userId, "expenses", expenses);
-      return expenses;
-    } catch {
-      // Fall back to the last locally cached data while offline.
+
+      const remoteIds = new Set(expenses.map((e) => e.id));
+      const localOnly = fallback.filter((e) => !remoteIds.has(e.id));
+      const merged = [...expenses, ...localOnly];
+
+      this.setLocal(userId, "expenses", merged);
+      return merged;
+    } catch (err) {
+      console.error("getExpenses failed, using local cache:", err);
     }
     return fallback;
   }
@@ -323,14 +350,20 @@ export class HisabDoService {
 
     try {
       const supabase = createClient();
-      const { data, error } = await supabase.from("expenses").insert([newExp]).select().single();
+      const { data, error } = await supabase
+        .from("expenses")
+        .insert([{ ...newExp, user_id: userId }])
+        .select()
+        .single();
       if (!error && data) {
         newExp.id = data.id;
       }
-    } catch {}
+    } catch (err) {
+      console.error("addExpense failed, keeping local copy:", err);
+    }
 
     const list = await this.getExpenses(userId);
-    const updated = [newExp, ...list];
+    const updated = [newExp, ...list.filter((e) => e.id !== newExp.id)];
     this.setLocal(userId, "expenses", updated);
     return newExp;
   }
@@ -339,7 +372,9 @@ export class HisabDoService {
     try {
       const supabase = createClient();
       await supabase.from("expenses").delete().eq("id", id);
-    } catch {}
+    } catch (err) {
+      console.error("deleteExpense failed:", err);
+    }
 
     const list = await this.getExpenses(userId);
     this.setLocal(userId, "expenses", list.filter((e) => e.id !== id));
@@ -359,7 +394,9 @@ export class HisabDoService {
     try {
       const supabase = createClient();
       await supabase.from("expenses").update(updates).eq("id", id);
-    } catch {}
+    } catch (err) {
+      console.error("updateExpense failed:", err);
+    }
 
     if (updatedItem) {
       this.setLocal(userId, "expenses", updatedList);
@@ -391,10 +428,15 @@ export class HisabDoService {
         note: row.note ?? "",
         imagePath: row.image_path ?? undefined,
       })) as LedgerTransaction[];
-      this.setLocal(userId, "ledger_txs", transactions);
-      return transactions;
-    } catch {
-      // Fall back to the last locally cached data while offline.
+
+      const remoteIds = new Set(transactions.map((t) => t.id));
+      const localOnly = fallback.filter((t) => !remoteIds.has(t.id));
+      const merged = [...transactions, ...localOnly];
+
+      this.setLocal(userId, "ledger_txs", merged);
+      return merged;
+    } catch (err) {
+      console.error("getLedgerTransactions failed, using local cache:", err);
     }
     return fallback;
   }
@@ -407,14 +449,33 @@ export class HisabDoService {
 
     try {
       const supabase = createClient();
-      const { data, error } = await supabase.from("ledger_transactions").insert([newTx]).select().single();
+      // DB columns use snake_case, interface uses camelCase — convert on insert
+      const { data, error } = await supabase
+        .from("ledger_transactions")
+        .insert([
+          {
+            id: newTx.id,
+            user_id: userId,
+            customer_id: newTx.customerId,
+            amount: newTx.amount,
+            type: newTx.type,
+            category: newTx.category,
+            date: newTx.date,
+            note: newTx.note ?? null,
+            image_path: newTx.imagePath ?? null,
+          },
+        ])
+        .select()
+        .single();
       if (!error && data) {
         newTx.id = data.id;
       }
-    } catch {}
+    } catch (err) {
+      console.error("addLedgerTransaction failed, keeping local copy:", err);
+    }
 
     const list = await this.getLedgerTransactions(userId);
-    const updated = [newTx, ...list];
+    const updated = [newTx, ...list.filter((t) => t.id !== newTx.id)];
     this.setLocal(userId, "ledger_txs", updated);
     return newTx;
   }
@@ -423,7 +484,9 @@ export class HisabDoService {
     try {
       const supabase = createClient();
       await supabase.from("ledger_transactions").delete().eq("id", id);
-    } catch {}
+    } catch (err) {
+      console.error("deleteLedgerTransaction failed:", err);
+    }
 
     const list = await this.getLedgerTransactions(userId);
     this.setLocal(userId, "ledger_txs", list.filter((t) => t.id !== id));
@@ -442,8 +505,22 @@ export class HisabDoService {
 
     try {
       const supabase = createClient();
-      await supabase.from("ledger_transactions").update(updates).eq("id", id);
-    } catch {}
+      // Convert camelCase to snake_case for DB update
+      const dbUpdates: any = {};
+      if (updates.customerId !== undefined) dbUpdates.customer_id = updates.customerId;
+      if (updates.amount !== undefined) dbUpdates.amount = updates.amount;
+      if (updates.type !== undefined) dbUpdates.type = updates.type;
+      if (updates.category !== undefined) dbUpdates.category = updates.category;
+      if (updates.date !== undefined) dbUpdates.date = updates.date;
+      if (updates.note !== undefined) dbUpdates.note = updates.note;
+      if (updates.imagePath !== undefined) dbUpdates.image_path = updates.imagePath;
+
+      if (Object.keys(dbUpdates).length > 0) {
+        await supabase.from("ledger_transactions").update(dbUpdates).eq("id", id);
+      }
+    } catch (err) {
+      console.error("updateLedgerTransaction failed:", err);
+    }
 
     if (updatedItem) {
       this.setLocal(userId, "ledger_txs", updatedList);
@@ -477,7 +554,6 @@ export class HisabDoService {
 
     const tempRows: TempRow[] = [];
 
-    // 1. Incomes linked to this customer (Purchase by customer -> Customer owes us -> +)
     incomes
       .filter((i) => i.customer_id === customerId)
       .forEach((i) => {
@@ -493,7 +569,6 @@ export class HisabDoService {
         });
       });
 
-    // 2. Expenses linked to this customer (Refund or purchase from customer -> -)
     expenses
       .filter((e) => e.customer_id === customerId)
       .forEach((e) => {
@@ -509,7 +584,6 @@ export class HisabDoService {
         });
       });
 
-    // 3. Direct Payments in Ledger
     payments
       .filter((p) => p.customerId === customerId)
       .forEach((p) => {
@@ -525,18 +599,12 @@ export class HisabDoService {
         });
       });
 
-    // Sort chronologically ascending
     tempRows.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     let running = openingBalance;
     const finalRows: LedgerRow[] = [];
 
     for (const r of tempRows) {
-      // 1:1 business logic parity with Flutter customer_ledger_screen.dart & whatsapp_message_service.dart:
-      // Purchase -> +amount
-      // Expense -> -amount
-      // Payment Sent -> +amount
-      // Payment Received -> -amount
       let delta = 0;
       if (r.type === "Purchase") delta = r.amount;
       else if (r.type === "Expense") delta = -r.amount;
@@ -556,7 +624,7 @@ export class HisabDoService {
     const totalPaymentsSent = tempRows.filter((r) => r.type === "Payment Sent").reduce((acc, r) => acc + r.amount, 0);
 
     return {
-      rows: finalRows.reverse(), // latest first for display
+      rows: finalRows.reverse(),
       summary: {
         totalPurchases,
         totalPaymentsReceived,
@@ -567,6 +635,7 @@ export class HisabDoService {
   }
 
   // Calculate high-level summary for the dashboard
+  // NOTE: Counter sales (customer_id = null) are included in monthlyIncome and monthlyExpenses
   async getDashboardMetrics(userId: string) {
     const [customers, incomes, expenses, payments] = await Promise.all([
       this.getCustomers(userId),
@@ -575,8 +644,8 @@ export class HisabDoService {
       this.getLedgerTransactions(userId),
     ]);
 
-    let totalReceivable = 0; // Lene (Customers who owe us)
-    let totalPayable = 0; // Dene (Customers to whom we owe advance/credit)
+    let totalReceivable = 0;
+    let totalPayable = 0;
 
     for (const cust of customers) {
       const { summary } = await this.getCustomerLedgerTimeline(userId, cust.id);
@@ -587,7 +656,6 @@ export class HisabDoService {
       }
     }
 
-    // Current Month Income & Expenses
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
@@ -618,7 +686,7 @@ export class HisabDoService {
     };
   }
 
-  // ==================== REMINDER MESSAGES (WHATSAPP & SMS) ====================
+  // ==================== REMINDER MESSAGES ====================
   getReminderMessage(params: {
     customerName: string;
     currency: string;
@@ -693,8 +761,7 @@ export class HisabDoService {
   }) {
     const doc = new jsPDF();
 
-    // Primary Header Banner
-    doc.setFillColor(26, 35, 126); // Brand Primary #1A237E
+    doc.setFillColor(26, 35, 126);
     doc.rect(0, 0, 210, 36, "F");
 
     doc.setTextColor(255, 255, 255);
@@ -707,7 +774,6 @@ export class HisabDoService {
     doc.text(`${params.businessAddress} | Tel: ${params.businessPhone}`, 14, 26);
     doc.text("CUSTOMER STATEMENT / KHATA LEDGER", 14, 32);
 
-    // Customer Info Card Box
     doc.setTextColor(30, 41, 59);
     doc.setFillColor(248, 249, 253);
     doc.roundedRect(14, 42, 182, 28, 3, 3, "F");
@@ -730,7 +796,6 @@ export class HisabDoService {
     doc.setFont("helvetica", "normal");
     doc.text(new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }), 50, 64);
 
-    // Outstanding Balance highlight on top right
     const isReceivable = params.summary.netBalance >= 0;
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
@@ -745,7 +810,6 @@ export class HisabDoService {
     doc.setTextColor(100, 116, 139);
     doc.text(isReceivable ? "(Receivable from Customer)" : "(Merchant Owes Customer)", 130, 58);
 
-    // Table Data
     const tableBody = [...params.timeline].reverse().map((row) => {
       const debit = row.type === "Purchase" || row.type === "Payment Sent" ? `${params.currency} ${row.amount.toLocaleString()}` : "-";
       const credit = row.type === "Payment Received" || row.type === "Expense" ? `${params.currency} ${row.amount.toLocaleString()}` : "-";
@@ -789,7 +853,6 @@ export class HisabDoService {
       },
     });
 
-    // Summary Totals block at bottom
     const finalY = (doc as any).lastAutoTable.finalY + 8;
     doc.setFillColor(241, 245, 249);
     doc.roundedRect(110, finalY, 86, 32, 2, 2, "F");
@@ -808,7 +871,6 @@ export class HisabDoService {
     doc.text(`Net Outstanding:`, 115, finalY + 25);
     doc.text(`${params.currency} ${params.summary.netBalance.toLocaleString()}`, 190, finalY + 25, { align: "right" });
 
-    // Footer
     doc.setFontSize(8);
     doc.setFont("helvetica", "italic");
     doc.setTextColor(148, 163, 184);
