@@ -52,53 +52,123 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }) {
     }
   };
 
+  const validateForm = () => {
+    const nextErrors = {};
+
+    if (!formData.name.trim()) {
+      nextErrors.name = "Customer name is required.";
+    }
+
+    if (!formData.phone.trim()) {
+      nextErrors.phone = "Mobile number is required.";
+    }
+
+    const limit = Number(formData.creditLimit);
+    if (!Number.isFinite(limit) || limit < 0) {
+      nextErrors.creditLimit = "Credit limit must be 0 or greater.";
+    }
+
+    const initBal = Number(formData.initialBalance);
+    if (!Number.isFinite(initBal)) {
+      nextErrors.initialBalance = "Please enter a valid opening balance.";
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
+
     setErrors({});
+
+    if (!validateForm()) {
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const res = await fetch('/api/customers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+      const token =
+        typeof window !== "undefined"
+          ? localStorage.getItem("hisabdo_token")
+          : null;
+
+      const res = await fetch("/api/customers", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(formData),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
 
-      if (!res.ok || !data.success) {
-        if (data.fieldErrors) {
-          setErrors(data.fieldErrors);
-        } else {
-          setErrors({ general: data.error || 'Failed to register customer' });
+      if (!res.ok || !data?.success) {
+        const message =
+          data?.message ||
+          data?.error ||
+          (res.status === 401
+            ? "Please log in again to continue."
+            : res.status === 400
+              ? "Customer creation failed because a required field is missing or invalid."
+              : "Unable to save customer profile. Please try again.");
+
+        const errs = { general: message };
+
+        if (data?.fieldErrors) {
+          Object.entries(data.fieldErrors).forEach(([field, msgs]) => {
+            errs[field] = Array.isArray(msgs) ? msgs.join(" ") : String(msgs);
+          });
         }
+
+        setErrors(errs);
         setLoading(false);
         return;
       }
 
+      const createdCustomer = data.customer || data.data;
+
       setLoading(false);
-      onSuccess(data.data);
+
+      if (typeof onSuccess === "function") {
+        onSuccess(createdCustomer);
+      }
+
       onClose();
+
       // Reset form
       setFormData({
-        name: '',
-        phone: '',
-        email: '',
-        address: '',
-        city: 'Lahore',
-        category: 'Retail',
-        creditLimit: '50000',
-        initialBalance: '0',
-        paymentTermsDays: '15'
+        name: "",
+        phone: "",
+        email: "",
+        address: "",
+        city: "Lahore",
+        category: "Retail",
+        creditLimit: "50000",
+        initialBalance: "0",
+        paymentTermsDays: "15",
       });
     } catch (err) {
-      setErrors({ general: 'Network connection failed' });
+      console.error("Add customer network error:", err);
+      setErrors({
+        general:
+          "Unable to connect to the server. Please check your connection and try again.",
+      });
       setLoading(false);
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Register New Customer Profile" maxWidth="600px">
+    <Modal
+      isOpen={isOpen}
+      onClose={loading ? () => {} : onClose}
+      title="Register New Customer Profile"
+      maxWidth="600px"
+    >
       <form onSubmit={handleSubmit}>
         {errors.general && (
           <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', color: '#f87171', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.85rem', fontWeight: 600 }}>
@@ -200,7 +270,7 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }) {
           <Button variant="secondary" size="md" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button variant="primary" size="md" type="submit" loading={loading} icon={Plus}>
+          <Button variant="primary" size="md" type="submit" loading={loading} disabled={loading} icon={Plus}>
             Save Customer Profile
           </Button>
         </div>

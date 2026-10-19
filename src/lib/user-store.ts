@@ -26,7 +26,7 @@ export async function initUserStore(): Promise<void> {
   if (isInitialized && users.size > 0) return;
 
   if (users.size === 0) {
-    const demoPasswordHash = await hashPassword("password123");
+    const demoPasswordHash = "$2b$10$g0jVH06qHNoQuVHiMVvvC.XL0D3FCcLTGfjpUTULktpwMmGCN7Dya";
 
     const defaultMerchant: StoredUser = {
       id: "usr_hamza_001",
@@ -83,7 +83,7 @@ export const userStore = {
     const emailKey = userData.email.toLowerCase();
 
     if (users.has(emailKey)) {
-      throw new Error("An account with this email address already exists.");
+      throw new Error("This account already exists. Please log in instead.");
     }
 
     const newUser: StoredUser = {

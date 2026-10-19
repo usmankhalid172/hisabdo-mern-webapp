@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -18,14 +18,15 @@ import {
   Globe,
   Store,
   ChevronDown,
-  UserCheck,
   ShieldAlert,
   Calculator,
   FileText,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings, LanguageCode } from "@/context/SettingsContext";
+import { createClient } from "@/lib/supabase/client";
 import { AiChatbotWidget } from "@/components/AiChatbotWidget";
 
 export default function DashboardLayout({
@@ -35,10 +36,68 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isLoading, isGuest, logout, loginAsGuest } = useAuth();
-  const { theme, toggleTheme, language, setLanguage, t, isRTL, businessProfile } = useSettings();
+  const { user, token, isLoading, isGuest, logout } = useAuth();
+  const { theme, toggleTheme, language, setLanguage, t, businessProfile } = useSettings();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
+  const [emailVerified, setEmailVerified] = useState<boolean | null>(() => (user ? true : null));
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkEmailVerification = async () => {
+      // 1. Guest, Demo, or already authenticated/verified users skip email verification check
+      const isDemoAccount =
+        token === "demo-token" ||
+        user?.id === "54fed992-4a4f-4669-9c52-161ae531dfe0" ||
+        user?.email === "merchant@hisabdo.com";
+
+      if (isGuest || isDemoAccount || (user && token)) {
+        if (isMounted) setEmailVerified(true);
+        return;
+      }
+
+      // 2. Fast local Supabase session check (0ms network latency)
+      try {
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          if (!session.user.email_confirmed_at) {
+            router.push("/verify-email");
+            return;
+          }
+          if (isMounted) setEmailVerified(true);
+          return;
+        }
+      } catch (err) {
+        console.warn("Verification check warning:", err);
+      }
+
+      // 3. Default: allow access if user is present, otherwise redirect to login
+      if (user) {
+        if (isMounted) setEmailVerified(true);
+      } else {
+        router.push("/login");
+      }
+    };
+
+    if (!isLoading) {
+      checkEmailVerification();
+    }
+
+    // Safety timeout: ensure dashboard never hangs on a white/spinner screen
+    const timeout = setTimeout(() => {
+      if (isMounted) {
+        setEmailVerified(true);
+      }
+    }, 500);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeout);
+    };
+  }, [isGuest, token, user, isLoading, router]);
 
   const navItems = [
     { name: t("dashboard"), href: "/dashboard", icon: LayoutDashboard },
@@ -59,6 +118,15 @@ export default function DashboardLayout({
     { code: "hi", label: "हिंदी (Hindi)" },
     { code: "ar", label: "العربية (Arabic)" },
   ];
+
+  // Loading state while checking authentication or verification status
+  if (isLoading && !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen ${theme === "dark" ? "bg-[#121212] text-slate-100" : "bg-[#F8F9FD] text-slate-900"} flex flex-col md:flex-row transition-colors duration-200`}>
@@ -223,7 +291,7 @@ export default function DashboardLayout({
             <button
               onClick={() => logout()}
               title="Logout"
-              className={`p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors`}
+              className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -286,7 +354,7 @@ export default function DashboardLayout({
           {children}
         </main>
 
-        {/* Mobile Bottom Navigation Bar (Matching Flutter Mobile App) */}
+        {/* Mobile Bottom Navigation Bar */}
         <div className={`md:hidden fixed bottom-0 left-0 right-0 border-t py-2 px-4 flex items-center justify-around z-40 ${
           theme === "dark" ? "bg-[#181818] border-[#2A2A2A]" : "bg-white border-slate-200 shadow-lg"
         }`}>

@@ -35,6 +35,7 @@ export default function ExpensesPage() {
     expense_date: new Date().toISOString().split("T")[0],
   });
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const loadExpenses = useCallback(async () => {
     try {
@@ -57,6 +58,7 @@ export default function ExpensesPage() {
     e.preventDefault();
     if (!formData.amount) return;
     setSubmitting(true);
+    setFormError(null);
     const userId = user?.id || "guest";
     try {
       await hisabDoService.addExpense(userId, {
@@ -75,6 +77,8 @@ export default function ExpensesPage() {
         expense_date: new Date().toISOString().split("T")[0],
       });
       await loadExpenses();
+    } catch (err: any) {
+      setFormError(err?.message || "Failed to record expense entry. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -263,6 +267,11 @@ export default function ExpensesPage() {
             </div>
 
             <form onSubmit={handleSaveExpense} className="space-y-3">
+              {formError && (
+                <div className="p-3 text-xs rounded-xl bg-red-950/50 border border-red-800 text-red-200">
+                  {formError}
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold mb-1">Amount ({currencySymbol}) *</label>
                 <input
