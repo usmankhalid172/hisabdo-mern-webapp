@@ -40,19 +40,19 @@ export default function DashboardLayout({
   const { theme, toggleTheme, language, setLanguage, t, businessProfile } = useSettings();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
-  const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
+  const [emailVerified, setEmailVerified] = useState<boolean | null>(() => (user ? true : null));
 
   useEffect(() => {
     let isMounted = true;
 
     const checkEmailVerification = async () => {
-      // 1. Guest or Demo accounts skip email verification check
+      // 1. Guest, Demo, or already authenticated/verified users skip email verification check
       const isDemoAccount =
         token === "demo-token" ||
         user?.id === "54fed992-4a4f-4669-9c52-161ae531dfe0" ||
         user?.email === "merchant@hisabdo.com";
 
-      if (isGuest || isDemoAccount) {
+      if (isGuest || isDemoAccount || (user && token)) {
         if (isMounted) setEmailVerified(true);
         return;
       }
@@ -74,13 +74,7 @@ export default function DashboardLayout({
         console.warn("Verification check warning:", err);
       }
 
-      // 3. Authenticated backend or local user
-      if (user && token) {
-        if (isMounted) setEmailVerified(true);
-        return;
-      }
-
-      // 4. Default: allow access if user is present, otherwise redirect to login
+      // 3. Default: allow access if user is present, otherwise redirect to login
       if (user) {
         if (isMounted) setEmailVerified(true);
       } else {
@@ -97,7 +91,7 @@ export default function DashboardLayout({
       if (isMounted) {
         setEmailVerified(true);
       }
-    }, 1500);
+    }, 500);
 
     return () => {
       isMounted = false;
@@ -125,8 +119,8 @@ export default function DashboardLayout({
     { code: "ar", label: "العربية (Arabic)" },
   ];
 
-  // Loading state while checking email verification status
-  if (isLoading || emailVerified === null) {
+  // Loading state while checking authentication or verification status
+  if (isLoading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
