@@ -58,6 +58,12 @@ export default function RegisterPage() {
         return;
       }
 
+      // Agar email verification pending hai to verify-email par bhejo
+      if (result.needsVerification) {
+        router.replace("/verify-email");
+        return;
+      }
+
       router.replace("/dashboard");
     } catch (error) {
       setServerError("Unable to connect to the authentication server.");
@@ -69,7 +75,6 @@ export default function RegisterPage() {
   return (
     <div className="w-full max-w-lg my-6">
       <div className="bg-slate-900/90 border border-slate-800 backdrop-blur-xl p-8 rounded-2xl shadow-2xl space-y-6">
-        {/* Header */}
         <div className="text-center space-y-1.5">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mb-2">
             <UserPlus className="w-6 h-6" />
@@ -80,7 +85,6 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        {/* Error Alert */}
         {serverError && (
           <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-3 text-rose-400 text-xs animate-shake">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -90,7 +94,6 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Full Name */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                 Full Name <span className="text-rose-400">*</span>
@@ -111,7 +114,6 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* Email */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                 Email Address <span className="text-rose-400">*</span>
@@ -135,7 +137,6 @@ export default function RegisterPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Phone */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                 Mobile Number (Optional)
@@ -151,7 +152,6 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Shop Name */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                 Business / Store Name
@@ -169,7 +169,6 @@ export default function RegisterPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Password */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                 Password <span className="text-rose-400">*</span>
@@ -198,7 +197,6 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* Confirm Password */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                 Confirm Password <span className="text-rose-400">*</span>

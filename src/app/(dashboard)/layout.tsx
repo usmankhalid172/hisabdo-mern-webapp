@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -18,14 +18,15 @@ import {
   Globe,
   Store,
   ChevronDown,
-  UserCheck,
   ShieldAlert,
   Calculator,
   FileText,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings, LanguageCode } from "@/context/SettingsContext";
+import { createClient } from "@/lib/supabase/client";
 import { AiChatbotWidget } from "@/components/AiChatbotWidget";
 
 export default function DashboardLayout({
@@ -35,10 +36,40 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isLoading, isGuest, logout, loginAsGuest } = useAuth();
-  const { theme, toggleTheme, language, setLanguage, t, isRTL, businessProfile } = useSettings();
+  const { user, isLoading, isGuest, logout } = useAuth();
+  const { theme, toggleTheme, language, setLanguage, t, businessProfile } = useSettings();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
+  const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const checkEmailVerification = async () => {
+      // Guest mode skip
+      if (isGuest) {
+        setEmailVerified(true);
+        return;
+      }
+
+      // Agar koi user nahi hai to login par bhejo
+      const supabase = createClient();
+      const { data: { user: suUser } } = await supabase.auth.getUser();
+
+      if (!suUser) {
+        router.push("/login");
+        return;
+      }
+
+      // ⚠️ Email verification check
+      if (!suUser.email_confirmed_at) {
+        router.push("/verify-email");
+        return;
+      }
+
+      setEmailVerified(true);
+    };
+
+    checkEmailVerification();
+  }, [isGuest, router]);
 
   const navItems = [
     { name: t("dashboard"), href: "/dashboard", icon: LayoutDashboard },
@@ -59,6 +90,15 @@ export default function DashboardLayout({
     { code: "hi", label: "हिंदी (Hindi)" },
     { code: "ar", label: "العربية (Arabic)" },
   ];
+
+  // Loading state — jab tak email verification check nahi hoti
+  if (emailVerified === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen ${theme === "dark" ? "bg-[#121212] text-slate-100" : "bg-[#F8F9FD] text-slate-900"} flex flex-col md:flex-row transition-colors duration-200`}>
@@ -95,7 +135,7 @@ export default function DashboardLayout({
         </div>
       </header>
 
-      {/* Guest Mode Banner if browsing without full login */}
+      {/* Guest Banner */}
       {isGuest && (
         <div className="md:hidden bg-amber-500/10 border-b border-amber-500/20 px-4 py-1.5 text-xs text-amber-500 flex items-center justify-between">
           <span className="flex items-center gap-1.5 font-medium">
@@ -107,7 +147,7 @@ export default function DashboardLayout({
         </div>
       )}
 
-      {/* Left Sidebar (Desktop + Mobile Drawer) */}
+      {/* Sidebar */}
       <aside
         className={`${
           mobileMenuOpen ? "block" : "hidden"
@@ -116,7 +156,6 @@ export default function DashboardLayout({
         }`}
       >
         <div className="p-4 space-y-6">
-          {/* Logo & Shop Info (Desktop) */}
           <div className="hidden md:flex items-center gap-3 px-2 py-1">
             <img
               src="/logo.png"
@@ -131,7 +170,6 @@ export default function DashboardLayout({
             </div>
           </div>
 
-          {/* Navigation Links */}
           <nav className="space-y-1.5">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -157,9 +195,7 @@ export default function DashboardLayout({
           </nav>
         </div>
 
-        {/* Bottom User Profile & Controls */}
         <div className={`p-4 border-t ${theme === "dark" ? "border-[#2A2A2A]" : "border-slate-200"} space-y-3`}>
-          {/* Language Selector */}
           <div className="relative">
             <button
               onClick={() => setLangDropdownOpen(!langDropdownOpen)}
@@ -202,7 +238,6 @@ export default function DashboardLayout({
             )}
           </div>
 
-          {/* User Status Card */}
           <div className={`p-3 rounded-xl border flex items-center justify-between ${
             theme === "dark" ? "bg-[#202020] border-[#303030]" : "bg-slate-50 border-slate-200"
           }`}>
@@ -223,7 +258,7 @@ export default function DashboardLayout({
             <button
               onClick={() => logout()}
               title="Logout"
-              className={`p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors`}
+              className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -231,9 +266,8 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Desktop Top Bar */}
         <header className={`hidden md:flex items-center justify-between px-8 py-4 border-b ${
           theme === "dark" ? "bg-[#181818]/60 border-[#2A2A2A]" : "bg-white/80 border-slate-200 shadow-sm"
         } backdrop-blur-md sticky top-0 z-30`}>
@@ -281,12 +315,10 @@ export default function DashboardLayout({
           </div>
         </header>
 
-        {/* Page Content */}
         <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto pb-24 md:pb-8">
           {children}
         </main>
 
-        {/* Mobile Bottom Navigation Bar (Matching Flutter Mobile App) */}
         <div className={`md:hidden fixed bottom-0 left-0 right-0 border-t py-2 px-4 flex items-center justify-around z-40 ${
           theme === "dark" ? "bg-[#181818] border-[#2A2A2A]" : "bg-white border-slate-200 shadow-lg"
         }`}>
@@ -313,7 +345,6 @@ export default function DashboardLayout({
         </div>
       </div>
 
-      {/* Floating AI Chatbot Widget */}
       <AiChatbotWidget />
     </div>
   );
