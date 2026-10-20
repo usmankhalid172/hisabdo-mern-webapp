@@ -6,7 +6,7 @@ create table if not exists app.customers (
   phone text,
   email text,
   address text,
-  opening_balance numeric(14, 2) not null default 0,
+  opening_balance numeric(14, 2) not null  default 5  CHECK (opening_balance > 0 ),
   currency app.currency_code not null default 'PKR',
   notes text,
   is_active boolean not null default true,
