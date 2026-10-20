@@ -293,19 +293,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push("/dashboard");
   };
 
+
   const logout = async () => {
     try {
       const supabase = createClient();
       await supabase.auth.signOut();
-    } catch {}
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+
     setUser(null);
     setToken(null);
+
     localStorage.removeItem("hisabdo_user");
     localStorage.removeItem("hisabdo_token");
+    localStorage.removeItem("hisabdo_active_branch");
+
     document.cookie = "hisabdo_guest=; path=/; max-age=0";
     document.cookie = "hisabdo_auth_token=; path=/; max-age=0";
-    router.push("/login");
+
+    router.replace("/login");
   };
+
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
     if (!user) return { success: false, message: "Not logged in" };

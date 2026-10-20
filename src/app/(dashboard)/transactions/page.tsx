@@ -158,13 +158,22 @@ export default function TransactionsPage() {
   // Handle Create Transaction
   const handleSaveTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.amount) return;
+    const amount = Number(formData.amount);
+    if (
+    formData.amount.trim() === "" ||
+    !Number.isFinite(amount) ||
+    amount <= 0
+    ) {
+      alert("Amount must be greater than 0");
+      return;
+    }
     setSubmitting(true);
+
     const userId = user?.id || "guest";
     try {
       if (modalType === "income") {
         await hisabDoService.addIncome(userId, {
-          amount: Number(formData.amount),
+          amount: amount,
           customer_id: formData.customerId || null,
           description: formData.description,
           category_id: formData.category,
@@ -173,7 +182,7 @@ export default function TransactionsPage() {
         });
       } else {
         await hisabDoService.addExpense(userId, {
-          amount: Number(formData.amount),
+          amount: amount,
           customer_id: formData.customerId || null,
           description: formData.description,
           category_id: formData.category,
