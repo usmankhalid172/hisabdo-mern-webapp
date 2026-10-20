@@ -57,13 +57,56 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const trimmedPhone = phone ? String(phone).trim() : null;
+    const trimmedEmail = email ? String(email).trim() : null;
+
+    // Duplicate phone check within same account (empty phone is not checked)
+    if (trimmedPhone) {
+      const { data: existingPhone } = await supabaseServer
+        .from("customers")
+        .select("id, name")
+        .eq("user_id", user.id)
+        .eq("phone", trimmedPhone)
+        .limit(1);
+
+      if (existingPhone && existingPhone.length > 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: `A customer with phone ${trimmedPhone} already exists (${existingPhone[0].name}).`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Duplicate email check within same account (empty email is not checked)
+    if (trimmedEmail) {
+      const { data: existingEmail } = await supabaseServer
+        .from("customers")
+        .select("id, name")
+        .eq("user_id", user.id)
+        .eq("email", trimmedEmail)
+        .limit(1);
+
+      if (existingEmail && existingEmail.length > 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: `A customer with email ${trimmedEmail} already exists (${existingEmail[0].name}).`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const { data, error } = await supabaseServer
       .from("customers")
       .insert({
         user_id: user.id,
         name: String(name).trim(),
-        phone: phone ? String(phone).trim() : null,
-        email: email ? String(email).trim() : null,
+        phone: trimmedPhone,
+        email: trimmedEmail,
       })
       .select()
       .single();
