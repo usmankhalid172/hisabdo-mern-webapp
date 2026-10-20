@@ -31,6 +31,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
+import { AddIncomeForm } from "@/components/transactions/AddIncomeForm";
+import { AddExpenseForm } from "@/components/transactions/AddExpenseForm";
 import {
   hisabDoService,
   Customer,
@@ -70,8 +72,6 @@ export default function DashboardPage() {
 
   // Form states
   const [formCustomer, setFormCustomer] = useState({ name: "", phone: "", opening_balance: 0, notes: "", address: "" });
-  const [formIncome, setFormIncome] = useState({ amount: "", customer_id: "", description: "", payment_method: "cash", category_id: "Sales", date: new Date().toISOString().split("T")[0] });
-  const [formExpense, setFormExpense] = useState({ amount: "", customer_id: "", description: "", payment_method: "cash", category_id: "Rent", date: new Date().toISOString().split("T")[0] });
   const [formPayment, setFormPayment] = useState({ customerId: "", amount: "", type: "received" as "received" | "paid", category: "Payment", note: "", date: new Date().toISOString().split("T")[0] });
   const [submitting, setSubmitting] = useState(false);
 
@@ -176,47 +176,6 @@ export default function DashboardPage() {
     }
   };
 
-  const handleAddIncome = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formIncome.amount) return;
-    setSubmitting(true);
-    try {
-      await hisabDoService.addIncome(user?.id || "guest", {
-        amount: Number(formIncome.amount),
-        customer_id: formIncome.customer_id || null,
-        description: formIncome.description || `${formIncome.category_id} Income`,
-        income_date: formIncome.date,
-        payment_method: formIncome.payment_method,
-        category_id: formIncome.category_id,
-      });
-      setFormIncome({ amount: "", customer_id: "", description: "", payment_method: "cash", category_id: "Sales", date: new Date().toISOString().split("T")[0] });
-      setActiveModal(null);
-      await loadData();
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleAddExpense = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formExpense.amount) return;
-    setSubmitting(true);
-    try {
-      await hisabDoService.addExpense(user?.id || "guest", {
-        amount: Number(formExpense.amount),
-        customer_id: formExpense.customer_id || null,
-        description: formExpense.description || `${formExpense.category_id} Expense`,
-        expense_date: formExpense.date,
-        payment_method: formExpense.payment_method,
-        category_id: formExpense.category_id,
-      });
-      setFormExpense({ amount: "", customer_id: "", description: "", payment_method: "cash", category_id: "Rent", date: new Date().toISOString().split("T")[0] });
-      setActiveModal(null);
-      await loadData();
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   // Calculator Logic
   const handleCalcButton = (char: string) => {
@@ -541,217 +500,21 @@ export default function DashboardPage() {
 
       {/* ================= MODALS ================= */}
 
-      {/* Modal 1: Add Income Modal (Lene Add Karein) */}
-      {activeModal === "income" && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#1E1E1E] p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-lg font-bold text-[#00E676] flex items-center gap-2">
-                <PlusCircle className="w-5 h-5" /> Record Income (Lene / Sale)
-              </h3>
-              <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {/* Reusable Add Income Form */}
+      <AddIncomeForm
+        isOpen={activeModal === "income"}
+        onClose={() => setActiveModal(null)}
+        onSuccess={loadData}
+        customers={customers}
+      />
 
-            <form onSubmit={handleAddIncome} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Amount ({currencySymbol}) *
-                </label>
-                <input
-                  type="number"
-                  required
-                  step="any"
-                  placeholder="0.00"
-                  value={formIncome.amount}
-                  onChange={(e) => setFormIncome({ ...formIncome, amount: e.target.value })}
-                  className="w-full px-3 py-2 text-xl font-bold rounded-xl border border-slate-700 bg-[#121212] text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  autoFocus
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Customer (Optional for Credit Sale)
-                </label>
-                <select
-                  value={formIncome.customer_id}
-                  onChange={(e) => setFormIncome({ ...formIncome, customer_id: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border border-slate-700 bg-[#121212] text-white focus:outline-none"
-                >
-                  <option value="">Direct Counter Sale (No Customer)</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} {c.phone ? `(${c.phone})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Category</label>
-                <select
-                  value={formIncome.category_id}
-                  onChange={(e) => setFormIncome({ ...formIncome, category_id: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border border-slate-700 bg-[#121212] text-white focus:outline-none"
-                >
-                  {INCOME_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Date</label>
-                <input
-                  type="date"
-                  value={formIncome.date}
-                  onChange={(e) => setFormIncome({ ...formIncome, date: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border border-slate-700 bg-[#121212] text-white focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Description / Items</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Counter sales, retail stock sale"
-                  value={formIncome.description}
-                  onChange={(e) => setFormIncome({ ...formIncome, description: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border border-slate-700 bg-[#121212] text-white focus:outline-none"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveModal(null)}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-slate-700 hover:bg-slate-800"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-[#2E7D32] hover:bg-[#256628] text-white flex items-center justify-center gap-2"
-                >
-                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Save Income
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal 2: Add Expense Modal (Dene Add Karein) */}
-      {activeModal === "expense" && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#1E1E1E] p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-lg font-bold text-[#E53935] flex items-center gap-2">
-                <MinusCircle className="w-5 h-5" /> Record Expense (Dene / Kharcha)
-              </h3>
-              <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddExpense} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Amount ({currencySymbol}) *
-                </label>
-                <input
-                  type="number"
-                  required
-                  step="any"
-                  placeholder="0.00"
-                  value={formExpense.amount}
-                  onChange={(e) => setFormExpense({ ...formExpense, amount: e.target.value })}
-                  className="w-full px-3 py-2 text-xl font-bold rounded-xl border border-slate-700 bg-[#121212] text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  autoFocus
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Customer / Supplier (Optional)
-                </label>
-                <select
-                  value={formExpense.customer_id}
-                  onChange={(e) => setFormExpense({ ...formExpense, customer_id: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border border-slate-700 bg-[#121212] text-white focus:outline-none"
-                >
-                  <option value="">General Store Overhead</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} {c.phone ? `(${c.phone})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Category</label>
-                <select
-                  value={formExpense.category_id}
-                  onChange={(e) => setFormExpense({ ...formExpense, category_id: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border border-slate-700 bg-[#121212] text-white focus:outline-none"
-                >
-                  {EXPENSE_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Date</label>
-                <input
-                  type="date"
-                  value={formExpense.date}
-                  onChange={(e) => setFormExpense({ ...formExpense, date: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border border-slate-700 bg-[#121212] text-white focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Description / Notes</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Shop rent, electricity bill, tea"
-                  value={formExpense.description}
-                  onChange={(e) => setFormExpense({ ...formExpense, description: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border border-slate-700 bg-[#121212] text-white focus:outline-none"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveModal(null)}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-slate-700 hover:bg-slate-800"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-[#C62828] hover:bg-[#A82020] text-white flex items-center justify-center gap-2"
-                >
-                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Save Expense
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Reusable Add Expense Form */}
+      <AddExpenseForm
+        isOpen={activeModal === "expense"}
+        onClose={() => setActiveModal(null)}
+        onSuccess={loadData}
+        customers={customers}
+      />
 
       {/* Modal 3: Retail & Percentage Calculator Modal (Matching Mobile Flutter App) */}
       {activeModal === "calculator" && (
