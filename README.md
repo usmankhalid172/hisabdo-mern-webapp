@@ -117,7 +117,22 @@ Day 31/
 │   │       └── auth.ts                 # Zod validation schemas
 │   └── middleware.ts                   # Edge route protection & cookie handler
 ├── scripts/
-│   └── test-auth.mjs                   # Automated E2E Auth Test Suite
+│   ├── test-auth.mjs                   # Automated E2E Auth Test Suite
+│   └── test-standardized-forms.mjs     # Standardized Form Component & Validation Tests
 ├── .env.example                        # Clean environment template
 └── README.md                           # Documentation
 ```
+
+
+---
+
+## 💼 5. Standardized Income and Expense Forms
+
+The application provides standardized, reusable **Add Income** and **Add Expense** form components (`AddIncomeForm` and `AddExpenseForm`) ensuring consistent accounting across all entry points:
+
+* **Separate Reusable Components:** Maintained as two dedicated components with domain-specific styling (emerald for income, rose for expense), separate transaction handling, and unified save behavior.
+* **Direct Dashboard Quick Access:** Accessible immediately from Dashboard Quick Access action tiles without redirecting or navigating away from the dashboard.
+* **Cross-Application Reuse:** Consistently shared across Dashboard Quick Access, the Transactions ledger, the Expenses module, and Customer ledger accounts without duplicate form implementations.
+* **Validated Date Picker & Manual Entry:** Supports both interactive calendar picking and manual `YYYY-MM-DD` typing with calendar date validation (leap year, month length) and sensible past/future bounds.
+* **Required Category Dropdowns:** Form features exactly one dedicated category dropdown per form populated with domain-specific options, enforcing selection before submission.
+* **Reliable Navigation & Submission:** Prevents duplicate submissions while saving, provides error alerts on failed requests, and closes modals or updates parent ledgers seamlessly upon success.
