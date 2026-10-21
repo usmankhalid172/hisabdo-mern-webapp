@@ -125,14 +125,36 @@ Day 31/
 
 
 ---
+# Problem & Root Cause
 
-## 💼 5. Standardized Income and Expense Forms
+## Problem: 
+In the Recent Transactions section on the Dashboard, unwanted secondary text such as "Direct Sale" and "Business Expense" was displaying underneath transaction entries.
 
-The application provides standardized, reusable **Add Income** and **Add Expense** form components (`AddIncomeForm` and `AddExpenseForm`) ensuring consistent accounting across all entry points:
+## Root Cause: 
+In src/app/(dashboard)/dashboard/page.tsx, when mapping recent incomes, expenses, and payments without an associated customer record (customer_id == null), placeholder fallback strings ("Direct Sale", "Business Expense", and "Customer") were assigned to customerName and unconditionally rendered beneath the transaction title in the feed.
+Changes Made
 
-* **Separate Reusable Components:** Maintained as two dedicated components with domain-specific styling (emerald for income, rose for expense), separate transaction handling, and unified save behavior.
-* **Direct Dashboard Quick Access:** Accessible immediately from Dashboard Quick Access action tiles without redirecting or navigating away from the dashboard.
-* **Cross-Application Reuse:** Consistently shared across Dashboard Quick Access, the Transactions ledger, the Expenses module, and Customer ledger accounts without duplicate form implementations.
-* **Validated Date Picker & Manual Entry:** Supports both interactive calendar picking and manual `YYYY-MM-DD` typing with calendar date validation (leap year, month length) and sensible past/future bounds.
-* **Required Category Dropdowns:** Form features exactly one dedicated category dropdown per form populated with domain-specific options, enforcing selection before submission.
-* **Reliable Navigation & Submission:** Prevents duplicate submissions while saving, provides error alerts on failed requests, and closes modals or updates parent ledgers seamlessly upon success.
+Removed Default Placeholder Text in Dashboard Feed Mapping: In src/app/(dashboard)/dashboard/page.tsx, updated the mapping for recent transactions to use c?.name || "" instead of injecting "Direct Sale", "Business Expense", or "Customer".
+
+Guarded Secondary Text Rendering in Recent Transactions: In src/app/(dashboard)/dashboard/page.tsx, updated the rendering logic to only display the secondary text element if a genuine customer name exists and is not "Direct Sale" or "Business Expense":
+
+tsx
+{tx.customerName && tx.customerName !== "Direct Sale" && tx.customerName !== "Business Expense" && (
+  <span className="text-xs text-slate-400 block truncate">{tx.customerName}</span>
+)}
+
+## Preserved Other Views & Transaction Data:
+
+Transaction titles, amounts, badges, dates, layout, and spacing remain completely intact.
+Full transaction views (such as /transactions) were not modified and retain their full ledger details.
+
+## Testing & Verification:
+
+Added automated test #7 to scripts/test-standardized-forms.mjs verifying the removal of unwanted secondary text in Recent Transactions while keeping other views unaffected.
+Ran npm test: All 8 tests passed.
+Ran npx tsc --noEmit: 0 type errors.
+Ran npm run build: Next.js production build succeeded with 0 errors.
+Maintained all work on the existing branch (fix/add-income-expense-forms-Aiman) with no Git push or pull operations executed.
+
+
+* **Clean Recent Transactions Display:** Removed unwanted secondary placeholder text (such as "Direct Sale" and "Business Expense") beneath entries in the Dashboard Recent Transactions feed, preserving clean layouts and customer display only when assigned.

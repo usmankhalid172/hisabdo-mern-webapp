@@ -197,5 +197,34 @@ test("================ HISABDO FORM STANDARDIZATION TESTS ================", asy
       "Catches submission errors without navigating or prematurely showing success"
     );
   });
+
+  // 7. RECENT TRANSACTIONS UNWANTED SECONDARY TEXT REMOVAL
+  await t.test("7. Recent Transactions Unwanted Secondary Text Removal", () => {
+    const dashboardSrc = fs.readFileSync("src/app/(dashboard)/dashboard/page.tsx", "utf8");
+    const transactionsSrc = fs.readFileSync("src/app/(dashboard)/transactions/page.tsx", "utf8");
+
+    // Ensure Dashboard does NOT assign unwanted fallback strings "Direct Sale" or "Business Expense"
+    assert.ok(
+      !dashboardSrc.includes('customerName: c?.name || "Direct Sale"'),
+      "Dashboard must not use 'Direct Sale' fallback for Recent Transactions"
+    );
+    assert.ok(
+      !dashboardSrc.includes('customerName: c?.name || "Business Expense"'),
+      "Dashboard must not use 'Business Expense' fallback for Recent Transactions"
+    );
+
+    // Ensure Recent Transactions hides or filters out "Direct Sale" and "Business Expense"
+    assert.ok(
+      dashboardSrc.includes('tx.customerName !== "Direct Sale"') &&
+      dashboardSrc.includes('tx.customerName !== "Business Expense"'),
+      "Recent Transactions rendering must guard against displaying 'Direct Sale' and 'Business Expense'"
+    );
+
+    // Ensure other transaction views (e.g. transactions tab) are NOT modified
+    assert.ok(
+      transactionsSrc.includes('"Counter Cash Sale"'),
+      "Other transaction views must remain unaffected"
+    );
+  });
 });
 

@@ -110,7 +110,7 @@ export default function DashboardPage() {
           type: "income",
           title: i.description || "Income Sale",
           category: i.category_id || "Sales",
-          customerName: c?.name || "Direct Sale",
+          customerName: c?.name || "",
           amount: Number(i.amount),
         });
       });
@@ -123,7 +123,7 @@ export default function DashboardPage() {
           type: "expense",
           title: e.description || "Expense",
           category: e.category_id || "Rent",
-          customerName: c?.name || "Business Expense",
+          customerName: c?.name || "",
           amount: Number(e.amount),
         });
       });
@@ -136,7 +136,7 @@ export default function DashboardPage() {
           type: p.type === "received" ? "payment_received" : "payment_sent",
           title: p.note || (p.type === "received" ? "Payment Received" : "Payment Sent"),
           category: p.category || "Payment",
-          customerName: c?.name || "Customer",
+          customerName: c?.name || "",
           amount: Number(p.amount),
         });
       });
@@ -474,7 +474,9 @@ export default function DashboardPage() {
                           {tx.category}
                         </span>
                       </div>
-                      <span className="text-xs text-slate-400 block truncate">{tx.customerName}</span>
+                      {tx.customerName && tx.customerName !== "Direct Sale" && tx.customerName !== "Business Expense" && (
+                        <span className="text-xs text-slate-400 block truncate">{tx.customerName}</span>
+                      )}
                     </div>
                   </div>
 
