@@ -37,6 +37,36 @@ async function getAuthenticatedUser(request: NextRequest) {
   return null;
 }
 
+// Validate a date string: must exist, be parseable, and be in YYYY-MM-DD (ISO) format
+function validateTransactionDate(value: unknown): { valid: boolean; message?: string } {
+  if (value === undefined || value === null || value === "") {
+    return { valid: false, message: "Date is required" };
+  }
+
+  const dateStr = String(value).trim();
+
+  // Enforce ISO date format: YYYY-MM-DD
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return { valid: false, message: "Date must be in YYYY-MM-DD format" };
+  }
+
+  const parsed = new Date(dateStr + "T00:00:00Z");
+  if (isNaN(parsed.getTime())) {
+    return { valid: false, message: "Date is not a valid calendar date" };
+  }
+
+  // Reject dates too far in the past or future (sanity check)
+  const now = new Date();
+  const min = new Date("2000-01-01T00:00:00Z");
+  const max = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000); // up to 1 year ahead
+
+  if (parsed < min || parsed > max) {
+    return { valid: false, message: "Date is out of allowed range" };
+  }
+
+  return { valid: true };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthenticatedUser(request);
@@ -85,6 +115,24 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     console.log("📦 Incoming transaction payload:", body);
+
+    // Amount validation (always on)
+    const amount = Number(body.amount);
+    if (!amount || amount <= 0) {
+      return NextResponse.json(
+        { success: false, message: "Amount must be greater than 0" },
+        { status: 400 }
+      );
+    }
+
+    // Date validation (server-side)
+    const dateCheck = validateTransactionDate(body.date);
+    if (!dateCheck.valid) {
+      return NextResponse.json(
+        { success: false, message: dateCheck.message },
+        { status: 400 }
+      );
+    }
 
     const supabase = getAdminSupabase();
     const { data: newTransaction, error } = await supabase
