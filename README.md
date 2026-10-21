@@ -117,7 +117,44 @@ Day 31/
 │   │       └── auth.ts                 # Zod validation schemas
 │   └── middleware.ts                   # Edge route protection & cookie handler
 ├── scripts/
-│   └── test-auth.mjs                   # Automated E2E Auth Test Suite
+│   ├── test-auth.mjs                   # Automated E2E Auth Test Suite
+│   └── test-standardized-forms.mjs     # Standardized Form Component & Validation Tests
 ├── .env.example                        # Clean environment template
 └── README.md                           # Documentation
 ```
+
+
+---
+# Problem & Root Cause
+
+## Problem: 
+In the Recent Transactions section on the Dashboard, unwanted secondary text such as "Direct Sale" and "Business Expense" was displaying underneath transaction entries.
+
+## Root Cause: 
+In src/app/(dashboard)/dashboard/page.tsx, when mapping recent incomes, expenses, and payments without an associated customer record (customer_id == null), placeholder fallback strings ("Direct Sale", "Business Expense", and "Customer") were assigned to customerName and unconditionally rendered beneath the transaction title in the feed.
+Changes Made
+
+Removed Default Placeholder Text in Dashboard Feed Mapping: In src/app/(dashboard)/dashboard/page.tsx, updated the mapping for recent transactions to use c?.name || "" instead of injecting "Direct Sale", "Business Expense", or "Customer".
+
+Guarded Secondary Text Rendering in Recent Transactions: In src/app/(dashboard)/dashboard/page.tsx, updated the rendering logic to only display the secondary text element if a genuine customer name exists and is not "Direct Sale" or "Business Expense":
+
+tsx
+{tx.customerName && tx.customerName !== "Direct Sale" && tx.customerName !== "Business Expense" && (
+  <span className="text-xs text-slate-400 block truncate">{tx.customerName}</span>
+)}
+
+## Preserved Other Views & Transaction Data:
+
+Transaction titles, amounts, badges, dates, layout, and spacing remain completely intact.
+Full transaction views (such as /transactions) were not modified and retain their full ledger details.
+
+## Testing & Verification:
+
+Added automated test #7 to scripts/test-standardized-forms.mjs verifying the removal of unwanted secondary text in Recent Transactions while keeping other views unaffected.
+Ran npm test: All 8 tests passed.
+Ran npx tsc --noEmit: 0 type errors.
+Ran npm run build: Next.js production build succeeded with 0 errors.
+Maintained all work on the existing branch (fix/add-income-expense-forms-Aiman) with no Git push or pull operations executed.
+
+
+* **Clean Recent Transactions Display:** Removed unwanted secondary placeholder text (such as "Direct Sale" and "Business Expense") beneath entries in the Dashboard Recent Transactions feed, preserving clean layouts and customer display only when assigned.

@@ -28,6 +28,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
+import { AddIncomeForm } from "@/components/transactions/AddIncomeForm";
+import { AddExpenseForm } from "@/components/transactions/AddExpenseForm";
 import {
   hisabDoService,
   Customer,
@@ -70,22 +72,6 @@ export default function CustomerLedgerPage() {
   const [editingRow, setEditingRow] = useState<LedgerRow | null>(null);
   const [deletingRow, setDeletingRow] = useState<LedgerRow | null>(null);
 
-  // Add Income Form (Lene / Wusooli)
-  const [incomeForm, setIncomeForm] = useState({
-    amount: "",
-    category: "Sales",
-    date: new Date().toISOString().split("T")[0],
-    note: "",
-  });
-
-  // Add Expense Form (Dene / Adaigi)
-  const [expenseForm, setExpenseForm] = useState({
-    amount: "",
-    category: "Rent",
-    date: new Date().toISOString().split("T")[0],
-    note: "",
-  });
-
   // Edit Form
   const [editForm, setEditForm] = useState({
     amount: "",
@@ -122,62 +108,6 @@ export default function CustomerLedgerPage() {
   useEffect(() => {
     loadLedger();
   }, [loadLedger]);
-
-  // Submit Income (+ Lene / Wusooli)
-  const handleAddIncome = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!incomeForm.amount || !customer) return;
-    setSubmitting(true);
-    const userId = user?.id || "guest";
-    try {
-      await hisabDoService.addIncome(userId, {
-        amount: Number(incomeForm.amount),
-        customer_id: customer.id,
-        category_id: incomeForm.category,
-        description: incomeForm.note || `${incomeForm.category} Income`,
-        payment_method: "cash",
-        income_date: incomeForm.date,
-      });
-      setIsIncomeModalOpen(false);
-      setIncomeForm({
-        amount: "",
-        category: "Sales",
-        date: new Date().toISOString().split("T")[0],
-        note: "",
-      });
-      await loadLedger();
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // Submit Expense (- Dene / Adaigi)
-  const handleAddExpense = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!expenseForm.amount || !customer) return;
-    setSubmitting(true);
-    const userId = user?.id || "guest";
-    try {
-      await hisabDoService.addExpense(userId, {
-        amount: Number(expenseForm.amount),
-        customer_id: customer.id,
-        category_id: expenseForm.category,
-        description: expenseForm.note || `${expenseForm.category} Expense`,
-        payment_method: "cash",
-        expense_date: expenseForm.date,
-      });
-      setIsExpenseModalOpen(false);
-      setExpenseForm({
-        amount: "",
-        category: "Rent",
-        date: new Date().toISOString().split("T")[0],
-        note: "",
-      });
-      await loadLedger();
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   // Open Edit Modal
   const handleOpenEdit = (row: LedgerRow) => {
@@ -665,188 +595,25 @@ export default function CustomerLedgerPage() {
 
       {/* ================= MODALS ================= */}
 
-      {/* Modal 1: + Add Income (Lene / Wusooli) */}
-      {isIncomeModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#1E1E1E] p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div>
-                <h3 className="text-lg font-bold text-[#00E676] flex items-center gap-2">
-                  <Plus className="w-5 h-5" /> Add Income (Lene / Wusooli)
-                </h3>
-                <p className="text-xs text-slate-400">Customer: {customer.name}</p>
-              </div>
-              <button onClick={() => setIsIncomeModalOpen(false)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {/* Reusable Add Income Form */}
+      <AddIncomeForm
+        isOpen={isIncomeModalOpen}
+        onClose={() => setIsIncomeModalOpen(false)}
+        onSuccess={loadLedger}
+        customerId={customer?.id}
+        lockCustomer={true}
+        customers={customer ? [customer] : []}
+      />
 
-            <form onSubmit={handleAddIncome} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Amount ({currencySymbol}) *
-                </label>
-                <input
-                  type="number"
-                  required
-                  step="any"
-                  placeholder="0.00"
-                  value={incomeForm.amount}
-                  onChange={(e) => setIncomeForm({ ...incomeForm, amount: e.target.value })}
-                  className="w-full px-3 py-2.5 text-xl font-bold rounded-xl border border-slate-700 bg-[#121212] text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  autoFocus
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Category</label>
-                <select
-                  value={incomeForm.category}
-                  onChange={(e) => setIncomeForm({ ...incomeForm, category: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border border-slate-700 bg-[#121212] text-white focus:outline-none"
-                >
-                  {INCOME_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Date</label>
-                <input
-                  type="date"
-                  value={incomeForm.date}
-                  onChange={(e) => setIncomeForm({ ...incomeForm, date: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border border-slate-700 bg-[#121212] text-white focus:outline-none"
-                >
-                </input>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Note (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Cleared bill, partial advance"
-                  value={incomeForm.note}
-                  onChange={(e) => setIncomeForm({ ...incomeForm, note: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border border-slate-700 bg-[#121212] text-white focus:outline-none"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsIncomeModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-slate-700 hover:bg-slate-800"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-[#2E7D32] hover:bg-[#256628] text-white flex items-center justify-center gap-2"
-                >
-                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Save Income
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal 2: - Add Expense (Dene / Adaigi) */}
-      {isExpenseModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#1E1E1E] p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div>
-                <h3 className="text-lg font-bold text-[#E53935] flex items-center gap-2">
-                  <Minus className="w-5 h-5" /> Add Expense (Dene / Adaigi)
-                </h3>
-                <p className="text-xs text-slate-400">Customer: {customer.name}</p>
-              </div>
-              <button onClick={() => setIsExpenseModalOpen(false)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddExpense} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Amount ({currencySymbol}) *
-                </label>
-                <input
-                  type="number"
-                  required
-                  step="any"
-                  placeholder="0.00"
-                  value={expenseForm.amount}
-                  onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
-                  className="w-full px-3 py-2.5 text-xl font-bold rounded-xl border border-slate-700 bg-[#121212] text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  autoFocus
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Category</label>
-                <select
-                  value={expenseForm.category}
-                  onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border border-slate-700 bg-[#121212] text-white focus:outline-none"
-                >
-                  {EXPENSE_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Date</label>
-                <input
-                  type="date"
-                  value={expenseForm.date}
-                  onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border border-slate-700 bg-[#121212] text-white focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Note (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Stock goods credit, returned items"
-                  value={expenseForm.note}
-                  onChange={(e) => setExpenseForm({ ...expenseForm, note: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border border-slate-700 bg-[#121212] text-white focus:outline-none"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsExpenseModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-slate-700 hover:bg-slate-800"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-[#C62828] hover:bg-[#A82020] text-white flex items-center justify-center gap-2"
-                >
-                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Save Expense
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Reusable Add Expense Form */}
+      <AddExpenseForm
+        isOpen={isExpenseModalOpen}
+        onClose={() => setIsExpenseModalOpen(false)}
+        onSuccess={loadLedger}
+        customerId={customer?.id}
+        lockCustomer={true}
+        customers={customer ? [customer] : []}
+      />
 
       {/* Modal 3: Edit Entry */}
       {editingRow && (
