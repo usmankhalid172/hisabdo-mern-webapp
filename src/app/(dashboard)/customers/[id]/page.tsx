@@ -364,7 +364,18 @@ export default function CustomerLedgerPage() {
                   {customer.address}
                 </span>
               )}
+               {customer.email && (
+                <span className="flex items-center gap-1">
+                  <Mail className="w-3.5 h-3.5 text-slate-500" />
+                  {customer.email}
+                </span>
+              )}
             </div>
+              {customer.notes && (
+                <p className="text-xs text-slate-400 mt-2">
+                  Notes: {customer.notes}
+                </p>
+              )}
           </div>
         </div>
 

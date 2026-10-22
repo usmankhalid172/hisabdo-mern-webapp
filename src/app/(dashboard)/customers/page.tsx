@@ -8,6 +8,7 @@ import {
   Plus,
   Phone,
   MapPin,
+  Mail,
   ArrowRight,
   TrendingDown,
   TrendingUp,
@@ -21,9 +22,11 @@ import {
   ArrowRightLeft,
   CheckCircle,
 } from "lucide-react";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { hisabDoService, Customer } from "@/services/hisabdoService";
+import { getFriendlyError } from "@/lib/friendlyErrors";
 
 export default function CustomersPage() {
   const { user } = useAuth();
@@ -58,6 +61,7 @@ export default function CustomersPage() {
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
 
   const loadData = useCallback(async () => {
     try {
@@ -85,10 +89,21 @@ export default function CustomersPage() {
   }, [loadData]);
 
   // Add / Edit submit
+
   const handleSaveCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
+    const phone = formData.phone.trim();
+    if (phone) {
+      const parsedPhone = parsePhoneNumberFromString(phone);
+      if (!parsedPhone || !parsedPhone.isValid()) {
+        setPhoneError("Please enter a valid phone number with country code, e.g. +92 300 1234567");
+        return;
+      }
+    }
+    setPhoneError("");
     setSubmitting(true);
+
     const userId = user?.id || "guest";
     try {
       if (editingCustomer) {
@@ -105,9 +120,11 @@ export default function CustomersPage() {
         });
       }
       setIsAddModalOpen(false);
-      setEditingCustomer(null);
+            setEditingCustomer(null);
       setFormData({ name: "", phone: "", email: "", address: "", opening_balance: 0, notes: "" });
       await loadData();
+    } catch (e) {
+      alert(getFriendlyError(e));
     } finally {
       setSubmitting(false);
     }
@@ -387,6 +404,19 @@ export default function CustomersPage() {
                     </p>
                   )}
 
+                  {c.email && (
+                    <p className="text-[11px] text-slate-400 flex items-center gap-1 mb-2 truncate">
+                      <Mail className="w-3 h-3 text-slate-500 shrink-0" />
+                      <span>{c.email}</span>
+                    </p>
+                  )}
+
+                  {c.notes && (
+                    <p className="text-[11px] text-slate-400 mb-3">
+                      Notes: {c.notes}
+                    </p>
+                  )}
+
                   {/* Balance Display */}
                   <div className={`p-3 rounded-xl border mt-3 flex items-center justify-between ${
                     theme === "dark" ? "bg-[#252525]/70 border-[#323232]" : "bg-slate-50 border-slate-200"
@@ -501,14 +531,23 @@ export default function CustomersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold mb-1">Phone Number (with country code)</label>
+                <label className="block text-xs font-semibold mb-1">
+                  Phone Number (with country code)
+                </label>
                 <input
                   type="text"
                   placeholder="+92 300 1234567"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={(e) => {
+                    const phone = e.target.value;
+                    setFormData({ ...formData, phone });
+                    setPhoneError("");
+                  }}
                   className="w-full px-3 py-2 rounded-xl text-sm border bg-transparent focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
+                {phoneError && (
+                <p className="text-xs text-red-500 mt-1">{phoneError}</p>
+                )}
               </div>
 
               <div>
