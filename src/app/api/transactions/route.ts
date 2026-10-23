@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { verifyAuthToken } from "@/lib/auth-token";
+import { handleBulkDelete } from "./bulk-delete-handler";
 
 // Admin client that bypasses Postgres role restrictions
 function getAdminSupabase() {
@@ -110,4 +111,7 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+export async function DELETE(request: NextRequest) {
+  return handleBulkDelete(request);
 }

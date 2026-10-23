@@ -1,4 +1,4 @@
-﻿import apiClient from '@/lib/axios';
+import apiClient from '@/lib/axios';
 
 export const transactionService = {
   getAll: async (params) => {
@@ -21,6 +21,11 @@ export const transactionService = {
 
   delete: async (id) => {
     const response = await apiClient.delete(`/transactions/${id}`);
+    return response.data;
+  },
+
+  bulkDelete: async (ids) => {
+    const response = await apiClient.delete('/transactions', { data: { ids } });
     return response.data;
   },
 };
