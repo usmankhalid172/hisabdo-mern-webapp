@@ -452,6 +452,75 @@ export class HisabDoService {
     throw new Error("Ledger transaction record not found");
   }
 
+  // ==================== BULK DELETE TRANSACTIONS ====================
+  async bulkDeleteTransactions(
+    userId: string,
+    ids: string[]
+  ): Promise<{ success: boolean; message?: string; count?: number }> {
+    if (!ids || ids.length === 0) {
+      return { success: false, message: "No transaction IDs provided" };
+    }
+
+    if (userId === "guest") {
+      const idSet = new Set(ids);
+      const incs = this.getLocal<Income[]>(userId, "incomes", []);
+      this.setLocal(userId, "incomes", incs.filter((i) => !idSet.has(i.id)));
+      const exps = this.getLocal<Expense[]>(userId, "expenses", []);
+      this.setLocal(userId, "expenses", exps.filter((e) => !idSet.has(e.id)));
+      const ltxs = this.getLocal<LedgerTransaction[]>(userId, "ledger_txs", []);
+      this.setLocal(userId, "ledger_txs", ltxs.filter((t) => !idSet.has(t.id)));
+      return {
+        success: true,
+        message: `Successfully deleted ${ids.length} transaction(s).`,
+        count: ids.length,
+      };
+    }
+
+    try {
+      let token: string | null = null;
+      if (typeof window !== "undefined") {
+        token = localStorage.getItem("hisabdo_token") || localStorage.getItem("token");
+      }
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const res = await fetch("/api/transactions", {
+        method: "DELETE",
+        headers,
+        body: JSON.stringify({ ids }),
+        credentials: "include",
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.message || `Failed to delete transactions (HTTP ${res.status})`);
+      }
+
+      const idSet = new Set(ids);
+      const incs = this.getLocal<Income[]>(userId, "incomes", []);
+      this.setLocal(userId, "incomes", incs.filter((i) => !idSet.has(i.id)));
+      const exps = this.getLocal<Expense[]>(userId, "expenses", []);
+      this.setLocal(userId, "expenses", exps.filter((e) => !idSet.has(e.id)));
+      const ltxs = this.getLocal<LedgerTransaction[]>(userId, "ledger_txs", []);
+      this.setLocal(userId, "ledger_txs", ltxs.filter((t) => !idSet.has(t.id)));
+
+      return {
+        success: true,
+        message: data.message || `Successfully deleted ${ids.length} transaction(s).`,
+        count: data.deletedCount ?? ids.length,
+      };
+    } catch (err: any) {
+      console.error("bulkDeleteTransactions service error:", err);
+      throw err;
+    }
+  }
+
   // ==================== COMPUTED CUSTOMER LEDGER & RUNNING BALANCE ====================
   async getCustomerLedgerTimeline(userId: string, customerId: string): Promise<{ rows: LedgerRow[]; summary: { totalPurchases: number; totalPaymentsReceived: number; totalPaymentsSent: number; netBalance: number } }> {
     const [customers, incomes, expenses, payments] = await Promise.all([

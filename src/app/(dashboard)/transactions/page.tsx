@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import {
   ArrowRightLeft,
@@ -18,6 +18,8 @@ import {
   Loader2,
   X,
   CreditCard,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
@@ -49,6 +51,15 @@ export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<UnifiedTransaction[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Bulk Selection & Deletion State
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{
+    type: "success" | "error" | null;
+    text: string;
+  }>({ type: null, text: "" });
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -137,6 +148,8 @@ export default function TransactionsPage() {
 
       combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setTransactions(combined);
+      // Prune any selection IDs that no longer exist in data
+      setSelectedIds((prev) => prev.filter((id) => combined.some((t) => t.id === id)));
     } catch (err) {
       console.error("Error loading transactions:", err);
     } finally {
@@ -197,7 +210,7 @@ export default function TransactionsPage() {
     }
   };
 
-  // Handle Delete
+  // Handle Individual Delete
   const handleDelete = async (tx: UnifiedTransaction) => {
     if (!confirm("Are you sure you want to delete this transaction record?")) return;
     const userId = user?.id || "guest";
@@ -270,6 +283,73 @@ export default function TransactionsPage() {
     .filter((t) => t.type === "expense" || t.type === "payment_sent")
     .reduce((sum, t) => sum + t.amount, 0);
 
+  // Compute matching selected IDs (guarantees selection respects active filters/search)
+  const filteredTransactionIds = useMemo(() => {
+    return new Set(filteredTransactions.map((tx) => tx.id));
+  }, [filteredTransactions]);
+
+  const selectedMatchingIds = useMemo(() => {
+    return selectedIds.filter((id) => filteredTransactionIds.has(id));
+  }, [selectedIds, filteredTransactionIds]);
+
+  const isAllFilteredSelected =
+    filteredTransactions.length > 0 &&
+    filteredTransactions.every((tx) => selectedIds.includes(tx.id));
+
+  const isSomeFilteredSelected =
+    filteredTransactions.some((tx) => selectedIds.includes(tx.id)) &&
+    !isAllFilteredSelected;
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    if (isAllFilteredSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !filteredTransactionIds.has(id)));
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        filteredTransactions.forEach((tx) => next.add(tx.id));
+        return Array.from(next);
+      });
+    }
+  };
+
+  const handleExecuteBulkDelete = async () => {
+    if (selectedMatchingIds.length === 0 || isBulkDeleting) return;
+    setIsBulkDeleting(true);
+    setStatusMessage({ type: null, text: "" });
+    const countToDelete = selectedMatchingIds.length;
+    try {
+      const userId = user?.id || "guest";
+      const result = await hisabDoService.bulkDeleteTransactions(userId, selectedMatchingIds);
+      if (!result.success) {
+        throw new Error(result.message || "Failed to delete selected transactions");
+      }
+      setStatusMessage({
+        type: "success",
+        text: result.message || `Successfully deleted ${countToDelete} transaction${countToDelete > 1 ? "s" : ""}.`,
+      });
+      // Clear deleted IDs from selection
+      const deletedSet = new Set(selectedMatchingIds);
+      setSelectedIds((prev) => prev.filter((id) => !deletedSet.has(id)));
+      setShowBulkDeleteModal(false);
+      await loadData();
+    } catch (err: any) {
+      console.error("Bulk delete error:", err);
+      setStatusMessage({
+        type: "error",
+        text: err?.message || "Failed to delete selected transactions. Please try again.",
+      });
+      setShowBulkDeleteModal(false);
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Header */}
@@ -284,6 +364,29 @@ export default function TransactionsPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Bulk Delete Button */}
+          <button
+            onClick={() => setShowBulkDeleteModal(true)}
+            disabled={selectedMatchingIds.length === 0 || isBulkDeleting}
+            className={`flex items-center gap-1.5 px-3.5 py-2.5 font-bold text-xs rounded-xl shadow-md transition ${
+              selectedMatchingIds.length === 0
+                ? "bg-slate-800/80 text-slate-500 cursor-not-allowed border border-slate-700/40"
+                : "bg-rose-600 hover:bg-rose-700 text-white cursor-pointer shadow-rose-900/30"
+            }`}
+            title={
+              selectedMatchingIds.length === 0
+                ? "Select transactions using checkboxes to delete"
+                : `Delete ${selectedMatchingIds.length} selected transaction(s)`
+            }
+          >
+            {isBulkDeleting ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Trash2 className="w-4 h-4" />
+            )}
+            <span>Delete Selected{selectedMatchingIds.length > 0 ? ` (${selectedMatchingIds.length})` : ""}</span>
+          </button>
+
           <button
             onClick={() => {
               setModalType("income");
@@ -307,6 +410,33 @@ export default function TransactionsPage() {
           </button>
         </div>
       </div>
+
+      {/* Action Status Alert (Success / Error) */}
+      {statusMessage.type && (
+        <div
+          className={`flex items-center justify-between p-3.5 rounded-xl text-xs font-semibold border transition-all ${
+            statusMessage.type === "success"
+              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+              : "bg-rose-500/10 border-rose-500/30 text-rose-400"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {statusMessage.type === "success" ? (
+              <CheckCircle2 className="w-4 h-4 text-[#00E676] shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-[#E53935] shrink-0" />
+            )}
+            <span>{statusMessage.text}</span>
+          </div>
+          <button
+            onClick={() => setStatusMessage({ type: null, text: "" })}
+            className="p-1 text-slate-400 hover:text-white rounded"
+            aria-label="Dismiss alert"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Summary Filter Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -487,6 +617,32 @@ export default function TransactionsPage() {
         </div>
       </div>
 
+      {/* Bulk Selection Banner (Appears when matching transactions are selected) */}
+      {selectedMatchingIds.length > 0 && (
+        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-rose-400">
+              {selectedMatchingIds.length} transaction{selectedMatchingIds.length > 1 ? "s" : ""} selected
+            </span>
+            <span className="text-slate-600">|</span>
+            <button
+              onClick={() => setSelectedIds((prev) => prev.filter((id) => !filteredTransactionIds.has(id)))}
+              className="text-slate-400 hover:text-white underline transition"
+            >
+              Deselect all
+            </button>
+          </div>
+          <button
+            onClick={() => setShowBulkDeleteModal(true)}
+            disabled={isBulkDeleting}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg shadow transition"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete Selected ({selectedMatchingIds.length})</span>
+          </button>
+        </div>
+      )}
+
       {/* Transactions Table */}
       <div className={`rounded-2xl border overflow-hidden ${
         theme === "dark" ? "bg-[#1E1E1E] border-[#2E2E2E]" : "bg-white border-slate-200 shadow-sm"
@@ -508,6 +664,18 @@ export default function TransactionsPage() {
                 theme === "dark" ? "bg-[#181818] border-slate-800 text-slate-400" : "bg-slate-50 border-slate-200 text-slate-500"
               }`}>
                 <tr>
+                  <th className="py-3 px-3 text-center w-10">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all transactions"
+                      checked={isAllFilteredSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = isSomeFilteredSelected;
+                      }}
+                      onChange={handleToggleSelectAll}
+                      className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-400 cursor-pointer accent-[#00E676]"
+                    />
+                  </th>
                   <th className="py-3 px-4">Date</th>
                   <th className="py-3 px-4">Type</th>
                   <th className="py-3 px-4">Customer / Party</th>
@@ -520,13 +688,30 @@ export default function TransactionsPage() {
               <tbody className={`divide-y ${theme === "dark" ? "divide-slate-800/60" : "divide-slate-100"}`}>
                 {filteredTransactions.map((tx) => {
                   const isPositive = tx.type === "income" || tx.type === "payment_received";
+                  const isSelected = selectedIds.includes(tx.id);
                   return (
                     <tr
                       key={tx.id}
                       className={`transition-colors ${
-                        theme === "dark" ? "hover:bg-slate-800/30" : "hover:bg-slate-50"
+                        isSelected
+                          ? theme === "dark"
+                            ? "bg-slate-800/40 border-l-2 border-emerald-400"
+                            : "bg-emerald-50/50 border-l-2 border-emerald-500"
+                          : theme === "dark"
+                          ? "hover:bg-slate-800/30"
+                          : "hover:bg-slate-50"
                       }`}
                     >
+                      <td className="py-3 px-3 text-center w-10">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select transaction ${tx.description}`}
+                          checked={isSelected}
+                          onChange={() => handleToggleSelect(tx.id)}
+                          className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-400 cursor-pointer accent-[#00E676]"
+                        />
+                      </td>
+
                       <td className="py-3 px-4 text-xs text-slate-400 whitespace-nowrap">
                         {new Date(tx.date).toLocaleDateString("en-US", {
                           month: "short",
@@ -599,6 +784,80 @@ export default function TransactionsPage() {
           </div>
         )}
       </div>
+
+      {/* ================= BULK DELETE CONFIRMATION MODAL ================= */}
+      {showBulkDeleteModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div
+            className={`w-full max-w-md rounded-2xl border p-6 space-y-4 shadow-2xl ${
+              theme === "dark"
+                ? "bg-[#1E1E1E] border-[#303030] text-white"
+                : "bg-white border-slate-200 text-slate-900"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-rose-500">
+                <Trash2 className="w-5 h-5" />
+                <h3 className="text-lg font-bold">Confirm Bulk Deletion</h3>
+              </div>
+              <button
+                onClick={() => !isBulkDeleting && setShowBulkDeleteModal(false)}
+                disabled={isBulkDeleting}
+                className="text-slate-400 hover:text-white transition disabled:opacity-50"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-slate-300">
+              Are you sure you want to delete{" "}
+              <strong className="text-white font-bold">{selectedMatchingIds.length}</strong> selected
+              transaction{selectedMatchingIds.length > 1 ? "s" : ""}? This action cannot be undone.
+            </p>
+
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400 space-y-1">
+              <p className="font-semibold">Selected records to be permanently deleted:</p>
+              <p className="text-[11px] text-slate-400">
+                All selected income, expense, and ledger records matching your current filter will be removed from your account.
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowBulkDeleteModal(false)}
+                disabled={isBulkDeleting}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition disabled:opacity-50 ${
+                  theme === "dark"
+                    ? "border-slate-700 hover:bg-slate-800 text-slate-300"
+                    : "border-slate-300 hover:bg-slate-100 text-slate-700"
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteBulkDelete}
+                disabled={isBulkDeleting || selectedMatchingIds.length === 0}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-[#E53935] hover:bg-rose-600 text-white flex items-center justify-center gap-2 shadow-lg shadow-rose-900/30 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isBulkDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete {selectedMatchingIds.length}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ================= ADD TRANSACTION MODAL ================= */}
       {isModalOpen && (
