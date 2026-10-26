@@ -55,7 +55,6 @@ function LoginForm() {
         return;
       }
 
-      document.cookie = "hisabdo_auth_token=valid-token; path=/; max-age=86400";
       router.replace(redirectUrl);
     } catch (err) {
       setAuthError("Unable to connect to the authentication server.");
@@ -73,8 +72,6 @@ function LoginForm() {
     try {
       const result = await login(demoEmail, demoPass);
       if (result.success) {
-        document.cookie = "hisabdo_auth_token=demo-token; path=/; max-age=86400";
-        document.cookie = "hisabdo_guest=true; path=/; max-age=86400";
         router.replace(redirectUrl);
       } else {
         setAuthError(result.message || "Demo login failed.");

@@ -58,6 +58,7 @@ export default function CustomersPage() {
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -89,6 +90,7 @@ export default function CustomersPage() {
     e.preventDefault();
     if (!formData.name.trim()) return;
     setSubmitting(true);
+    setFormError(null);
     const userId = user?.id || "guest";
     try {
       if (editingCustomer) {
@@ -108,6 +110,8 @@ export default function CustomersPage() {
       setEditingCustomer(null);
       setFormData({ name: "", phone: "", email: "", address: "", opening_balance: 0, notes: "" });
       await loadData();
+    } catch (err: any) {
+      setFormError(err?.message || "Failed to save customer. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -118,6 +122,7 @@ export default function CustomersPage() {
     e.preventDefault();
     if (!paymentModalCustomer || !paymentForm.amount) return;
     setSubmitting(true);
+    setFormError(null);
     const userId = user?.id || "guest";
     try {
       await hisabDoService.addLedgerTransaction(userId, {
@@ -131,6 +136,8 @@ export default function CustomersPage() {
       setPaymentModalCustomer(null);
       setPaymentForm({ amount: "", type: "received", category: "Cash", note: "" });
       await loadData();
+    } catch (err: any) {
+      setFormError(err?.message || "Failed to record payment. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -488,6 +495,11 @@ export default function CustomersPage() {
             </div>
 
             <form onSubmit={handleSaveCustomer} className="space-y-3">
+              {formError && (
+                <div className="p-3 text-xs rounded-xl bg-red-950/50 border border-red-800 text-red-200">
+                  {formError}
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold mb-1">Customer / Party Name *</label>
                 <input
@@ -594,6 +606,11 @@ export default function CustomersPage() {
             </div>
 
             <form onSubmit={handleRecordPayment} className="space-y-3">
+              {formError && (
+                <div className="p-3 text-xs rounded-xl bg-red-950/50 border border-red-800 text-red-200">
+                  {formError}
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold mb-1">Direction *</label>
                 <div className="grid grid-cols-2 gap-2">

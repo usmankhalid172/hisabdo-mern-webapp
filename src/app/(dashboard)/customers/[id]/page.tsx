@@ -69,6 +69,7 @@ export default function CustomerLedgerPage() {
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<LedgerRow | null>(null);
   const [deletingRow, setDeletingRow] = useState<LedgerRow | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Add Income Form (Lene / Wusooli)
   const [incomeForm, setIncomeForm] = useState({
@@ -95,6 +96,7 @@ export default function CustomerLedgerPage() {
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
 
   const loadLedger = useCallback(async () => {
     try {
@@ -126,12 +128,18 @@ export default function CustomerLedgerPage() {
   // Submit Income (+ Lene / Wusooli)
   const handleAddIncome = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!incomeForm.amount || !customer) return;
+    const parsedAmount = Number(incomeForm.amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0 || !customer) {
+      setModalError("Please enter a valid amount greater than zero.");
+      return;
+    }
+    setModalError(null);
     setSubmitting(true);
+    setFormError(null);
     const userId = user?.id || "guest";
     try {
       await hisabDoService.addIncome(userId, {
-        amount: Number(incomeForm.amount),
+        amount: parsedAmount,
         customer_id: customer.id,
         category_id: incomeForm.category,
         description: incomeForm.note || `${incomeForm.category} Income`,
@@ -146,6 +154,13 @@ export default function CustomerLedgerPage() {
         note: "",
       });
       await loadLedger();
+    } catch (err: any) {
+<<<<<<< Updated upstream
+      console.error("Error adding income transaction:", err);
+      setModalError(err?.message || "Failed to add income. Please check your connection and try again.");
+=======
+      setFormError(err?.message || "Failed to record income entry. Please try again.");
+>>>>>>> Stashed changes
     } finally {
       setSubmitting(false);
     }
@@ -154,12 +169,18 @@ export default function CustomerLedgerPage() {
   // Submit Expense (- Dene / Adaigi)
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!expenseForm.amount || !customer) return;
+    const parsedAmount = Number(expenseForm.amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0 || !customer) {
+      setModalError("Please enter a valid amount greater than zero.");
+      return;
+    }
+    setModalError(null);
     setSubmitting(true);
+    setFormError(null);
     const userId = user?.id || "guest";
     try {
       await hisabDoService.addExpense(userId, {
-        amount: Number(expenseForm.amount),
+        amount: parsedAmount,
         customer_id: customer.id,
         category_id: expenseForm.category,
         description: expenseForm.note || `${expenseForm.category} Expense`,
@@ -174,6 +195,13 @@ export default function CustomerLedgerPage() {
         note: "",
       });
       await loadLedger();
+    } catch (err: any) {
+<<<<<<< Updated upstream
+      console.error("Error adding expense transaction:", err);
+      setModalError(err?.message || "Failed to add expense. Please check your connection and try again.");
+=======
+      setFormError(err?.message || "Failed to record expense entry. Please try again.");
+>>>>>>> Stashed changes
     } finally {
       setSubmitting(false);
     }
@@ -384,7 +412,10 @@ export default function CustomerLedgerPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Green + Income Button */}
         <button
-          onClick={() => setIsIncomeModalOpen(true)}
+          onClick={() => {
+            setModalError(null);
+            setIsIncomeModalOpen(true);
+          }}
           className="flex items-center justify-center gap-3 py-4 px-6 rounded-2xl bg-[#2E7D32] hover:bg-[#256628] text-white font-black text-base shadow-lg shadow-emerald-900/30 transition transform active:scale-[0.99]"
         >
           <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
@@ -395,7 +426,10 @@ export default function CustomerLedgerPage() {
 
         {/* Red - Expense Button */}
         <button
-          onClick={() => setIsExpenseModalOpen(true)}
+          onClick={() => {
+            setModalError(null);
+            setIsExpenseModalOpen(true);
+          }}
           className="flex items-center justify-center gap-3 py-4 px-6 rounded-2xl bg-[#C62828] hover:bg-[#A82020] text-white font-black text-base shadow-lg shadow-rose-900/30 transition transform active:scale-[0.99]"
         >
           <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
@@ -682,6 +716,17 @@ export default function CustomerLedgerPage() {
             </div>
 
             <form onSubmit={handleAddIncome} className="space-y-4">
+<<<<<<< Updated upstream
+              {modalError && (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs">
+                  {modalError}
+=======
+              {formError && (
+                <div className="p-3 text-xs rounded-xl bg-red-950/50 border border-red-800 text-red-200">
+                  {formError}
+>>>>>>> Stashed changes
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Amount ({currencySymbol}) *
@@ -774,6 +819,17 @@ export default function CustomerLedgerPage() {
             </div>
 
             <form onSubmit={handleAddExpense} className="space-y-4">
+<<<<<<< Updated upstream
+              {modalError && (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs">
+                  {modalError}
+=======
+              {formError && (
+                <div className="p-3 text-xs rounded-xl bg-red-950/50 border border-red-800 text-red-200">
+                  {formError}
+>>>>>>> Stashed changes
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Amount ({currencySymbol}) *
