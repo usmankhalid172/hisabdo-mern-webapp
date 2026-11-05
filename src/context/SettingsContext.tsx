@@ -1,6 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { mobileDataParityService } from "@/services/mobileDataParityService";
 
 export type LanguageCode = "en" | "ur" | "ur_roman" | "hi" | "ar";
 export type CurrencyCode = "PKR" | "USD" | "AED" | "SAR" | "INR" | "EUR" | "GBP";
@@ -328,6 +330,43 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Keep the web business profile aligned with the profile synced by Flutter.
+  useEffect(() => {
+    let active = true;
+    const loadRemoteProfile = async (userId?: string) => {
+      if (!userId) return;
+      try {
+        const profile = await mobileDataParityService.getBusinessProfile(userId);
+        if (!active || !profile) return;
+        const metadata = profile.metadata || {};
+        const remoteProfile: BusinessProfile = {
+          businessName: profile.business_name || DEFAULT_PROFILE.businessName,
+          ownerName: String(metadata.owner_name || profile.business_name || DEFAULT_PROFILE.ownerName),
+          phone: profile.phone || "",
+          address: String(metadata.address || ""),
+          email: profile.email || "",
+          logoUrl: typeof metadata.logo_url === "string" ? metadata.logo_url : undefined,
+          taxNumber: typeof metadata.tax_number === "string" ? metadata.tax_number : undefined,
+        };
+        setBusinessProfileState(remoteProfile);
+        localStorage.setItem("hisabdo_profile", JSON.stringify(remoteProfile));
+      } catch (error) {
+        console.warn("Business profile fetch failed:", error);
+      }
+    };
+
+    const supabase = createClient();
+    void supabase.auth.getSession().then(({ data }) => loadRemoteProfile(data.session?.user.id));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      void loadRemoteProfile(session?.user.id);
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
   // Sync theme class to document
   useEffect(() => {
     const root = document.documentElement;
@@ -365,6 +404,24 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setBusinessProfileState((prev) => {
       const updated = { ...prev, ...updates };
       localStorage.setItem("hisabdo_profile", JSON.stringify(updated));
+      void createClient().auth.getUser().then(async ({ data, error }) => {
+        if (error || !data.user) return;
+        try {
+          await mobileDataParityService.saveBusinessProfile(data.user.id, {
+            business_name: updated.businessName,
+            phone: updated.phone,
+            email: updated.email,
+            metadata: {
+              owner_name: updated.ownerName,
+              address: updated.address,
+              logo_url: updated.logoUrl,
+              tax_number: updated.taxNumber,
+            },
+          });
+        } catch (saveError) {
+          console.warn("Business profile save failed:", saveError);
+        }
+      });
       return updated;
     });
   };
