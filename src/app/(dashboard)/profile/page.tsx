@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useSettings } from "@/context/SettingsContext";
 import {
   User,
   Mail,
@@ -19,6 +20,7 @@ import {
 
 export default function ProfilePage() {
   const { user, updateProfile, activeBranch } = useAuth();
+  const { theme } = useSettings();
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -77,7 +79,7 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Merchant Profile</h1>
+          <h1 className={`text-2xl font-bold tracking-tight ${theme === "dark" ? "text-white" : "text-slate-900"}`}>Merchant Profile</h1>
           <p className="text-slate-400 text-sm">
             Manage your personal merchant identity, store details, and security credentials
           </p>
@@ -88,7 +90,7 @@ export default function ProfilePage() {
             setIsEditing(!isEditing);
             setStatusMessage(null);
           }}
-          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white rounded-xl text-xs font-semibold transition self-start sm:self-auto"
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition self-start sm:self-auto border ${theme === "dark" ? "bg-slate-900 hover:bg-slate-800 border-slate-700 text-white" : "bg-white hover:bg-slate-100 border-slate-200 text-slate-700 shadow-sm"}`}
         >
           {isEditing ? "Cancel Editing" : "Edit Profile Details"}
         </button>
@@ -113,7 +115,7 @@ export default function ProfilePage() {
       )}
 
       {/* Profile Overview Card */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+      <div className={`rounded-2xl border p-6 space-y-6 ${theme === "dark" ? "bg-[#1E1E1E] border-slate-800" : "bg-white border-slate-200 shadow-sm"}`}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 pb-6 border-b border-slate-800/80">
           <div className="w-20 h-20 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-3xl font-extrabold shadow-inner">
             {user?.name ? user.name.charAt(0).toUpperCase() : "M"}
@@ -121,7 +123,7 @@ export default function ProfilePage() {
 
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <h2 className="text-xl font-bold text-white">{user?.name || "Merchant Owner"}</h2>
+              <h2 className={`text-xl font-bold ${theme === "dark" ? "text-white" : "text-slate-900"}`}>{user?.name || "Merchant Owner"}</h2>
               <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">
                 <ShieldCheck className="w-3 h-3" /> {user?.role || "user"} Account
               </span>
@@ -150,7 +152,7 @@ export default function ProfilePage() {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
-                    className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                    className={`w-full rounded-xl pl-9 pr-3 py-2 text-sm border focus:outline-none focus:border-emerald-500 ${theme === "dark" ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
                   />
                 </div>
               </div>
@@ -166,7 +168,7 @@ export default function ProfilePage() {
                     onChange={(e) =>
                       setFormData({ ...formData, shopName: e.target.value })
                     }
-                    className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                    className={`w-full rounded-xl pl-9 pr-3 py-2 text-sm border focus:outline-none focus:border-emerald-500 ${theme === "dark" ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
                   />
                 </div>
               </div>
@@ -183,7 +185,7 @@ export default function ProfilePage() {
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     placeholder="03001234567"
-                    className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                    className={`w-full rounded-xl pl-9 pr-3 py-2 text-sm border focus:outline-none focus:border-emerald-500 ${theme === "dark" ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
                   />
                 </div>
               </div>
@@ -197,7 +199,7 @@ export default function ProfilePage() {
                   <input
                     disabled
                     value={user?.email || ""}
-                    className="w-full bg-slate-950/50 border border-slate-800 text-slate-500 rounded-xl pl-9 pr-3 py-2 text-sm cursor-not-allowed"
+                    className={`w-full rounded-xl pl-9 pr-3 py-2 text-sm border cursor-not-allowed ${theme === "dark" ? "bg-slate-950/50 border-slate-800 text-slate-500" : "bg-slate-100 border-slate-200 text-slate-400"}`}
                   />
                 </div>
               </div>
@@ -227,30 +229,30 @@ export default function ProfilePage() {
           </form>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3.5 space-y-1">
+            <div className={`border rounded-xl p-3.5 space-y-1 ${theme === "dark" ? "bg-slate-950/60 border-slate-800/80" : "bg-slate-50 border-slate-200"}`}>
               <span className="text-[11px] font-semibold text-slate-400 block">Full Name</span>
-              <p className="text-sm font-bold text-white flex items-center gap-2">
+              <p className={`text-sm font-bold flex items-center gap-2 ${theme === "dark" ? "text-white" : "text-slate-900"}`}>
                 <User className="w-4 h-4 text-emerald-400" /> {user?.name || "N/A"}
               </p>
             </div>
 
-            <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3.5 space-y-1">
+            <div className={`border rounded-xl p-3.5 space-y-1 ${theme === "dark" ? "bg-slate-950/60 border-slate-800/80" : "bg-slate-50 border-slate-200"}`}>
               <span className="text-[11px] font-semibold text-slate-400 block">Email Address</span>
-              <p className="text-sm font-bold text-white flex items-center gap-2">
+              <p className={`text-sm font-bold flex items-center gap-2 ${theme === "dark" ? "text-white" : "text-slate-900"}`}>
                 <Mail className="w-4 h-4 text-emerald-400" /> {user?.email || "N/A"}
               </p>
             </div>
 
-            <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3.5 space-y-1">
+            <div className={`border rounded-xl p-3.5 space-y-1 ${theme === "dark" ? "bg-slate-950/60 border-slate-800/80" : "bg-slate-50 border-slate-200"}`}>
               <span className="text-[11px] font-semibold text-slate-400 block">Shop / Business</span>
-              <p className="text-sm font-bold text-white flex items-center gap-2">
+              <p className={`text-sm font-bold flex items-center gap-2 ${theme === "dark" ? "text-white" : "text-slate-900"}`}>
                 <Store className="w-4 h-4 text-emerald-400" /> {user?.shopName || "Merchant Store"}
               </p>
             </div>
 
-            <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3.5 space-y-1">
+            <div className={`border rounded-xl p-3.5 space-y-1 ${theme === "dark" ? "bg-slate-950/60 border-slate-800/80" : "bg-slate-50 border-slate-200"}`}>
               <span className="text-[11px] font-semibold text-slate-400 block">Phone Number</span>
-              <p className="text-sm font-bold text-white flex items-center gap-2">
+              <p className={`text-sm font-bold flex items-center gap-2 ${theme === "dark" ? "text-white" : "text-slate-900"}`}>
                 <Phone className="w-4 h-4 text-emerald-400" /> {user?.phone || "Not Set"}
               </p>
             </div>
@@ -259,28 +261,28 @@ export default function ProfilePage() {
       </div>
 
       {/* Security & Authentication Tokens Card */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-        <h2 className="text-base font-bold text-white flex items-center gap-2">
+      <div className={`rounded-2xl border p-6 space-y-4 ${theme === "dark" ? "bg-[#1E1E1E] border-slate-800" : "bg-white border-slate-200 shadow-sm"}`}>
+        <h2 className={`text-base font-bold flex items-center gap-2 ${theme === "dark" ? "text-white" : "text-slate-900"}`}>
           <Key className="w-4 h-4 text-emerald-400" />
           Security & Session Information
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl">
+          <div className={`p-3 border rounded-xl ${theme === "dark" ? "bg-slate-950/60 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
             <span className="text-slate-500 block text-[10px] uppercase font-bold">Session Security</span>
             <span className="font-semibold text-emerald-400 mt-1 block">
               HTTP-Only JWT Cookie
             </span>
           </div>
 
-          <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl">
+          <div className={`p-3 border rounded-xl ${theme === "dark" ? "bg-slate-950/60 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
             <span className="text-slate-500 block text-[10px] uppercase font-bold">Access Token Lifetime</span>
-            <span className="font-semibold text-white mt-1 block">24 Hours (Rolling Refresh)</span>
+            <span className={`font-semibold mt-1 block ${theme === "dark" ? "text-white" : "text-slate-900"}`}>24 Hours (Rolling Refresh)</span>
           </div>
 
-          <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl">
+          <div className={`p-3 border rounded-xl ${theme === "dark" ? "bg-slate-950/60 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
             <span className="text-slate-500 block text-[10px] uppercase font-bold">Authentication Engine</span>
-            <span className="font-semibold text-white mt-1 block">Jose HS256 Standard</span>
+            <span className={`font-semibold mt-1 block ${theme === "dark" ? "text-white" : "text-slate-900"}`}>Jose HS256 Standard</span>
           </div>
         </div>
       </div>

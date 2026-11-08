@@ -116,7 +116,7 @@ export default function ExpensesPage() {
           className="flex items-center gap-2 px-4 py-2.5 bg-[#E53935] hover:bg-rose-600 text-white font-bold text-xs rounded-xl shadow-md transition self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
-          <span>+ {t("addExpense")}</span>
+          <span>{t("addExpense")}</span>
         </button>
       </div>
 
