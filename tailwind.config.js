@@ -32,17 +32,47 @@ module.exports = {
           borderLight: '#E2E8F0',
         }
       },
-      fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-        urdu: ['Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'serif'],
-        arabic: ['Noto Sans Arabic', 'sans-serif'],
+
+      // NEW: semantic tokens (driven by CSS variables, so light/dark switch automatically)
+      primary: {
+        DEFAULT: 'rgb(var(--primary) / <alpha-value>)',
+        hover: 'rgb(var(--primary-hover) / <alpha-value>)',
       },
-      boxShadow: {
-        'glow-emerald': '0 0 20px -3px rgba(0, 230, 118, 0.35)',
-        'glow-indigo': '0 0 25px -3px rgba(26, 35, 126, 0.45)',
-        'glow-crimson': '0 0 20px -3px rgba(229, 57, 53, 0.35)',
-      }
+      success: 'rgb(var(--success) / <alpha-value>)',
+      danger: 'rgb(var(--danger) / <alpha-value>)',
+      warning: 'rgb(var(--warning) / <alpha-value>)',
+      info: 'rgb(var(--info) / <alpha-value>)',
+      surface: {
+        DEFAULT: 'var(--card-bg)',
+        muted: 'var(--surface-muted)',
+        raised: 'var(--surface-raised)',
+      },
+    },
+    fontFamily: { /* ...unchanged... */ },
+    borderRadius: {
+      control: 'var(--radius-control)',
+      card: 'var(--radius-card)',
+      dialog: 'var(--radius-dialog)',
+    },
+    boxShadow: {
+      'glow-emerald': '0 0 20px -3px rgba(0, 230, 118, 0.35)',
+      'glow-indigo': '0 0 25px -3px rgba(26, 35, 126, 0.45)',
+      'glow-crimson': '0 0 20px -3px rgba(229, 57, 53, 0.35)',
+      card: 'var(--shadow-card)',
+      dialog: 'var(--shadow-dialog)',
     },
   },
+
+  fontFamily: {
+    sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+    urdu: ['Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'serif'],
+    arabic: ['Noto Sans Arabic', 'sans-serif'],
+  },
+  boxShadow: {
+    'glow-emerald': '0 0 20px -3px rgba(0, 230, 118, 0.35)',
+    'glow-indigo': '0 0 25px -3px rgba(26, 35, 126, 0.45)',
+    'glow-crimson': '0 0 20px -3px rgba(229, 57, 53, 0.35)',
+  },
+
   plugins: [],
 };

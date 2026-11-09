@@ -9,6 +9,19 @@
     --text-primary: #1E293B;
     --text-secondary: #64748B;
     --border-color: #E2E8F0;
+    --primary: 26 35 126;    /* #1A237E */
+    --primary-hover: 13 71 161; /* #0D47A1 */
+    --success: 22 163 74;
+    --danger: 229 57 53;  /* #E53935 */
+    --warning: 245 158 11;
+    --info: 13 71 161;
+    --surface-muted: #F1F5F9;
+    --surface-raised: #FFFFFF;
+    --radius-control: 0.75rem;
+    --radius-card: 1rem;
+    --radius-dialog: 1.25rem;
+    --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+    --shadow-dialog: 0 20px 50px -12px rgba(0, 0, 0, 0.25);
   }
 
   .dark {
@@ -17,8 +30,23 @@
     --text-primary: #F8FAFC;
     --text-secondary: #94A3B8;
     --border-color: #2E2E2E;
+    --primary: 121 134 203;   /* lighter so it shows on dark */
+    --primary-hover: 159 168 218;
+    --success: 74 222 128;
+    --danger: 248 113 113;
+    --warning: 251 191 36;
+    --info: 96 165 250;
+    --surface-muted: #262626;
+    --surface-raised: #262626;
+    --shadow-card: 0 4px 25px -2px rgba(0, 0, 0, 0.4);
+    --shadow-dialog: 0 20px 50px -12px rgba(0, 0, 0, 0.6);
   }
 
+  :focus-visible {
+    outline: 2px solid rgb(var(--primary));
+    outline-offset: 2px;
+  }
+    
   body {
     background-color: var(--bg-main);
     color: var(--text-primary);
@@ -36,12 +64,12 @@
 .hisab-card {
   background-color: var(--card-bg);
   border: 1px solid var(--border-color);
-  border-radius: 1rem;
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
 }
 
 .dark .hisab-card {
-  box-shadow: 0 4px 25px -2px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-card);
 }
 
 /* Custom Scrollbars */
@@ -65,12 +93,10 @@
 
 /* Button & interactive effects */
 .btn-primary {
-  background: linear-gradient(135deg, #1A237E 0%, #0D47A1 100%);
-  color: #FFFFFF;
-  font-weight: 600;
-  border-radius: 0.75rem;
-  transition: all 0.2s ease;
+  background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--primary-hover)) 100%);
+  border-radius: var(--radius-control);
 }
+
 .btn-primary:hover {
   opacity: 0.95;
   box-shadow: 0 8px 20px -4px rgba(26, 35, 126, 0.4);
@@ -84,6 +110,7 @@
   border-radius: 0.75rem;
   transition: all 0.2s ease;
 }
+
 .btn-accent:hover {
   background: #00C853;
   box-shadow: 0 8px 20px -4px rgba(0, 230, 118, 0.4);
@@ -91,12 +118,10 @@
 }
 
 .btn-crimson {
-  background: #E53935;
-  color: #FFFFFF;
-  font-weight: 600;
-  border-radius: 0.75rem;
-  transition: all 0.2s ease;
+  background: rgb(var(--danger));
+  border-radius: var(--radius-control);
 }
+
 .btn-crimson:hover {
   background: #D32F2F;
   box-shadow: 0 8px 20px -4px rgba(229, 57, 53, 0.4);
