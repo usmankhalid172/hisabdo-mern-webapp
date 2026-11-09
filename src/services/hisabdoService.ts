@@ -968,7 +968,7 @@ export class HisabDoService {
 
   generateWhatsAppReminderUrl(params: {
     customerName: string;
-    phone: string;
+    phone?: string | null;
     currency: string;
     netBalance: number;
     shopName: string;
@@ -977,26 +977,30 @@ export class HisabDoService {
     totalPurchases?: number;
     totalPayments?: number;
   }): string {
-    let cleanPhone = params.phone.replace(/[^0-9]/g, "");
+    const rawPhone = (params.phone || "").trim();
+    if (!rawPhone) return "";
+    let cleanPhone = rawPhone.replace(/[^0-9]/g, "");
     if (cleanPhone.startsWith("0")) {
       cleanPhone = "92" + cleanPhone.slice(1);
     }
     const message = this.getReminderMessage(params);
-    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+    return cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}` : "";
   }
 
   generateSmsReminderUrl(params: {
     customerName: string;
-    phone: string;
+    phone?: string | null;
     currency: string;
     netBalance: number;
     shopName: string;
     shopPhone?: string;
     language?: "en" | "ur" | "ur-Roman";
   }): string {
-    const cleanPhone = params.phone.replace(/[^0-9+]/g, "");
+    const rawPhone = (params.phone || "").trim();
+    if (!rawPhone) return "";
+    const cleanPhone = rawPhone.replace(/[^0-9+]/g, "");
     const message = this.getReminderMessage(params);
-    return `sms:${cleanPhone}?body=${encodeURIComponent(message)}`;
+    return cleanPhone ? `sms:${cleanPhone}?body=${encodeURIComponent(message)}` : "";
   }
 
   // ==================== STATEMENT PDF GENERATOR ====================

@@ -275,7 +275,7 @@ export default function TransactionsPage() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             {t("transactions")}
           </h1>
           <p className="text-sm text-slate-400">
@@ -406,7 +406,7 @@ export default function TransactionsPage() {
         </div>
 
         {/* Secondary Filters: Date Range, Customer, Category */}
-        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-800/40 text-xs">
+        <div className={`flex flex-wrap items-center gap-3 pt-2 border-t text-xs ${theme === "dark" ? "border-slate-800/40" : "border-slate-200"}`}>
           {/* Date Range Selector */}
           <div className="flex items-center gap-1.5">
             <span className="text-slate-400 font-medium">Period:</span>
@@ -566,12 +566,12 @@ export default function TransactionsPage() {
                         )}
                       </td>
 
-                      <td className="py-3 px-4 text-xs text-slate-300 max-w-xs truncate">
+                      <td className={`py-3 px-4 text-xs max-w-xs truncate ${theme === "dark" ? "text-slate-300" : "text-slate-700 font-medium"}`}>
                         {tx.description}
                       </td>
 
                       <td className="py-3 px-4 text-xs text-slate-400 whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded-md bg-slate-800/40 border border-slate-700/50">
+                        <span className={`px-2 py-0.5 rounded-md border text-[11px] font-semibold ${theme === "dark" ? "bg-slate-800/40 border-slate-700/50 text-slate-300" : "bg-slate-100 border-slate-200 text-slate-700"}`}>
                           {tx.category}
                         </span>
                       </td>

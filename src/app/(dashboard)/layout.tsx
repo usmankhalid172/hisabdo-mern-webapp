@@ -272,17 +272,33 @@ export default function DashboardLayout({
               )}
             </button>
 
-            <Link
-              href="/customers"
-              className="px-3.5 py-1.5 text-xs font-semibold bg-[#00E676] hover:bg-[#00C853] text-[#0B0F17] rounded-xl transition-all shadow-sm flex items-center gap-1.5"
-            >
-              + {t("addCustomer")}
-            </Link>
+            {pathname.startsWith("/expenses") ? (
+              <Link
+                href="/expenses"
+                className="px-3.5 py-1.5 text-xs font-semibold bg-[#E53935] hover:bg-rose-600 text-white rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+              >
+                + {t("addExpense")}
+              </Link>
+            ) : pathname.startsWith("/invoices") ? (
+              <Link
+                href="/invoices"
+                className="px-3.5 py-1.5 text-xs font-semibold bg-[#1A237E] hover:bg-indigo-700 text-white rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+              >
+                + Create Invoice
+              </Link>
+            ) : (
+              <Link
+                href="/customers"
+                className="px-3.5 py-1.5 text-xs font-semibold bg-[#00E676] hover:bg-[#00C853] text-[#0B0F17] rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+              >
+                + {t("addCustomer")}
+              </Link>
+            )}
           </div>
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto pb-24 md:pb-8">
+        <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto pb-28 md:pb-16">
           {children}
         </main>
 
