@@ -1,14 +1,7 @@
 "use client";
 
 import React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "./Dialog"; // Make sure the path is correct based on your folder structure
+import Dialog from "./Dialog";
 
 export interface ConfirmDialogProps {
   isOpen: boolean;
@@ -19,6 +12,7 @@ export interface ConfirmDialogProps {
   isLoading?: boolean;
   confirmText?: string;
   cancelText?: string;
+  className?: string;
 }
 
 export default function ConfirmDialog({
@@ -30,17 +24,16 @@ export default function ConfirmDialog({
   isLoading = false,
   confirmText = "Confirm",
   cancelText = "Cancel",
+  className = "",
 }: ConfirmDialogProps) {
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="bg-surface border-border rounded-card shadow-card">
-        <DialogHeader>
-          <DialogTitle className="text-foreground">{title}</DialogTitle>
-          <DialogDescription className="text-muted-foreground">
-            {message}
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter className="bg-background/50 border-border gap-2">
+    <Dialog
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+      className={className}
+      footerActions={
+        <>
           <button
             onClick={onClose}
             disabled={isLoading}
@@ -55,8 +48,10 @@ export default function ConfirmDialog({
           >
             {isLoading ? "Processing..." : confirmText}
           </button>
-        </DialogFooter>
-      </DialogContent>
+        </>
+      }
+    >
+      <p>{message}</p>
     </Dialog>
   );
 }
