@@ -21,11 +21,17 @@ export function ErrorState({
       role="alert"
       className={`flex flex-col items-center justify-center gap-3 p-8 text-center ${className}`}
     >
-      <h3 className="text-lg font-semibold text-[rgb(var(--danger))]">
+      <h3
+        className="text-lg font-semibold"
+        style={{ color: 'rgb(var(--danger))' }}
+      >
         {title}
       </h3>
 
-      <p className="max-w-md text-sm text-[var(--text-secondary)]">
+      <p
+        className="max-w-md text-sm"
+        style={{ color: 'var(--text-secondary)' }}
+      >
         {message}
       </p>
 
@@ -35,7 +41,8 @@ export function ErrorState({
         <button
           type="button"
           onClick={onRetry}
-          className="rounded-control bg-[rgb(var(--primary))] px-4 py-2 text-sm font-medium text-[var(--card-bg)] hover:bg-[rgb(var(--primary-hover))] focus-visible:outline-2 focus-visible:outline-offset-2"
+          className="btn-primary rounded-control px-4 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
+          style={{ color: 'var(--card-bg)' }}
         >
           Try again
         </button>

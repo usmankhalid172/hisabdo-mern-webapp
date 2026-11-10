@@ -21,17 +21,27 @@ export function EmptyState({
     >
       <div
         aria-hidden="true"
-        className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-muted text-[var(--text-secondary)]"
+        className="flex h-12 w-12 items-center justify-center rounded-full"
+        style={{
+          backgroundColor: 'var(--surface-muted)',
+          color: 'var(--text-secondary)',
+        }}
       >
-        <span className="text-2xl">∅</span>
+        <span className="text-2xl">&#8709;</span>
       </div>
 
-      <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+      <h3
+        className="text-lg font-semibold"
+        style={{ color: 'var(--text-primary)' }}
+      >
         {title}
       </h3>
 
       {message && (
-        <p className="max-w-md text-sm text-[var(--text-secondary)]">
+        <p
+          className="max-w-md text-sm"
+          style={{ color: 'var(--text-secondary)' }}
+        >
           {message}
         </p>
       )}

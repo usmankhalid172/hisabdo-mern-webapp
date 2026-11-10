@@ -10,7 +10,7 @@ export function Card({
 }: CardProps) {
   return (
     <div
-      className={`bg-surface rounded-card shadow-card border border-[var(--border-color)] ${className}`}
+      className={`hisab-card ${className}`}
       {...props}
     >
       {children}
