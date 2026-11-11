@@ -155,7 +155,7 @@ export function IncomeExpenseChart({
                 x2={600 - PADDING_RIGHT}
                 y1={y}
                 y2={y}
-                stroke="var(--border-color)"
+                className="stroke-border"
                 strokeWidth={1}
                 strokeDasharray={frac === 0 ? undefined : '2 4'}
               />
@@ -190,7 +190,7 @@ export function IncomeExpenseChart({
                 width={barWidth}
                 height={Math.max(p.incomeHeight, 1)}
                 rx={3}
-                fill="rgb(var(--success))"
+                className="fill-success"
               />
               <rect
                 x={expenseX}
@@ -198,7 +198,7 @@ export function IncomeExpenseChart({
                 width={barWidth}
                 height={Math.max(p.expenseHeight, 1)}
                 rx={3}
-                fill="rgb(var(--danger))"
+                className="fill-danger"
               />
               <text
                 x={p.x + p.groupWidth / 2}
