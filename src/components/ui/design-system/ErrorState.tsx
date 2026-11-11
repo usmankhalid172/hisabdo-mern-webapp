@@ -21,17 +21,11 @@ export function ErrorState({
       role="alert"
       className={`flex flex-col items-center justify-center gap-3 p-8 text-center ${className}`}
     >
-      <h3
-        className="text-lg font-semibold"
-        style={{ color: 'rgb(var(--danger))' }}
-      >
+      <h3 className="text-lg font-semibold text-danger">
         {title}
       </h3>
 
-      <p
-        className="max-w-md text-sm"
-        style={{ color: 'var(--text-secondary)' }}
-      >
+      <p className="max-w-md text-sm text-secondary">
         {message}
       </p>
 

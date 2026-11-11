@@ -17,18 +17,9 @@ export function LoadingState({
         aria-label={message}
         className={`animate-pulse space-y-3 p-6 ${className}`}
       >
-        <div
-          className="h-5 w-1/3 rounded-control"
-          style={{ backgroundColor: 'var(--surface-muted)' }}
-        />
-        <div
-          className="h-4 w-full rounded-control"
-          style={{ backgroundColor: 'var(--surface-muted)' }}
-        />
-        <div
-          className="h-4 w-2/3 rounded-control"
-          style={{ backgroundColor: 'var(--surface-muted)' }}
-        />
+        <div className="h-5 w-1/3 rounded-control bg-surface-muted" />
+        <div className="h-4 w-full rounded-control bg-surface-muted" />
+        <div className="h-4 w-2/3 rounded-control bg-surface-muted" />
       </div>
     );
   }
@@ -41,17 +32,10 @@ export function LoadingState({
     >
       <div
         aria-hidden="true"
-        className="h-8 w-8 animate-spin rounded-full border-4"
-        style={{
-          borderColor: 'var(--border-color)',
-          borderTopColor: 'rgb(var(--primary))',
-        }}
+        className="h-8 w-8 animate-spin rounded-full border-4 border-primary"
       />
 
-      <p
-        className="text-sm"
-        style={{ color: 'var(--text-secondary)' }}
-      >
+      <p className="text-sm text-secondary">
         {message}
       </p>
     </div>

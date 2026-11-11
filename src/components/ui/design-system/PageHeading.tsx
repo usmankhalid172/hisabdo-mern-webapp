@@ -19,18 +19,12 @@ export function PageHeading({
       className={`flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between ${className}`}
     >
       <div className="space-y-1">
-        <h1
-          className="text-2xl font-bold"
-          style={{ color: 'var(--text-primary)' }}
-        >
+        <h1 className="text-2xl font-bold text-primary">
           {title}
         </h1>
 
         {description && (
-          <p
-            className="text-sm"
-            style={{ color: 'var(--text-secondary)' }}
-          >
+          <p className="text-sm text-secondary">
             {description}
           </p>
         )}
