@@ -1,4 +1,3 @@
-
 import type { HTMLAttributes } from 'react';
 
 type CardHeaderProps = HTMLAttributes<HTMLDivElement> & {
@@ -13,19 +12,14 @@ export function CardHeader({
   ...props
 }: CardHeaderProps) {
   const variantStyles = {
-    default: 'border-b',
+    default: 'border-b border-primary/20',
     borderless: '',
   };
 
   return (
     <div
       className={`p-4 ${variantStyles[variant]} ${className}`}
-      style={{
-        ...(variant === 'default'
-          ? { borderColor: 'var(--border-color)' }
-          : {}),
-        ...style,
-      }}
+      style={style}
       {...props}
     >
       {children}

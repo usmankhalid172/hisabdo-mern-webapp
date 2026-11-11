@@ -1,4 +1,3 @@
-
 import type { ReactNode } from 'react';
 
 type ErrorStateProps = {
@@ -35,8 +34,7 @@ export function ErrorState({
         <button
           type="button"
           onClick={onRetry}
-          className="btn-primary rounded-control px-4 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
-          style={{ color: 'var(--card-bg)' }}
+          className="btn-primary rounded-control px-4 py-2 text-sm font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2"
         >
           Try again
         </button>
