@@ -40,6 +40,13 @@ import {
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/design-system/Card";
+import { PageHeading } from "@/components/ui/design-system/PageHeading";
+import { LoadingState } from "@/components/ui/design-system/LoadingState";
+import { EmptyState } from "@/components/ui/design-system/EmptyState";
+import { ErrorState } from "@/components/ui/design-system/ErrorState";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import {
@@ -333,147 +340,112 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* ================= 1. REBUILT MODERN HEADER & QUICK ACTIONS ================= */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-2 border-b border-slate-200 dark:border-slate-800/80">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-              Dashboard
-            </h1>
-            <span className="hidden sm:inline-flex items-center ps-2.5 pe-2.5 py-0.5 rounded-full text-[10px] font-bold bg-success/10 text-success border border-success/20">
-              Live Cloud Sync
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Real-time merchant ledger, cash flow performance, and customer khata balances.
-          </p>
-        </div>
+      {/* ================= 1. REBUILT MODERN HEADER & QUICK ACTIONS (MERGED DESIGN SYSTEM) ================= */}
+      <div className="pb-2 border-b border-slate-200 dark:border-slate-800/80">
+        <PageHeading
+          title="Dashboard"
+          description="Real-time merchant ledger, cash flow performance, and customer khata balances."
+          action={
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="green" className="hidden sm:inline-flex">
+                Live Cloud Sync
+              </Badge>
 
-        {/* Global Desktop Quick Actions */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Date Indicator */}
-          <div className="flex items-center gap-1.5 ps-3 pe-3 py-2 rounded-control hisab-card text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-card">
-            <Calendar className="w-3.5 h-3.5 text-primary" />
-            <span>{new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-          </div>
+              {/* Date Indicator */}
+              <div className="flex items-center gap-1.5 ps-3 pe-3 py-2 rounded-control hisab-card text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-card">
+                <Calendar className="w-3.5 h-3.5 text-primary" />
+                <span>{new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+              </div>
 
-          <button
-            type="button"
-            onClick={() => setActiveModal("income")}
-            className="btn-accent ps-3.5 pe-3.5 py-2 rounded-control text-xs font-bold inline-flex items-center gap-1.5 shadow-card hover:opacity-90 active:scale-[0.98] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Record Income</span>
-          </button>
+              <Button
+                variant="accent"
+                size="sm"
+                icon={Plus}
+                onClick={() => setActiveModal("income")}
+              >
+                Record Income
+              </Button>
 
-          <button
-            type="button"
-            onClick={() => setActiveModal("expense")}
-            className="btn-crimson ps-3.5 pe-3.5 py-2 rounded-control text-xs font-bold text-white inline-flex items-center gap-1.5 shadow-card hover:opacity-90 active:scale-[0.98] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
-          >
-            <Minus className="w-3.5 h-3.5" />
-            <span>Record Expense</span>
-          </button>
+              <Button
+                variant="danger"
+                size="sm"
+                icon={Minus}
+                onClick={() => setActiveModal("expense")}
+              >
+                Record Expense
+              </Button>
 
-          <button
-            type="button"
-            onClick={() => setActiveModal("calculator")}
-            className="hisab-card ps-3.5 pe-3.5 py-2 rounded-control text-xs font-semibold text-slate-700 dark:text-slate-300 inline-flex items-center gap-1.5 shadow-card hover:bg-surface-muted active:scale-[0.98] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            title="Open Retail & Percentage Calculator"
-          >
-            <Calculator className="w-3.5 h-3.5 text-warning" />
-            <span className="hidden sm:inline">Calculator</span>
-          </button>
-        </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={Calculator}
+                onClick={() => setActiveModal("calculator")}
+                title="Open Retail & Percentage Calculator"
+              >
+                Calculator
+              </Button>
+            </div>
+          }
+        />
       </div>
 
-      {/* ================= 2. REBUILT 5 SUMMARY CARDS (INCOME, EXPENSE, PROFIT, RECEIVABLES, PAYABLES) ================= */}
+      {/* ================= 2. REBUILT 5 SUMMARY CARDS (MERGED DESIGN SYSTEM) ================= */}
       {isLoading ? (
         /* Loading Skeleton State: 5 cards preventing misleading zeroes */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4" aria-busy="true" aria-label="Loading summary metrics">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="hisab-card p-5 rounded-card shadow-card animate-pulse space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="h-3.5 w-24 bg-surface-muted rounded-control" />
-                <div className="h-8 w-8 bg-surface-muted rounded-control" />
-              </div>
-              <div className="space-y-1.5 mt-2">
-                <div className="h-7 w-28 bg-surface-muted rounded-control" />
-                <div className="h-3 w-32 bg-surface-muted rounded-control" />
-              </div>
-              <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-                <div className="h-3 w-16 bg-surface-muted rounded-control" />
-                <div className="h-3 w-10 bg-surface-muted rounded-control" />
-              </div>
-            </div>
+            <Card key={i} className="shadow-card">
+              <LoadingState variant="skeleton" message="Loading summary metrics" className="p-5" />
+            </Card>
           ))}
         </div>
       ) : loadError ? (
         /* Error State with Retry Action */
-        <div className="hisab-card p-6 rounded-card shadow-card border border-danger/30 bg-danger/5 space-y-3">
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="p-2.5 rounded-control bg-danger/10 text-danger shrink-0">
-              <AlertCircle className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-danger">Unable to Load Dashboard Data</h3>
-              <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">{loadError}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 pt-1 ps-1">
-            <button
-              type="button"
-              onClick={() => loadData()}
-              className="btn-primary ps-4 pe-4 py-2 text-xs font-bold text-white rounded-control inline-flex items-center gap-2 transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Retry Loading</span>
-            </button>
-          </div>
-        </div>
+        <Card className="shadow-card border-danger/30 bg-danger/5">
+          <ErrorState
+            title="Unable to Load Dashboard Data"
+            message={loadError}
+            onRetry={loadData}
+          />
+        </Card>
       ) : (
         /* Actual Financial Summary Cards */
         <div className="space-y-3">
           {/* Empty State Banner if merchant has zero transaction data */}
           {isDataEmpty && (
-            <div className="hisab-card p-4 rounded-card shadow-card border border-info/20 bg-info/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-control bg-info/10 text-info shrink-0">
-                  <Receipt className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">Welcome to your HisabDo Ledger</h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    No transactions recorded yet. Record your first sale or add customer khata to see live analytics.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setActiveModal("income")}
-                  className="btn-accent ps-3 pe-3 py-1.5 text-xs font-bold rounded-control inline-flex items-center gap-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>First Sale</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveModal("customer")}
-                  className="btn-primary ps-3 pe-3 py-1.5 text-xs font-bold rounded-control inline-flex items-center gap-1.5 text-white"
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  <span>Add Customer</span>
-                </button>
-              </div>
-            </div>
+            <Card className="shadow-card border-info/20 bg-info/5">
+              <EmptyState
+                title="Welcome to your HisabDo Ledger"
+                message="No transactions recorded yet. Record your first sale or add customer khata to see live analytics."
+                action={
+                  <div className="flex items-center justify-center gap-2">
+                    <Button
+                      variant="accent"
+                      size="sm"
+                      icon={Plus}
+                      onClick={() => setActiveModal("income")}
+                    >
+                      First Sale
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon={Users}
+                      onClick={() => setActiveModal("customer")}
+                    >
+                      Add Customer
+                    </Button>
+                  </div>
+                }
+              />
+            </Card>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             {/* 1. Total Income Summary Card */}
-            <div
+            <Card
               onClick={() => router.push("/transactions?type=income")}
-              className="hisab-card p-5 rounded-card shadow-card cursor-pointer hover:shadow-md hover:border-success/40 transition-all group flex flex-col justify-between"
+              className="p-5 rounded-card shadow-card cursor-pointer hover:shadow-md hover:border-success/40 transition-all group flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between">
@@ -494,20 +466,18 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px]">
-                <span className="font-semibold ps-2 pe-2 py-0.5 rounded-full text-[10px] bg-success/10 text-success border border-success/20">
-                  Inflow
-                </span>
+                <Badge variant="green">Inflow</Badge>
                 <span className="text-success font-bold group-hover:underline inline-flex items-center gap-0.5">
                   <span>View</span>
                   <ArrowRight className="w-3 h-3" />
                 </span>
               </div>
-            </div>
+            </Card>
 
             {/* 2. Total Expenses Summary Card */}
-            <div
+            <Card
               onClick={() => router.push("/transactions?type=expense")}
-              className="hisab-card p-5 rounded-card shadow-card cursor-pointer hover:shadow-md hover:border-danger/40 transition-all group flex flex-col justify-between"
+              className="p-5 rounded-card shadow-card cursor-pointer hover:shadow-md hover:border-danger/40 transition-all group flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between">
@@ -528,18 +498,16 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px]">
-                <span className="font-semibold ps-2 pe-2 py-0.5 rounded-full text-[10px] bg-danger/10 text-danger border border-danger/20">
-                  Outflow
-                </span>
+                <Badge variant="red">Outflow</Badge>
                 <span className="text-danger font-bold group-hover:underline inline-flex items-center gap-0.5">
                   <span>View</span>
                   <ArrowRight className="w-3 h-3" />
                 </span>
               </div>
-            </div>
+            </Card>
 
             {/* 3. Net Profit Summary Card */}
-            <div className="hisab-card p-5 rounded-card shadow-card transition-all hover:shadow-md flex flex-col justify-between">
+            <Card className="p-5 rounded-card shadow-card transition-all hover:shadow-md flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
@@ -563,25 +531,19 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px]">
-                <span
-                  className={`font-semibold ps-2 pe-2 py-0.5 rounded-full text-[10px] border ${
-                    totalProfit >= 0
-                      ? "bg-success/10 text-success border-success/20"
-                      : "bg-danger/10 text-danger border-danger/20"
-                  }`}
-                >
+                <Badge variant={totalProfit >= 0 ? "green" : "red"}>
                   {totalProfit >= 0 ? "Net Positive" : "Deficit"}
-                </span>
+                </Badge>
                 <span className="text-slate-400 text-[10px] truncate">
                   {totalProfit >= 0 ? "Surplus" : "Operating loss"}
                 </span>
               </div>
-            </div>
+            </Card>
 
             {/* 4. Khata Receivables Summary Card */}
-            <div
+            <Card
               onClick={() => router.push("/customers")}
-              className="hisab-card p-5 rounded-card shadow-card cursor-pointer hover:shadow-md hover:border-primary/40 transition-all group flex flex-col justify-between"
+              className="p-5 rounded-card shadow-card cursor-pointer hover:shadow-md hover:border-primary/40 transition-all group flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between">
@@ -604,20 +566,18 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px]">
-                <span className="font-semibold ps-2 pe-2 py-0.5 rounded-full text-[10px] bg-primary/10 text-primary border border-primary/20">
-                  To Collect
-                </span>
+                <Badge variant="purple">To Collect</Badge>
                 <span className="text-primary font-bold group-hover:underline inline-flex items-center gap-0.5">
                   <span>Parties</span>
                   <ArrowRight className="w-3 h-3" />
                 </span>
               </div>
-            </div>
+            </Card>
 
             {/* 5. Total Payables Summary Card */}
-            <div
+            <Card
               onClick={() => router.push("/vendors")}
-              className="hisab-card p-5 rounded-card shadow-card cursor-pointer hover:shadow-md hover:border-warning/40 transition-all group flex flex-col justify-between"
+              className="p-5 rounded-card shadow-card cursor-pointer hover:shadow-md hover:border-warning/40 transition-all group flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between">
@@ -640,15 +600,13 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px]">
-                <span className="font-semibold ps-2 pe-2 py-0.5 rounded-full text-[10px] bg-warning/10 text-warning border border-warning/20">
-                  To Pay
-                </span>
+                <Badge variant="amber">To Pay</Badge>
                 <span className="text-warning font-bold group-hover:underline inline-flex items-center gap-0.5">
                   <span>Vendors</span>
                   <ArrowRight className="w-3 h-3" />
                 </span>
               </div>
-            </div>
+            </Card>
           </div>
         </div>
       )}
@@ -858,8 +816,8 @@ export default function DashboardPage() {
 
         {/* Right Column (4 of 12): Fast Action Drawer & Top Khata Debtors */}
         <div className="lg:col-span-4 space-y-6">
-          {/* Rebuilt Fast Actions & Entries Launcher Panel */}
-          <div className="hisab-card p-5 rounded-card shadow-card space-y-3.5">
+          {/* Rebuilt Fast Actions & Entries Launcher Panel (Merged Card Component) */}
+          <Card className="p-5 rounded-card shadow-card space-y-3.5">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Fast Actions &amp; Entries
             </h3>
@@ -913,7 +871,7 @@ export default function DashboardPage() {
                 <div className="text-[10px] text-slate-500 dark:text-slate-400">Profit &amp; %</div>
               </button>
             </div>
-          </div>
+          </Card>
 
           {/* Top Khata Debtors Panel (Direct WhatsApp Reminders) */}
           <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#18181B] shadow-sm space-y-3.5">
