@@ -49,7 +49,7 @@ export function RecentActivity({
   return (
     <Card className="p-4 sm:p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-primary">
+        <h2 className="text-lg font-semibold text-foreground">
           Recent Activity
         </h2>
 
@@ -76,7 +76,7 @@ export function RecentActivity({
           message="Your recent transactions will appear here."
         />
       ) : (
-        <div className="divide-y divide-primary/10">
+        <div className="divide-y divide-border">
           {recentTransactions.map((transaction) => {
             const isPositive =
               transaction.type === "income" ||
@@ -86,10 +86,10 @@ export function RecentActivity({
             const amountPrefix = isPositive ? "+" : "-";
             const date = new Date(transaction.date);
             const formattedDate = Number.isNaN(date.getTime())
-  		? transaction.date
-  		: `${String(date.getUTCDate()).padStart(2, "0")}/${String(
-      			date.getUTCMonth() + 1
-    		   ).padStart(2, "0")}/${date.getUTCFullYear()}`;
+              ? transaction.date
+              : `${String(date.getUTCDate()).padStart(2, "0")}/${String(
+                  date.getUTCMonth() + 1
+                ).padStart(2, "0")}/${date.getUTCFullYear()}`;
 
             return (
               <div
@@ -113,10 +113,10 @@ export function RecentActivity({
                   </div>
 
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-primary">
+                    <p className="truncate text-sm font-medium text-foreground">
                       {transaction.description}
                     </p>
-                    <p className="mt-1 truncate text-xs text-secondary">
+                    <p className="mt-1 truncate text-xs text-muted-foreground">
                       {transaction.customerName || "No customer"} - {formattedDate}
                     </p>
                     <Badge variant={badgeVariant} className="mt-1">
