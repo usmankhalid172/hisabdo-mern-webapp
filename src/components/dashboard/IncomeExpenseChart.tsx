@@ -163,7 +163,7 @@ export function IncomeExpenseChart({
                 x={600 - PADDING_RIGHT}
                 y={y - 4}
                 textAnchor="end"
-                className="fill-[var(--text-secondary)]"
+                className="fill-muted-foreground"
                 style={{ fontSize: 10 }}
               >
                 {formatAmount(chart.maxValue * frac)}
@@ -204,7 +204,7 @@ export function IncomeExpenseChart({
                 x={p.x + p.groupWidth / 2}
                 y={CHART_HEIGHT - PADDING_BOTTOM + 16}
                 textAnchor="middle"
-                className="fill-[var(--text-secondary)]"
+                className="fill-muted-foreground"
                 style={{ fontSize: 10 }}
               >
                 {p.period}
