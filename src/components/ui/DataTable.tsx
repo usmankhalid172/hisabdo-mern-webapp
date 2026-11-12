@@ -93,15 +93,15 @@ export function DataTable<T>({
 
   return (
     <div className={`w-full ${className}`}>
-      <div className="overflow-x-auto rounded-card border border-[var(--border-color)] bg-surface shadow-card">
+      <div className="overflow-x-auto rounded-card border border-border bg-surface shadow-card">
         <table className="w-full min-w-[600px] border-collapse">
           <thead>
-            <tr className="border-b border-[var(--border-color)] bg-surface-muted">
+            <tr className="border-b border-border bg-surface-muted">
               {columns.map((col) => (
                 <th
                   key={col.key}
                   scope="col"
-                  className={`px-4 py-3 text-xs font-bold uppercase tracking-wide text-[var(--text-secondary)] ${alignClass(
+                  className={`px-4 py-3 text-xs font-bold uppercase tracking-wide text-muted-foreground ${alignClass(
                     col.align
                   )}`}
                 >
@@ -109,7 +109,7 @@ export function DataTable<T>({
                     <button
                       type="button"
                       onClick={() => handleSort(col)}
-                      className={`inline-flex items-center gap-1.5 rounded-control px-1 py-0.5 transition-colors hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                      className={`inline-flex items-center gap-1.5 rounded-control px-1 py-0.5 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                         activeSortKey === col.key ? 'text-primary' : ''
                       }`}
                       aria-sort={
@@ -150,10 +150,10 @@ export function DataTable<T>({
                       <Inbox className="h-7 w-7 text-primary" aria-hidden="true" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-[var(--text-primary)]">
+                      <p className="text-sm font-bold text-foreground">
                         {emptyTitle}
                       </p>
-                      <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {emptyMessage}
                       </p>
                     </div>
@@ -166,7 +166,7 @@ export function DataTable<T>({
                 <tr
                   key={rowKey(row)}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
-                  className={`border-b border-[var(--border-color)] last:border-0 transition-colors ${
+                  className={`border-b border-border last:border-0 transition-colors ${
                     onRowClick
                       ? 'cursor-pointer hover:bg-surface-muted focus-within:bg-surface-muted'
                       : 'hover:bg-surface-muted'
@@ -175,7 +175,7 @@ export function DataTable<T>({
                   {columns.map((col) => (
                     <td
                       key={col.key}
-                      className={`px-4 py-3 text-sm text-[var(--text-primary)] ${alignClass(
+                      className={`px-4 py-3 text-sm text-foreground ${alignClass(
                         col.align
                       )} ${col.className ?? ''}`}
                     >
