@@ -37,7 +37,16 @@ import {
   Building,
   ArrowUp,
   ArrowDown,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/design-system/Card";
+import { PageHeading } from "@/components/ui/design-system/PageHeading";
+import { LoadingState } from "@/components/ui/design-system/LoadingState";
+import { EmptyState } from "@/components/ui/design-system/EmptyState";
+import { ErrorState } from "@/components/ui/design-system/ErrorState";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import {
@@ -58,6 +67,7 @@ export default function DashboardPage() {
   const { formatMoney, t, currencySymbol, theme, businessProfile } = useSettings();
 
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [metrics, setMetrics] = useState({
     totalReceivable: 0,
     totalPayable: 0,
@@ -96,6 +106,7 @@ export default function DashboardPage() {
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
+      setLoadError(null);
       const userId = user?.id || "guest";
       const [m, custs, incs, exps, pmts] = await Promise.all([
         hisabDoService.getDashboardMetrics(userId),
@@ -168,8 +179,12 @@ export default function DashboardPage() {
 
       combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setRecentTransactions(combined.slice(0, 10));
-    } catch (err) {
+    } catch (err: any) {
       console.error("Dashboard data load error:", err);
+      setLoadError(
+        err?.message ||
+          "Failed to load dashboard metrics. Please check your network connection and try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -285,6 +300,17 @@ export default function DashboardPage() {
   const totalExpense = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
   const totalProfit = totalIncome - totalExpense;
 
+  // Check if initial merchant financial data is empty
+  const isDataEmpty = useMemo(() => {
+    return (
+      incomes.length === 0 &&
+      expenses.length === 0 &&
+      customers.length === 0 &&
+      (metrics.totalReceivable || 0) === 0 &&
+      (metrics.totalPayable || 0) === 0
+    );
+  }, [incomes, expenses, customers, metrics]);
+
   // Top Debtors (Customers with highest receivable balance)
   const topDebtors = useMemo(() => {
     return customers
@@ -314,166 +340,276 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* ================= 1. MODERN DESKTOP HEADER & QUICK ACTIONS ================= */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-1 border-b border-slate-200 dark:border-slate-800/80">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-              Dashboard
-            </h1>
-            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              Live Cloud Sync
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Real-time merchant ledger, cash flow performance, and customer khata balances.
-          </p>
-        </div>
+      {/* ================= 1. REBUILT MODERN HEADER & QUICK ACTIONS (MERGED DESIGN SYSTEM) ================= */}
+      <div className="pb-2 border-b border-slate-200 dark:border-slate-800/80">
+        <PageHeading
+          title="Dashboard"
+          description="Real-time merchant ledger, cash flow performance, and customer khata balances."
+          action={
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="green" className="hidden sm:inline-flex">
+                Live Cloud Sync
+              </Badge>
 
-        {/* Global Desktop Quick Actions */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Date Indicator */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1E1E1E] text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-sm">
-            <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-            <span>{new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-          </div>
+              {/* Date Indicator */}
+              <div className="flex items-center gap-1.5 ps-3 pe-3 py-2 rounded-control hisab-card text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-card">
+                <Calendar className="w-3.5 h-3.5 text-primary" />
+                <span>{new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+              </div>
 
-          <button
-            onClick={() => setActiveModal("income")}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm shadow-emerald-700/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Record Income</span>
-          </button>
-
-          <button
-            onClick={() => setActiveModal("expense")}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white shadow-sm shadow-rose-700/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
-          >
-            <Minus className="w-3.5 h-3.5" />
-            <span>Record Expense</span>
-          </button>
-
-          <button
-            onClick={() => setActiveModal("calculator")}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1E1E1E] hover:bg-slate-50 dark:hover:bg-[#252525] text-slate-700 dark:text-slate-300 shadow-sm transition"
-            title="Open Retail & Percentage Calculator"
-          >
-            <Calculator className="w-3.5 h-3.5 text-purple-400" />
-            <span className="hidden sm:inline">Calculator</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ================= 2. EXECUTIVE 4-KPI METRIC STRIP ================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* KPI 1: Net Cashflow / Operating Profit */}
-        <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#18181B] shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Net Cash Flow (Nafa)
-            </span>
-            <div className={`p-2 rounded-xl ${totalProfit >= 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"}`}>
-              {totalProfit >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-            </div>
-          </div>
-          <div className="mt-2.5">
-            <h3 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-              {formatMoney(totalProfit)}
-            </h3>
-            <div className="flex items-center gap-2 mt-1.5">
-              <span
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                  totalProfit >= 0
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                    : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
-                }`}
+              <Button
+                variant="accent"
+                size="sm"
+                icon={Plus}
+                onClick={() => setActiveModal("income")}
               >
-                {totalProfit >= 0 ? "Net Positive" : "Deficit"}
-              </span>
-              <span className="text-[11px] text-slate-400 truncate">Income minus expenses</span>
-            </div>
-          </div>
-        </div>
+                Record Income
+              </Button>
 
-        {/* KPI 2: Total Revenue / Income */}
-        <div
-          onClick={() => router.push("/transactions?type=income")}
-          className="group cursor-pointer p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#18181B] shadow-sm hover:shadow-md hover:border-emerald-500/40 transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-              <span>Total Income (Lene)</span>
-            </span>
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500 group-hover:scale-105 transition-transform">
-              <ArrowDownLeft className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2.5">
-            <h3 className="text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">
-              {formatMoney(totalIncome)}
-            </h3>
-            <div className="flex items-center justify-between mt-1.5 text-[11px] text-slate-400">
-              <span>{incomes.length} sales & receipts</span>
-              <span className="text-emerald-500 font-semibold group-hover:underline flex items-center gap-0.5">
-                View &rarr;
-              </span>
-            </div>
-          </div>
-        </div>
+              <Button
+                variant="danger"
+                size="sm"
+                icon={Minus}
+                onClick={() => setActiveModal("expense")}
+              >
+                Record Expense
+              </Button>
 
-        {/* KPI 3: Total Expenses */}
-        <div
-          onClick={() => router.push("/transactions?type=expense")}
-          className="group cursor-pointer p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#18181B] shadow-sm hover:shadow-md hover:border-rose-500/40 transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Total Expenses (Dene)
-            </span>
-            <div className="p-2 rounded-xl bg-rose-500/10 text-rose-500 group-hover:scale-105 transition-transform">
-              <ArrowUpRight className="w-4 h-4" />
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={Calculator}
+                onClick={() => setActiveModal("calculator")}
+                title="Open Retail & Percentage Calculator"
+              >
+                Calculator
+              </Button>
             </div>
-          </div>
-          <div className="mt-2.5">
-            <h3 className="text-2xl font-black tracking-tight text-rose-600 dark:text-rose-400">
-              {formatMoney(totalExpense)}
-            </h3>
-            <div className="flex items-center justify-between mt-1.5 text-[11px] text-slate-400">
-              <span>{expenses.length} operating bills</span>
-              <span className="text-rose-500 font-semibold group-hover:underline flex items-center gap-0.5">
-                View &rarr;
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* KPI 4: Customer Receivables & Payables */}
-        <div
-          onClick={() => router.push("/customers")}
-          className="group cursor-pointer p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#18181B] shadow-sm hover:shadow-md hover:border-indigo-500/40 transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Khata Receivables
-            </span>
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500 group-hover:scale-105 transition-transform">
-              <Users className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2.5">
-            <h3 className="text-2xl font-black tracking-tight text-indigo-600 dark:text-indigo-400">
-              {formatMoney(metrics.totalReceivable)}
-            </h3>
-            <div className="flex items-center justify-between mt-1.5 text-[11px] text-slate-400">
-              <span>Payables: <strong className="text-rose-500">{formatMoney(metrics.totalPayable)}</strong></span>
-              <span className="text-indigo-500 font-semibold group-hover:underline flex items-center gap-0.5">
-                Parties &rarr;
-              </span>
-            </div>
-          </div>
-        </div>
+          }
+        />
       </div>
+
+      {/* ================= 2. REBUILT 5 SUMMARY CARDS (MERGED DESIGN SYSTEM) ================= */}
+      {isLoading ? (
+        /* Loading Skeleton State: 5 cards preventing misleading zeroes */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4" aria-busy="true" aria-label="Loading summary metrics">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Card key={i} className="shadow-card">
+              <LoadingState variant="skeleton" message="Loading summary metrics" className="p-5" />
+            </Card>
+          ))}
+        </div>
+      ) : loadError ? (
+        /* Error State with Retry Action */
+        <Card className="shadow-card border-danger/30 bg-danger/5">
+          <ErrorState
+            title="Unable to Load Dashboard Data"
+            message={loadError}
+            onRetry={loadData}
+          />
+        </Card>
+      ) : (
+        /* Actual Financial Summary Cards */
+        <div className="space-y-3">
+          {/* Empty State Banner if merchant has zero transaction data */}
+          {isDataEmpty && (
+            <Card className="shadow-card border-info/20 bg-info/5">
+              <EmptyState
+                title="Welcome to your HisabDo Ledger"
+                message="No transactions recorded yet. Record your first sale or add customer khata to see live analytics."
+                action={
+                  <div className="flex items-center justify-center gap-2">
+                    <Button
+                      variant="accent"
+                      size="sm"
+                      icon={Plus}
+                      onClick={() => setActiveModal("income")}
+                    >
+                      First Sale
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon={Users}
+                      onClick={() => setActiveModal("customer")}
+                    >
+                      Add Customer
+                    </Button>
+                  </div>
+                }
+              />
+            </Card>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {/* 1. Total Income Summary Card */}
+            <Card
+              onClick={() => router.push("/transactions?type=income")}
+              className="p-5 rounded-card shadow-card cursor-pointer hover:shadow-md hover:border-success/40 transition-all group flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                    Income (Lene)
+                  </span>
+                  <div className="p-2 rounded-control bg-success/10 text-success group-hover:scale-105 transition-transform shrink-0">
+                    <ArrowDownLeft className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="mt-2.5">
+                  <h3 className="text-xl xl:text-2xl font-black tracking-tight text-success">
+                    {formatMoney(totalIncome)}
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">
+                    {incomes.length === 0 ? "No sales recorded yet" : `${incomes.length} sales & receipts`}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px]">
+                <Badge variant="green">Inflow</Badge>
+                <span className="text-success font-bold group-hover:underline inline-flex items-center gap-0.5">
+                  <span>View</span>
+                  <ArrowRight className="w-3 h-3" />
+                </span>
+              </div>
+            </Card>
+
+            {/* 2. Total Expenses Summary Card */}
+            <Card
+              onClick={() => router.push("/transactions?type=expense")}
+              className="p-5 rounded-card shadow-card cursor-pointer hover:shadow-md hover:border-danger/40 transition-all group flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                    Expenses (Dene)
+                  </span>
+                  <div className="p-2 rounded-control bg-danger/10 text-danger group-hover:scale-105 transition-transform shrink-0">
+                    <ArrowUpRight className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="mt-2.5">
+                  <h3 className="text-xl xl:text-2xl font-black tracking-tight text-danger">
+                    {formatMoney(totalExpense)}
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">
+                    {expenses.length === 0 ? "No expenses recorded yet" : `${expenses.length} operating bills`}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px]">
+                <Badge variant="red">Outflow</Badge>
+                <span className="text-danger font-bold group-hover:underline inline-flex items-center gap-0.5">
+                  <span>View</span>
+                  <ArrowRight className="w-3 h-3" />
+                </span>
+              </div>
+            </Card>
+
+            {/* 3. Net Profit Summary Card */}
+            <Card className="p-5 rounded-card shadow-card transition-all hover:shadow-md flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                    Profit (Nafa)
+                  </span>
+                  <div className={`p-2 rounded-control ${totalProfit >= 0 ? "bg-success/10 text-success" : "bg-danger/10 text-danger"} shrink-0`}>
+                    {totalProfit >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                  </div>
+                </div>
+                <div className="mt-2.5">
+                  <h3 className={`text-xl xl:text-2xl font-black tracking-tight ${totalProfit >= 0 ? "text-slate-900 dark:text-white" : "text-danger"}`}>
+                    {formatMoney(totalProfit)}
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">
+                    {incomes.length === 0 && expenses.length === 0
+                      ? "Awaiting transactions"
+                      : totalIncome > 0
+                      ? `${((totalProfit / totalIncome) * 100).toFixed(1)}% operating margin`
+                      : "Income minus expenses"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px]">
+                <Badge variant={totalProfit >= 0 ? "green" : "red"}>
+                  {totalProfit >= 0 ? "Net Positive" : "Deficit"}
+                </Badge>
+                <span className="text-slate-400 text-[10px] truncate">
+                  {totalProfit >= 0 ? "Surplus" : "Operating loss"}
+                </span>
+              </div>
+            </Card>
+
+            {/* 4. Khata Receivables Summary Card */}
+            <Card
+              onClick={() => router.push("/customers")}
+              className="p-5 rounded-card shadow-card cursor-pointer hover:shadow-md hover:border-primary/40 transition-all group flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                    Receivables (Lene)
+                  </span>
+                  <div className="p-2 rounded-control bg-primary/10 text-primary group-hover:scale-105 transition-transform shrink-0">
+                    <Users className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="mt-2.5">
+                  <h3 className="text-xl xl:text-2xl font-black tracking-tight text-primary">
+                    {formatMoney(metrics.totalReceivable)}
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">
+                    {metrics.totalReceivable === 0
+                      ? "No pending receivables"
+                      : `${customers.length} customer accounts`}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px]">
+                <Badge variant="purple">To Collect</Badge>
+                <span className="text-primary font-bold group-hover:underline inline-flex items-center gap-0.5">
+                  <span>Parties</span>
+                  <ArrowRight className="w-3 h-3" />
+                </span>
+              </div>
+            </Card>
+
+            {/* 5. Total Payables Summary Card */}
+            <Card
+              onClick={() => router.push("/vendors")}
+              className="p-5 rounded-card shadow-card cursor-pointer hover:shadow-md hover:border-warning/40 transition-all group flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                    Payables (Dene)
+                  </span>
+                  <div className="p-2 rounded-control bg-warning/10 text-warning group-hover:scale-105 transition-transform shrink-0">
+                    <CreditCard className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="mt-2.5">
+                  <h3 className="text-xl xl:text-2xl font-black tracking-tight text-warning">
+                    {formatMoney(metrics.totalPayable)}
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">
+                    {metrics.totalPayable === 0
+                      ? "No pending payables"
+                      : "Supplier & vendor liabilities"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px]">
+                <Badge variant="amber">To Pay</Badge>
+                <span className="text-warning font-bold group-hover:underline inline-flex items-center gap-0.5">
+                  <span>Vendors</span>
+                  <ArrowRight className="w-3 h-3" />
+                </span>
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
 
       {/* ================= 3. SPLIT MAIN WORKSPACE (8 COLS DATA / 4 COLS ACTION & DEBTORS) ================= */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -680,18 +816,19 @@ export default function DashboardPage() {
 
         {/* Right Column (4 of 12): Fast Action Drawer & Top Khata Debtors */}
         <div className="lg:col-span-4 space-y-6">
-          {/* Action Launcher Panel */}
-          <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#18181B] shadow-sm space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+          {/* Rebuilt Fast Actions & Entries Launcher Panel (Merged Card Component) */}
+          <Card className="p-5 rounded-card shadow-card space-y-3.5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Fast Actions &amp; Entries
             </h3>
 
             <div className="grid grid-cols-2 gap-2.5">
               <button
+                type="button"
                 onClick={() => setActiveModal("income")}
-                className="p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-950/20 hover:bg-emerald-100/60 dark:hover:bg-emerald-900/30 text-left transition group"
+                className="p-3.5 rounded-control border border-success/20 bg-success/5 hover:bg-success/10 text-start transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success"
               >
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                <div className="w-8 h-8 rounded-control bg-success/15 text-success flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
                   <PlusCircle className="w-4 h-4" />
                 </div>
                 <div className="font-bold text-xs text-slate-900 dark:text-white">Add Income</div>
@@ -699,10 +836,11 @@ export default function DashboardPage() {
               </button>
 
               <button
+                type="button"
                 onClick={() => setActiveModal("expense")}
-                className="p-3.5 rounded-xl border border-rose-500/20 bg-rose-50/50 dark:bg-rose-950/20 hover:bg-rose-100/60 dark:hover:bg-rose-900/30 text-left transition group"
+                className="p-3.5 rounded-control border border-danger/20 bg-danger/5 hover:bg-danger/10 text-start transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
               >
-                <div className="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                <div className="w-8 h-8 rounded-control bg-danger/15 text-danger flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
                   <MinusCircle className="w-4 h-4" />
                 </div>
                 <div className="font-bold text-xs text-slate-900 dark:text-white">Add Expense</div>
@@ -710,10 +848,11 @@ export default function DashboardPage() {
               </button>
 
               <button
+                type="button"
                 onClick={() => setActiveModal("customer")}
-                className="p-3.5 rounded-xl border border-indigo-500/20 bg-indigo-50/50 dark:bg-indigo-950/20 hover:bg-indigo-100/60 dark:hover:bg-indigo-900/30 text-left transition group"
+                className="p-3.5 rounded-control border border-primary/20 bg-primary/5 hover:bg-primary/10 text-start transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                <div className="w-8 h-8 rounded-control bg-primary/15 text-primary flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
                   <Users className="w-4 h-4" />
                 </div>
                 <div className="font-bold text-xs text-slate-900 dark:text-white">New Party</div>
@@ -721,17 +860,18 @@ export default function DashboardPage() {
               </button>
 
               <button
+                type="button"
                 onClick={() => setActiveModal("calculator")}
-                className="p-3.5 rounded-xl border border-purple-500/20 bg-purple-50/50 dark:bg-purple-950/20 hover:bg-purple-100/60 dark:hover:bg-purple-900/30 text-left transition group"
+                className="p-3.5 rounded-control border border-warning/20 bg-warning/5 hover:bg-warning/10 text-start transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning"
               >
-                <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                <div className="w-8 h-8 rounded-control bg-warning/15 text-warning flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
                   <Percent className="w-4 h-4" />
                 </div>
                 <div className="font-bold text-xs text-slate-900 dark:text-white">Calculator</div>
                 <div className="text-[10px] text-slate-500 dark:text-slate-400">Profit &amp; %</div>
               </button>
             </div>
-          </div>
+          </Card>
 
           {/* Top Khata Debtors Panel (Direct WhatsApp Reminders) */}
           <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#18181B] shadow-sm space-y-3.5">

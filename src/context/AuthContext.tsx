@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setToken(cachedToken);
       }
 
-      // 2. Check Supabase session
+      // 2. Check Supabase sessionTypeScript: Restart TS Server
       const supabase = createClient();
       const { data } = await supabase.auth.getSession();
 
@@ -232,7 +232,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
+        // NEW: safety net for when Supabase returns a real "already registered" error
+        const msg = error.message.toLowerCase();
+        if (msg.includes("already registered") || msg.includes("already exists")) {
+          return { success: false, message: "An account with this email already exists. Please sign in." };
+        }
         return { success: false, message: error.message };
+      }
+
+      // NEW: the main fix. With Confirm email on, a repeat signup returns a user with no identities
+      if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        return { success: false, message: "An account with this email already exists. Please sign in." };
       }
 
       if (data.user) {
