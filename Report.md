@@ -68,3 +68,34 @@ All components merged into `feature/design-system` were inspected and integrated
 | **Dark Mode Theme** | Chrome Headless CDP (1280x950) | **Passed** | `screenshots/dashboard-dark.png` |
 | **360px Mobile Viewport** | CDP Mobile Emulation (360x900) | **Passed** (`hasOverflow: false`) | `screenshots/dashboard-mobile-360px.png` |
 | **RTL Layout (Urdu)** | `dir="rtl"`, `lang="ur"` | **Passed** | `screenshots/dashboard-rtl.png` |
+
+
+---
+
+## Danish — Mobile vs Web Comparison (Day 4)
+
+### Dashboard
+
+| Feature | Mobile | Web | Priority |
+|---------|--------|-----|----------|
+| Bottom Navigation Bar | ✅ | ❌ | P1 |
+| Pull-to-refresh | ✅ | ❌ | P1 |
+| Blue Theme (Light default) | ✅ | ❌ (Dark/Light toggle) | P2 |
+
+### Customers
+
+| Feature | Mobile | Web | Priority |
+|---------|--------|-----|----------|
+| Voice Search (Microphone icon) | ✅ | ❌ | P1 |
+| Filter Pills (All, To Receive, To Pay) | ✅ | ❌ | P1 |
+| Floating "Add Customer" button | ✅ | ❌ | P2 |
+| Bottom Navigation Bar | ✅ | ❌ | P1 |
+
+### Transactions
+
+| Feature | Mobile | Web | Priority |
+|---------|--------|-----|----------|
+| Bottom Navigation Bar | ✅ | ❌ | P1 |
+| Dedicated FAB for quick add | ✅ | ❌ | P2 |
+
+**Priority key:** P0 = must-have (blocker), P1 = should-have (important), P2 = nice-to-have (future).
