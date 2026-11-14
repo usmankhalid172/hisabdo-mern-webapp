@@ -121,3 +121,14 @@ Day 31/
 ├── .env.example                        # Clean environment template
 └── README.md                           # Documentation
 ```
+
+---
+
+## 📝 Shared Transaction Form (Dialog-Compatible)
+
+The canonical shared transaction form (`src/components/TransactionModal.tsx`, also exported as `TransactionForm` from `src/components/transactions/TransactionForm.tsx`) has been enhanced to be reusable inside any dialog:
+* **Optional `customerId` Prop:** When provided, automatically associates the transaction with the designated customer account and pre-fills party details. When omitted, standard manual or counter-sale entry is preserved.
+* **Optional `onSuccess` Callback:** Invoked strictly after a transaction has been successfully saved to the ledger service.
+* **Dialog & Modal Compatibility:** When embedded inside external dialogs (omitting `isOpen`), renders the inner form directly without duplicate backdrop overlays. When passed `isOpen`, preserves standalone modal overlay behavior.
+* **Design System Aligned:** Built with canonical design system components (`Button`, `Input`, `Select`), semantic tokens (`bg-surface`, `border-border`, `text-foreground`, `rounded-dialog`), and CSS logical properties (`ps-`, `pe-`, `ms-`, `me-`, `end-`).
+
