@@ -62,7 +62,7 @@ export interface LedgerTransaction {
   deleted_at?: string | null;
   customerId: string;
   amount: number;
-  type: "received" | "paid"; // received = Jama (customer paid), paid = Naam (we paid)
+  type: "received" | "paid";
   category: string;
   date: string;
   note?: string;
@@ -142,12 +142,10 @@ export interface LedgerRow {
   sourceTable: "income" | "expenses" | "ledger_transactions";
 }
 
-// Clean empty initial state
 const DEFAULT_CUSTOMERS: Customer[] = [];
 const DEFAULT_INCOMES: Income[] = [];
 const DEFAULT_EXPENSES: Expense[] = [];
 const DEFAULT_LEDGER_TXS: LedgerTransaction[] = [];
-
 
 export class HisabDoService {
   private async resolveCategoryId(userId: string, value: string | null | undefined, type: "receivable" | "payable"): Promise<string | null> {
@@ -180,7 +178,6 @@ export class HisabDoService {
     return `hisabdo_${userId || "guest"}_${key}`;
   }
 
-  // Load state from local storage or defaults
   private getLocal<T>(userId: string, key: string, fallback: T): T {
     if (typeof window === "undefined") return fallback;
     try {
@@ -248,8 +245,8 @@ export class HisabDoService {
       const customers = (data ?? []).map((row) => normalizeCustomer(row as SupabaseRow));
       this.setLocal(userId, "customers", customers);
       return customers;
-    } catch {
-      // Fall back to the last locally cached data while offline.
+    } catch (err) {
+      console.error("getCustomers failed, using local cache:", err);
     }
     return fallback;
   }
@@ -300,8 +297,11 @@ export class HisabDoService {
   async updateCustomer(userId: string, id: string, updates: Partial<Customer>): Promise<Customer> {
     const list = await this.getCustomers(userId);
     let updatedCust: Customer | null = null;
-    const updatedList = list.map((c) => {
+    let current: Customer | null = null;
+    
+    const updatedList = list.map ((c) => {
       if (c.id === id) {
+        current = c;
         updatedCust = { ...c, ...updates };
         return updatedCust;
       }
@@ -311,7 +311,6 @@ export class HisabDoService {
     if (userId !== "guest" && isRemoteUuid(userId) && isRemoteUuid(id)) {
       try {
       const supabase = createClient();
-        const current = list.find((customer) => customer.id === id);
         const metadata = {
           ...asMetadata(current?.metadata),
           ...asMetadata(updates.metadata),
@@ -376,8 +375,8 @@ export class HisabDoService {
       const incomes = (data ?? []).map((row) => normalizeIncome(row as SupabaseRow));
       this.setLocal(userId, "incomes", incomes);
       return incomes;
-    } catch {
-      // Fall back to the last locally cached data while offline.
+    } catch (err) {
+      console.error("getIncomes failed, using local cache:", err);
     }
     return fallback;
   }
@@ -512,8 +511,8 @@ export class HisabDoService {
       const expenses = (data ?? []).map((row) => normalizeExpense(row as SupabaseRow));
       this.setLocal(userId, "expenses", expenses);
       return expenses;
-    } catch {
-      // Fall back to the last locally cached data while offline.
+    } catch (err) {
+      console.error("getExpenses failed, using local cache:", err);
     }
     return fallback;
   }
@@ -663,8 +662,8 @@ export class HisabDoService {
       })) as LedgerTransaction[];
       this.setLocal(userId, "ledger_txs", transactions);
       return transactions;
-    } catch {
-      // Fall back to the last locally cached data while offline.
+    } catch (err) {
+      console.error("getLedgerTransactions failed, using local cache:", err);
     }
     return fallback;
   }
@@ -795,7 +794,6 @@ export class HisabDoService {
 
     const tempRows: TempRow[] = [];
 
-    // 1. Incomes linked to this customer (Purchase by customer -> Customer owes us -> +)
     incomes
       .filter((i) => i.customer_id === customerId)
       .forEach((i) => {
@@ -811,7 +809,6 @@ export class HisabDoService {
         });
       });
 
-    // 2. Expenses linked to this customer (Refund or purchase from customer -> -)
     expenses
       .filter((e) => e.customer_id === customerId)
       .forEach((e) => {
@@ -827,7 +824,6 @@ export class HisabDoService {
         });
       });
 
-    // 3. Direct Payments in Ledger
     payments
       .filter((p) => p.customerId === customerId)
       .forEach((p) => {
@@ -843,18 +839,12 @@ export class HisabDoService {
         });
       });
 
-    // Sort chronologically ascending
     tempRows.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     let running = openingBalance;
     const finalRows: LedgerRow[] = [];
 
     for (const r of tempRows) {
-      // 1:1 business logic parity with Flutter customer_ledger_screen.dart & whatsapp_message_service.dart:
-      // Purchase -> +amount
-      // Expense -> -amount
-      // Payment Sent -> +amount
-      // Payment Received -> -amount
       let delta = 0;
       if (r.type === "Purchase") delta = r.amount;
       else if (r.type === "Expense") delta = -r.amount;
@@ -874,7 +864,7 @@ export class HisabDoService {
     const totalPaymentsSent = tempRows.filter((r) => r.type === "Payment Sent").reduce((acc, r) => acc + r.amount, 0);
 
     return {
-      rows: finalRows.reverse(), // latest first for display
+      rows: finalRows.reverse(),
       summary: {
         totalPurchases,
         totalPaymentsReceived,
@@ -884,7 +874,6 @@ export class HisabDoService {
     };
   }
 
-  // Calculate high-level summary for the dashboard
   async getDashboardMetrics(userId: string) {
     const [customers, incomes, expenses, payments] = await Promise.all([
       this.getCustomers(userId),
@@ -893,8 +882,8 @@ export class HisabDoService {
       this.getLedgerTransactions(userId),
     ]);
 
-    let totalReceivable = 0; // Lene (Customers who owe us)
-    let totalPayable = 0; // Dene (Customers to whom we owe advance/credit)
+    let totalReceivable = 0;
+    let totalPayable = 0;
 
     for (const cust of customers) {
       const { summary } = await this.getCustomerLedgerTimeline(userId, cust.id);
@@ -905,7 +894,6 @@ export class HisabDoService {
       }
     }
 
-    // Current Month Income & Expenses
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
@@ -936,7 +924,7 @@ export class HisabDoService {
     };
   }
 
-  // ==================== REMINDER MESSAGES (WHATSAPP & SMS) ====================
+  // ==================== REMINDER MESSAGES ====================
   getReminderMessage(params: {
     customerName: string;
     currency: string;
@@ -1015,8 +1003,7 @@ export class HisabDoService {
   }) {
     const doc = new jsPDF();
 
-    // Primary Header Banner
-    doc.setFillColor(26, 35, 126); // Brand Primary #1A237E
+    doc.setFillColor(26, 35, 126);
     doc.rect(0, 0, 210, 36, "F");
 
     doc.setTextColor(255, 255, 255);
@@ -1029,7 +1016,6 @@ export class HisabDoService {
     doc.text(`${params.businessAddress} | Tel: ${params.businessPhone}`, 14, 26);
     doc.text("CUSTOMER STATEMENT / KHATA LEDGER", 14, 32);
 
-    // Customer Info Card Box
     doc.setTextColor(30, 41, 59);
     doc.setFillColor(248, 249, 253);
     doc.roundedRect(14, 42, 182, 28, 3, 3, "F");
@@ -1052,7 +1038,6 @@ export class HisabDoService {
     doc.setFont("helvetica", "normal");
     doc.text(new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }), 50, 64);
 
-    // Outstanding Balance highlight on top right
     const isReceivable = params.summary.netBalance >= 0;
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
@@ -1067,7 +1052,6 @@ export class HisabDoService {
     doc.setTextColor(100, 116, 139);
     doc.text(isReceivable ? "(Receivable from Customer)" : "(Merchant Owes Customer)", 130, 58);
 
-    // Table Data
     const tableBody = [...params.timeline].reverse().map((row) => {
       const debit = row.type === "Purchase" || row.type === "Payment Sent" ? `${params.currency} ${row.amount.toLocaleString()}` : "-";
       const credit = row.type === "Payment Received" || row.type === "Expense" ? `${params.currency} ${row.amount.toLocaleString()}` : "-";
@@ -1111,7 +1095,6 @@ export class HisabDoService {
       },
     });
 
-    // Summary Totals block at bottom
     const finalY = (doc as any).lastAutoTable.finalY + 8;
     doc.setFillColor(241, 245, 249);
     doc.roundedRect(110, finalY, 86, 32, 2, 2, "F");
@@ -1130,7 +1113,6 @@ export class HisabDoService {
     doc.text(`Net Outstanding:`, 115, finalY + 25);
     doc.text(`${params.currency} ${params.summary.netBalance.toLocaleString()}`, 190, finalY + 25, { align: "right" });
 
-    // Footer
     doc.setFontSize(8);
     doc.setFont("helvetica", "italic");
     doc.setTextColor(148, 163, 184);
