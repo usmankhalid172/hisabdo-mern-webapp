@@ -296,12 +296,9 @@ export class HisabDoService {
 
   async updateCustomer(userId: string, id: string, updates: Partial<Customer>): Promise<Customer> {
     const list = await this.getCustomers(userId);
-    let updatedCust: Customer | null = null;
-    let current: Customer | null = null;
-    
+    let updatedCust: Customer | null = null;    
     const updatedList = list.map ((c) => {
       if (c.id === id) {
-        current = c;
         updatedCust = { ...c, ...updates };
         return updatedCust;
       }
@@ -309,6 +306,7 @@ export class HisabDoService {
     });
 
     if (userId !== "guest" && isRemoteUuid(userId) && isRemoteUuid(id)) {
+      const current = list.find((c) => c.id === id) ?? null;
       try {
       const supabase = createClient();
         const metadata = {
