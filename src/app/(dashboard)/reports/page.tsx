@@ -96,13 +96,13 @@ export default function ReportsPage() {
     };
   }, [incomes, expenses, period, customStart, customEnd]);
 
-  // Overall P&L Metrics matching Flutter mobile reports_screen.dart
+  // Overall P&L Metrics
   const totalIncome = filteredIncomes.reduce((sum, i) => sum + Number(i.amount), 0);
   const totalExpenses = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
   const netProfit = totalIncome - totalExpenses;
   const totalFlow = totalIncome + totalExpenses;
 
-  // Percentage calculations matching Flutter: (value / total) * 100
+  // Percentage calculations: (value / total) * 100
   const incomePercent = totalFlow > 0 ? Math.round((totalIncome / totalFlow) * 100) : 0;
   const expensePercent = totalFlow > 0 ? 100 - incomePercent : 0;
 
@@ -260,8 +260,8 @@ export default function ReportsPage() {
   if (isLoading) {
     return (
       <div className="p-20 flex flex-col items-center justify-center gap-3">
-        <Loader2 className="w-8 h-8 text-[#00E676] animate-spin" />
-        <p className="text-xs text-slate-400">Loading analytics &amp; financial reports...</p>
+        <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+        <p className="text-xs text-slate-500 dark:text-slate-400">Loading analytics &amp; financial reports...</p>
       </div>
     );
   }
@@ -271,11 +271,11 @@ export default function ReportsPage() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white flex items-center gap-2">
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
             Reports &amp; P&amp;L Analysis
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Visual Income vs. Expense distribution, ratios, and downloadable statements
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Visual Income vs. Expense distribution, cash flow ratios, and downloadable statements
           </p>
         </div>
 
@@ -283,15 +283,15 @@ export default function ReportsPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-slate-700 bg-[#1E1E1E] hover:bg-[#2A2A2A] text-slate-200 transition"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#1E1E1E] hover:bg-slate-50 dark:hover:bg-[#2A2A2A] text-slate-700 dark:text-slate-200 shadow-sm transition"
           >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+            <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
             <span>Export CSV</span>
           </button>
 
           <button
             onClick={handleExportPDF}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-[#1A237E] hover:bg-[#0D47A1] text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-950/40 transition"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-[#1A237E] hover:bg-[#0D47A1] text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-950/20 transition"
           >
             <Download className="w-4 h-4" />
             <span>Export PDF</span>
@@ -300,10 +300,10 @@ export default function ReportsPage() {
       </div>
 
       {/* Date Period Filter Bar */}
-      <div className="p-4 rounded-2xl border border-slate-800 bg-[#1E1E1E] flex flex-wrap items-center justify-between gap-3 shadow-sm">
+      <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#18181B] flex flex-wrap items-center justify-between gap-3 shadow-sm">
         <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-emerald-400" />
-          <span className="text-xs font-bold text-slate-300">Reporting Timeframe:</span>
+          <Calendar className="w-4 h-4 text-emerald-500" />
+          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Reporting Timeframe:</span>
         </div>
 
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
@@ -313,8 +313,8 @@ export default function ReportsPage() {
               onClick={() => setPeriod(p)}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold capitalize whitespace-nowrap transition ${
                 period === p
-                  ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20"
-                  : "text-slate-400 hover:text-white bg-[#121212] border border-slate-800"
+                  ? "bg-emerald-600 text-white shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-[#121212] border border-slate-200 dark:border-slate-800"
               }`}
             >
               {p === "all" ? "All Time" : p}
@@ -328,102 +328,102 @@ export default function ReportsPage() {
               type="date"
               value={customStart}
               onChange={(e) => setCustomStart(e.target.value)}
-              className="px-2.5 py-1 rounded-xl border border-slate-700 bg-[#121212] text-white"
+              className="px-2.5 py-1 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#121212] text-slate-900 dark:text-white"
             />
             <span className="text-slate-400">to</span>
             <input
               type="date"
               value={customEnd}
               onChange={(e) => setCustomEnd(e.target.value)}
-              className="px-2.5 py-1 rounded-xl border border-slate-700 bg-[#121212] text-white"
+              className="px-2.5 py-1 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#121212] text-slate-900 dark:text-white"
             />
           </div>
         )}
       </div>
 
-      {/* ================= 1. THE 3 SUMMARY CARDS (MATCHING FLUTTER reports_screen.dart) ================= */}
+      {/* ================= 1. THE 3 SUMMARY CARDS ================= */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Receivable (Income / Green) */}
-        <div className="p-5 rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-[#1E1E1E] to-[#122416] shadow-sm">
-          <div className="flex items-center justify-between text-xs text-slate-400 font-bold mb-2">
+        <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#18181B] shadow-sm">
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-bold mb-2">
             <span>Receivable (Income / Wusooli)</span>
-            <div className="w-8 h-8 rounded-full bg-emerald-500/15 text-[#00E676] flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold">
               <ArrowDownLeft className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl font-black text-[#00E676]">
+          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
             {formatMoney(totalIncome)}
           </p>
           <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2">
             <span>{filteredIncomes.length} sales entries</span>
-            <span className="font-bold text-emerald-400">{incomePercent}% of total</span>
+            <span className="font-bold text-emerald-500">{incomePercent}% of total</span>
           </div>
         </div>
 
         {/* Payable (Expense / Red) */}
-        <div className="p-5 rounded-2xl border border-rose-500/20 bg-gradient-to-br from-[#1E1E1E] to-[#261416] shadow-sm">
-          <div className="flex items-center justify-between text-xs text-slate-400 font-bold mb-2">
+        <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#18181B] shadow-sm">
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-bold mb-2">
             <span>Payable (Expense / Adaigi)</span>
-            <div className="w-8 h-8 rounded-full bg-rose-500/15 text-[#E53935] flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center font-bold">
               <ArrowUpRight className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl font-black text-[#E53935]">
+          <p className="text-2xl font-black text-rose-600 dark:text-rose-400">
             {formatMoney(totalExpenses)}
           </p>
           <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2">
             <span>{filteredExpenses.length} expense entries</span>
-            <span className="font-bold text-rose-400">{expensePercent}% of total</span>
+            <span className="font-bold text-rose-500">{expensePercent}% of total</span>
           </div>
         </div>
 
         {/* Balance (Profit / Blue) */}
-        <div className="p-5 rounded-2xl border border-blue-500/20 bg-gradient-to-br from-[#1E1E1E] to-[#141B2D] shadow-sm">
-          <div className="flex items-center justify-between text-xs text-slate-400 font-bold mb-2">
-            <span>Balance (Net Profit / Loss)</span>
-            <div className="w-8 h-8 rounded-full bg-blue-500/15 text-blue-400 flex items-center justify-center font-bold">
+        <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#18181B] shadow-sm">
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-bold mb-2">
+            <span>Net Balance (Profit / Loss)</span>
+            <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center font-bold">
               <Wallet className="w-4 h-4" />
             </div>
           </div>
-          <p className={`text-2xl font-black ${netProfit >= 0 ? "text-[#00E676]" : "text-[#E53935]"}`}>
+          <p className={`text-2xl font-black ${netProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
             {formatMoney(netProfit)}
           </p>
           <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2">
             <span>{netProfit >= 0 ? "Net Positive Balance" : "Operating Deficit"}</span>
-            <span className={`font-bold ${netProfit >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-              {netProfit >= 0 ? "Profitable" : "Loss"}
+            <span className={`font-bold ${netProfit >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+              {netProfit >= 0 ? "Profitable" : "Deficit"}
             </span>
           </div>
         </div>
       </div>
 
-      {/* ================= 2. PIE CHART CARD (MATCHING FLUTTER fl_chart PieChart) ================= */}
-      <div className="p-6 rounded-2xl border border-slate-800 bg-[#1E1E1E] shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
+      {/* ================= 2. PIE CHART CARD ================= */}
+      <div className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#18181B] shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 dark:border-slate-800 pb-4 mb-6 gap-3">
           <div>
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <PieChartIcon className="w-5 h-5 text-emerald-400" />
+            <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <PieChartIcon className="w-5 h-5 text-emerald-500" />
               Income vs. Expense Distribution (Pie Chart)
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Exact ratio split matching HisabDo Mobile App
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Visual breakdown of cash inflow vs. outflow ratio
             </p>
           </div>
           <div className="flex items-center gap-4 text-xs font-bold">
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-[#00E676]" />
-              <span className="text-slate-300">Income ({incomePercent}%)</span>
+              <span className="w-3 h-3 rounded-full bg-emerald-500" />
+              <span className="text-slate-700 dark:text-slate-300">Income ({incomePercent}%)</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-[#E53935]" />
-              <span className="text-slate-300">Expense ({expensePercent}%)</span>
+              <span className="w-3 h-3 rounded-full bg-rose-500" />
+              <span className="text-slate-700 dark:text-slate-300">Expense ({expensePercent}%)</span>
             </span>
           </div>
         </div>
 
         {totalFlow === 0 ? (
-          <div className="p-12 text-center text-slate-500 text-sm">
-            <Receipt className="w-10 h-10 mx-auto mb-2 text-slate-600" />
+          <div className="p-12 text-center text-slate-400 text-sm">
+            <Receipt className="w-10 h-10 mx-auto mb-2 opacity-50" />
             <p>No transactions found for this reporting period.</p>
           </div>
         ) : (
@@ -436,7 +436,7 @@ export default function ReportsPage() {
                   cx={size / 2}
                   cy={size / 2}
                   r={radius}
-                  stroke="#262626"
+                  stroke={theme === "dark" ? "#27272A" : "#E2E8F0"}
                   strokeWidth={strokeWidth}
                   fill="transparent"
                 />
@@ -446,7 +446,7 @@ export default function ReportsPage() {
                   cx={size / 2}
                   cy={size / 2}
                   r={radius}
-                  stroke="#00E676"
+                  stroke="#10B981"
                   strokeWidth={strokeWidth}
                   strokeDasharray={`${incomeStrokeDash} ${circumference}`}
                   strokeDashoffset={0}
@@ -460,7 +460,7 @@ export default function ReportsPage() {
                   cx={size / 2}
                   cy={size / 2}
                   r={radius}
-                  stroke="#E53935"
+                  stroke="#F43F5E"
                   strokeWidth={strokeWidth}
                   strokeDasharray={`${expenseStrokeDash} ${circumference}`}
                   strokeDashoffset={-incomeStrokeDash}
@@ -475,11 +475,11 @@ export default function ReportsPage() {
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   Total Flow
                 </span>
-                <span className="text-lg font-black text-white">
+                <span className="text-lg font-black text-slate-900 dark:text-white">
                   {formatMoney(totalFlow)}
                 </span>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mt-0.5 ${
-                  netProfit >= 0 ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
+                  netProfit >= 0 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
                 }`}>
                   {netProfit >= 0 ? "Profit" : "Loss"}
                 </span>
@@ -488,30 +488,30 @@ export default function ReportsPage() {
 
             {/* Side Metric Details */}
             <div className="w-full md:w-80 space-y-4">
-              <div className="p-4 rounded-xl bg-[#121212] border border-slate-800 space-y-2">
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#121212] border border-slate-200 dark:border-slate-800 space-y-2">
                 <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className="text-emerald-400 flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#00E676]" />
+                  <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                     Total Income
                   </span>
-                  <span className="text-white font-bold">{formatMoney(totalIncome)}</span>
+                  <span className="text-slate-900 dark:text-white font-bold">{formatMoney(totalIncome)}</span>
                 </div>
-                <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                  <div style={{ width: `${incomePercent}%` }} className="bg-[#00E676] h-full rounded-full" />
+                <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div style={{ width: `${incomePercent}%` }} className="bg-emerald-500 h-full rounded-full" />
                 </div>
                 <div className="text-[10px] text-slate-400 text-right">{incomePercent}% of cashflow</div>
               </div>
 
-              <div className="p-4 rounded-xl bg-[#121212] border border-slate-800 space-y-2">
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#121212] border border-slate-200 dark:border-slate-800 space-y-2">
                 <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className="text-rose-400 flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#E53935]" />
+                  <span className="text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
                     Total Expenses
                   </span>
-                  <span className="text-white font-bold">{formatMoney(totalExpenses)}</span>
+                  <span className="text-slate-900 dark:text-white font-bold">{formatMoney(totalExpenses)}</span>
                 </div>
-                <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                  <div style={{ width: `${expensePercent}%` }} className="bg-[#E53935] h-full rounded-full" />
+                <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div style={{ width: `${expensePercent}%` }} className="bg-rose-500 h-full rounded-full" />
                 </div>
                 <div className="text-[10px] text-slate-400 text-right">{expensePercent}% of cashflow</div>
               </div>
@@ -523,27 +523,27 @@ export default function ReportsPage() {
       {/* ================= 3. CATEGORY DISTRIBUTION BARS ================= */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Expense Category Breakdown */}
-        <div className="p-6 rounded-2xl border border-slate-800 bg-[#1E1E1E] space-y-4 shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+        <div className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#18181B] space-y-4 shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
               <TrendingDown className="w-4 h-4 text-rose-500" /> Expense Categories
             </h3>
-            <span className="text-xs text-slate-400">{expenseCategories.length} categories</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{expenseCategories.length} categories</span>
           </div>
 
           {expenseCategories.length === 0 ? (
-            <div className="p-8 text-center text-slate-500 text-xs">No expenses recorded for this period.</div>
+            <div className="p-8 text-center text-slate-400 text-xs">No expenses recorded for this period.</div>
           ) : (
             <div className="space-y-3 pt-1">
               {expenseCategories.map((cat, idx) => (
                 <div key={cat.name} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-200">{cat.name}</span>
-                    <span className="text-slate-400">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">{cat.name}</span>
+                    <span className="text-slate-500 dark:text-slate-400">
                       {formatMoney(cat.amount)} ({cat.percentage}%)
                     </span>
                   </div>
-                  <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div
                       style={{ width: `${cat.percentage}%`, backgroundColor: chartColors[idx % chartColors.length] }}
                       className="h-full rounded-full transition-all duration-300"
@@ -556,30 +556,30 @@ export default function ReportsPage() {
         </div>
 
         {/* Income Sources Breakdown */}
-        <div className="p-6 rounded-2xl border border-slate-800 bg-[#1E1E1E] space-y-4 shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-emerald-400" /> Income Sources
+        <div className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#18181B] space-y-4 shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-emerald-500" /> Income Sources
             </h3>
-            <span className="text-xs text-slate-400">{incomeCategories.length} categories</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{incomeCategories.length} categories</span>
           </div>
 
           {incomeCategories.length === 0 ? (
-            <div className="p-8 text-center text-slate-500 text-xs">No income recorded for this period.</div>
+            <div className="p-8 text-center text-slate-400 text-xs">No income recorded for this period.</div>
           ) : (
             <div className="space-y-3 pt-1">
               {incomeCategories.map((cat) => (
                 <div key={cat.name} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-200">{cat.name}</span>
-                    <span className="text-slate-400">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">{cat.name}</span>
+                    <span className="text-slate-500 dark:text-slate-400">
                       {formatMoney(cat.amount)} ({cat.percentage}%)
                     </span>
                   </div>
-                  <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div
                       style={{ width: `${cat.percentage}%` }}
-                      className="h-full rounded-full bg-[#00E676] transition-all duration-300"
+                      className="h-full rounded-full bg-emerald-500 transition-all duration-300"
                     />
                   </div>
                 </div>
