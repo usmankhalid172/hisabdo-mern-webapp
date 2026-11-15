@@ -414,29 +414,29 @@ export default function InvoicesPage() {
   );
 
   return (
-    <div className="space-y-6 text-slate-100">
+    <div className="space-y-6 text-slate-900 dark:text-slate-100 pb-16">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gradient-to-r from-[#1A237E]/40 to-[#311B92]/30 border border-indigo-500/20 p-6 rounded-2xl backdrop-blur-md">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gradient-to-r from-indigo-50/70 to-purple-50/60 dark:from-[#1A237E]/40 dark:to-[#311B92]/30 border border-indigo-200 dark:border-indigo-500/20 p-6 rounded-2xl backdrop-blur-md">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <FileText className="w-5 h-5 text-indigo-400" />
-            <h1 className="text-2xl font-bold tracking-tight text-white">Invoices & PDF Bills</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Invoices &amp; PDF Bills</h1>
           </div>
-          <p className="text-slate-400 text-sm">
+          <p className="text-slate-500 dark:text-slate-400 text-sm">
             Generate itemized retail invoices, record customer sales, and download branded PDF statements.
           </p>
         </div>
 
         {/* Action & Usage Pills */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="bg-[#111726] border border-slate-800 rounded-xl px-3 py-2 text-xs flex items-center gap-2">
+          <div className="bg-white dark:bg-[#111726] border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs flex items-center gap-2 text-slate-700 dark:text-slate-300">
             <span className="text-slate-400">Daily Invoices:</span>
             <span className={`font-bold ${invoiceUsage.isUnlimited ? "text-emerald-400" : "text-indigo-400"}`}>
               {invoiceUsage.isUnlimited ? "Unlimited" : `${invoiceUsage.used}/${invoiceUsage.limit}`}
             </span>
           </div>
 
-          <div className="bg-[#111726] border border-slate-800 rounded-xl px-3 py-2 text-xs flex items-center gap-2">
+          <div className="bg-white dark:bg-[#111726] border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs flex items-center gap-2 text-slate-700 dark:text-slate-300">
             <span className="text-slate-400">Daily PDFs:</span>
             <span className={`font-bold ${pdfUsage.isUnlimited ? "text-emerald-400" : "text-indigo-400"}`}>
               {pdfUsage.isUnlimited ? "Unlimited" : `${pdfUsage.used}/${pdfUsage.limit}`}
@@ -454,7 +454,7 @@ export default function InvoicesPage() {
           ) : (
             <button
               onClick={() => setActiveTab("list")}
-              className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl text-sm transition-all"
+              className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white font-semibold rounded-xl text-sm transition-all border border-slate-200 dark:border-slate-700"
             >
               Back to Invoices
             </button>
@@ -466,22 +466,22 @@ export default function InvoicesPage() {
       {activeTab === "list" ? (
         <div className="space-y-4">
           {/* Search bar */}
-          <div className="flex items-center gap-3 bg-[#111726]/80 border border-slate-800/80 px-4 py-2.5 rounded-xl">
+          <div className="flex items-center gap-3 bg-white dark:bg-[#111726]/80 border border-slate-200 dark:border-slate-800/80 px-4 py-2.5 rounded-xl shadow-xs">
             <Search className="w-4 h-4 text-slate-400" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search invoices by customer name or invoice number..."
-              className="bg-transparent flex-1 text-sm text-white placeholder-slate-500 focus:outline-none"
+              className="bg-transparent flex-1 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none"
             />
           </div>
 
           {/* Invoices List */}
-          <div className="rounded-2xl border border-slate-800/80 bg-[#111726]/80 overflow-hidden shadow-xl">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#111726]/80 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-300">
-                <thead className="border-b border-slate-800 text-xs uppercase text-slate-400 bg-slate-900/60">
+              <table className="w-full text-left text-sm text-slate-700 dark:text-slate-300">
+                <thead className="border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/60">
                   <tr>
                     <th className="py-3.5 px-4">Invoice #</th>
                     <th className="py-3.5 px-4">Customer</th>
@@ -492,15 +492,15 @@ export default function InvoicesPage() {
                     <th className="py-3.5 px-4 text-center">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {filteredInvoices.length > 0 ? (
                     filteredInvoices.map((inv) => (
-                      <tr key={inv.id} className="hover:bg-slate-800/40 transition-colors">
+                      <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="py-4 px-4 font-mono font-bold text-indigo-400">
                           {inv.invoiceNumber}
                         </td>
                         <td className="py-4 px-4">
-                          <p className="font-semibold text-white">{inv.customerName}</p>
+                          <p className="font-semibold text-slate-900 dark:text-white">{inv.customerName}</p>
                           {inv.customerPhone && (
                             <span className="text-xs text-slate-500">{inv.customerPhone}</span>
                           )}
@@ -523,7 +523,7 @@ export default function InvoicesPage() {
                             {inv.status.toUpperCase()}
                           </span>
                         </td>
-                        <td className="py-4 px-4 text-right font-bold text-white text-base">
+                        <td className="py-4 px-4 text-right font-bold text-slate-900 dark:text-white text-base">
                           {currency} {Number(inv.total).toLocaleString()}
                         </td>
                         <td className="py-4 px-4 text-center">
@@ -552,9 +552,9 @@ export default function InvoicesPage() {
         </div>
       ) : (
         /* Create Invoice Form */
-        <div className="rounded-2xl border border-slate-800/80 bg-[#111726]/80 p-6 shadow-xl space-y-6">
-          <div className="border-b border-slate-800 pb-4">
-            <h2 className="text-lg font-bold text-white">Create New Bill / Invoice</h2>
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#111726]/80 p-6 shadow-sm space-y-6">
+          <div className="border-b border-slate-200 dark:border-slate-800 pb-4">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Create New Bill / Invoice</h2>
             <p className="text-xs text-slate-400 mt-0.5">
               Fill in customer details and line items to generate and print.
             </p>
@@ -563,25 +563,25 @@ export default function InvoicesPage() {
           {/* Invoice Header Details */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-400 mb-1.5">
                 Invoice Number
               </label>
               <input
                 type="text"
                 value={invoiceNumber}
                 onChange={(e) => setInvoiceNumber(e.target.value)}
-                className="w-full bg-[#182032] border border-slate-700/80 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-slate-50 dark:bg-[#182032] border border-slate-300 dark:border-slate-700/80 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-400 mb-1.5">
                 Select Customer (Khata)
               </label>
               <select
                 value={selectedCustomerId}
                 onChange={(e) => handleCustomerSelect(e.target.value)}
-                className="w-full bg-[#182032] border border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-slate-50 dark:bg-[#182032] border border-slate-300 dark:border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
               >
                 <option value="">-- Choose Existing or Type Below --</option>
                 {customers.map((c) => (
@@ -593,7 +593,7 @@ export default function InvoicesPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-400 mb-1.5">
                 Customer Name *
               </label>
               <input
@@ -601,12 +601,12 @@ export default function InvoicesPage() {
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 placeholder="e.g. Tariq Mehmood"
-                className="w-full bg-[#182032] border border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-slate-50 dark:bg-[#182032] border border-slate-300 dark:border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-400 mb-1.5">
                 Customer Phone
               </label>
               <input
@@ -614,36 +614,36 @@ export default function InvoicesPage() {
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
                 placeholder="0300-1234567"
-                className="w-full bg-[#182032] border border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-slate-50 dark:bg-[#182032] border border-slate-300 dark:border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">Invoice Date</label>
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-400 mb-1.5">Invoice Date</label>
               <input
                 type="date"
                 value={invoiceDate}
                 onChange={(e) => setInvoiceDate(e.target.value)}
-                className="w-full bg-[#182032] border border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-slate-50 dark:bg-[#182032] border border-slate-300 dark:border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">Due Date</label>
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-400 mb-1.5">Due Date</label>
               <input
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full bg-[#182032] border border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-slate-50 dark:bg-[#182032] border border-slate-300 dark:border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">Payment Status</label>
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-400 mb-1.5">Payment Status</label>
               <select
                 value={invoiceStatus}
                 onChange={(e) => setInvoiceStatus(e.target.value as any)}
-                className="w-full bg-[#182032] border border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-slate-50 dark:bg-[#182032] border border-slate-300 dark:border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
               >
                 <option value="pending">Pending</option>
                 <option value="paid">Paid</option>
@@ -655,7 +655,7 @@ export default function InvoicesPage() {
           {/* Line Items Table */}
           <div className="space-y-3 pt-2">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white">Itemized Products & Charges</h3>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Itemized Products &amp; Charges</h3>
               <button
                 type="button"
                 onClick={handleAddItem}
@@ -665,9 +665,9 @@ export default function InvoicesPage() {
               </button>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-slate-800">
+            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
               <table className="w-full text-left text-xs text-slate-300">
-                <thead className="bg-[#182032] text-slate-400 font-medium border-b border-slate-800">
+                <thead className="bg-slate-50 dark:bg-[#182032] text-slate-600 dark:text-slate-400 font-medium border-b border-slate-200 dark:border-slate-800">
                   <tr>
                     <th className="py-2.5 px-3">Item Description</th>
                     <th className="py-2.5 px-3">Category</th>
@@ -678,7 +678,7 @@ export default function InvoicesPage() {
                     <th className="py-2.5 px-3 w-10 text-center"></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/80">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                   {items.map((item, index) => (
                     <tr key={item.id} className="hover:bg-slate-800/20">
                       <td className="py-2 px-3">
@@ -687,7 +687,7 @@ export default function InvoicesPage() {
                           value={item.name}
                           onChange={(e) => handleUpdateItem(index, "name", e.target.value)}
                           placeholder="Item or service name..."
-                          className="w-full bg-[#111726] border border-slate-700/60 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                          className="w-full bg-white dark:bg-[#111726] border border-slate-300 dark:border-slate-700/60 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                         />
                       </td>
                       <td className="py-2 px-3">
@@ -696,14 +696,14 @@ export default function InvoicesPage() {
                           value={item.category}
                           onChange={(e) => handleUpdateItem(index, "category", e.target.value)}
                           placeholder="Category"
-                          className="w-full bg-[#111726] border border-slate-700/60 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                          className="w-full bg-white dark:bg-[#111726] border border-slate-300 dark:border-slate-700/60 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                         />
                       </td>
                       <td className="py-2 px-3">
                         <select
                           value={item.type}
                           onChange={(e) => handleUpdateItem(index, "type", e.target.value)}
-                          className="w-full bg-[#111726] border border-slate-700/60 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                          className="w-full bg-white dark:bg-[#111726] border border-slate-300 dark:border-slate-700/60 rounded-lg px-2 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                         >
                           <option value="income">Sale / Income</option>
                           <option value="expense">Expense / Cost</option>
@@ -715,7 +715,7 @@ export default function InvoicesPage() {
                           min="1"
                           value={item.quantity}
                           onChange={(e) => handleUpdateItem(index, "quantity", e.target.value)}
-                          className="w-full bg-[#111726] border border-slate-700/60 rounded-lg px-2 py-1.5 text-xs text-white text-right focus:outline-none focus:border-indigo-500"
+                          className="w-full bg-white dark:bg-[#111726] border border-slate-300 dark:border-slate-700/60 rounded-lg px-2 py-1.5 text-xs text-slate-900 dark:text-white text-right focus:outline-none focus:border-indigo-500"
                         />
                       </td>
                       <td className="py-2 px-3">
@@ -724,10 +724,10 @@ export default function InvoicesPage() {
                           min="0"
                           value={item.unitPrice}
                           onChange={(e) => handleUpdateItem(index, "unitPrice", e.target.value)}
-                          className="w-full bg-[#111726] border border-slate-700/60 rounded-lg px-2 py-1.5 text-xs text-white text-right focus:outline-none focus:border-indigo-500"
+                          className="w-full bg-white dark:bg-[#111726] border border-slate-300 dark:border-slate-700/60 rounded-lg px-2 py-1.5 text-xs text-slate-900 dark:text-white text-right focus:outline-none focus:border-indigo-500"
                         />
                       </td>
-                      <td className="py-2 px-3 text-right font-bold text-white">
+                      <td className="py-2 px-3 text-right font-bold text-slate-900 dark:text-white">
                         {currency} {Number(item.amount).toLocaleString()}
                       </td>
                       <td className="py-2 px-3 text-center">
@@ -750,21 +750,21 @@ export default function InvoicesPage() {
           {/* Totals & Notes */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-800">
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-400 mb-1.5">
                 Invoice Terms & Payment Notes
               </label>
               <textarea
                 rows={3}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full bg-[#182032] border border-slate-700/80 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-indigo-500 resize-none"
+                className="w-full bg-slate-50 dark:bg-[#182032] border border-slate-300 dark:border-slate-700/80 rounded-xl p-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 resize-none"
               />
             </div>
 
-            <div className="bg-[#182032]/80 border border-slate-800 rounded-xl p-4 space-y-3">
+            <div className="bg-slate-50 dark:bg-[#182032]/80 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3">
               <div className="flex justify-between text-xs text-slate-400">
                 <span>Subtotal:</span>
-                <span className="text-white font-medium">
+                <span className="text-slate-900 dark:text-white font-medium">
                   {currency} {subtotal.toLocaleString()}
                 </span>
               </div>
@@ -778,7 +778,7 @@ export default function InvoicesPage() {
                     max="100"
                     value={discountPercent}
                     onChange={(e) => setDiscountPercent(Number(e.target.value))}
-                    className="w-16 bg-[#111726] border border-slate-700 rounded-lg px-2 py-1 text-right text-xs text-white"
+                    className="w-16 bg-white dark:bg-[#111726] border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-right text-xs text-slate-900 dark:text-white"
                   />
                   <span className="text-rose-400 font-medium">
                     - {currency} {discountAmount.toLocaleString()}
@@ -795,7 +795,7 @@ export default function InvoicesPage() {
                     max="100"
                     value={taxPercent}
                     onChange={(e) => setTaxPercent(Number(e.target.value))}
-                    className="w-16 bg-[#111726] border border-slate-700 rounded-lg px-2 py-1 text-right text-xs text-white"
+                    className="w-16 bg-white dark:bg-[#111726] border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-right text-xs text-slate-900 dark:text-white"
                   />
                   <span className="text-emerald-400 font-medium">
                     + {currency} {taxAmount.toLocaleString()}
@@ -803,8 +803,8 @@ export default function InvoicesPage() {
                 </div>
               </div>
 
-              <div className="border-t border-slate-700 pt-2 flex justify-between items-baseline text-sm">
-                <span className="font-bold text-white">Grand Total:</span>
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-2 flex justify-between items-baseline text-sm">
+                <span className="font-bold text-slate-900 dark:text-white">Grand Total:</span>
                 <span className="text-xl font-extrabold text-emerald-400">
                   {currency} {grandTotal.toLocaleString()}
                 </span>
@@ -817,7 +817,7 @@ export default function InvoicesPage() {
             <button
               type="button"
               onClick={() => setActiveTab("list")}
-              className="py-2.5 px-5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 text-xs font-semibold"
+              className="py-2.5 px-5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold"
             >
               Cancel
             </button>
