@@ -274,13 +274,13 @@ export default function CustomerLedgerPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/customers"
-            className="p-2 rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-300 transition"
+            className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition"
             title="Back to Customers"
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
               {customer.name}
             </h1>
             <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
@@ -302,7 +302,7 @@ export default function CustomerLedgerPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={handleDownloadPDF}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#1E1E1E] hover:bg-[#2A2A2A] text-slate-200 border border-slate-700 transition"
+            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition border ${theme === "dark" ? "bg-[#1E1E1E] hover:bg-[#2A2A2A] text-slate-200 border-slate-700" : "bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-sm"}`}
           >
             <Download className="w-4 h-4 text-emerald-400" />
             <span>Download Statement (PDF)</span>
@@ -339,7 +339,7 @@ export default function CustomerLedgerPage() {
       <div className={`p-6 rounded-2xl border ${
         theme === "dark" ? "bg-[#1E1E1E] border-[#2E2E2E]" : "bg-white border-slate-200 shadow-sm"
       }`}>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center divide-y sm:divide-y-0 sm:divide-x divide-slate-800">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-slate-800">
           {/* + Income */}
           <div className="pt-2 sm:pt-0">
             <span className="text-xs font-bold text-slate-400 block mb-1">+ Income (Lene / Receivable)</span>
@@ -415,7 +415,7 @@ export default function CustomerLedgerPage() {
             placeholder="Search entries..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full sm:w-64 pl-9 pr-3 py-2 rounded-xl text-xs border border-slate-700 bg-[#1E1E1E] text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className={`w-full sm:w-64 pl-9 pr-3 py-2 rounded-xl text-xs border focus:outline-none focus:ring-1 focus:ring-emerald-500 ${theme === "dark" ? "border-slate-700 bg-[#1E1E1E] text-white" : "border-slate-200 bg-white text-slate-900 shadow-sm"}`}
           />
         </div>
       </div>
@@ -430,14 +430,14 @@ export default function CustomerLedgerPage() {
             <p>No ledger entries found matching your filter.</p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-800">
+          <div className={`divide-y ${theme === "dark" ? "divide-slate-800" : "divide-slate-100"}`}>
             {filteredTimeline.map((row) => {
               const isIncomeRow = row.type === "Purchase" || row.type === "Payment Sent" || row.rawType === "income";
 
               return (
                 <div
                   key={row.id}
-                  className="p-4 flex items-center justify-between gap-4 hover:bg-slate-800/30 transition-colors"
+                  className={`p-4 flex items-center justify-between gap-4 transition-colors ${theme === "dark" ? "hover:bg-slate-800/30" : "hover:bg-slate-50"}`}
                 >
                   {/* Left: Direction Icon + Category & Note */}
                   <div className="flex items-center gap-3 min-w-0">
@@ -454,7 +454,7 @@ export default function CustomerLedgerPage() {
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-sm truncate">{row.category}</span>
+                        <span className={`font-bold text-sm truncate ${theme === "dark" ? "text-white" : "text-slate-900"}`}>{row.category}</span>
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                           isIncomeRow
                             ? "bg-emerald-500/10 text-emerald-400"
@@ -491,7 +491,7 @@ export default function CustomerLedgerPage() {
                     </div>
 
                     {/* Edit & Delete Action Buttons */}
-                    <div className="flex items-center gap-1 pl-2 border-l border-slate-800">
+                    <div className={`flex items-center gap-1 pl-2 border-l ${theme === "dark" ? "border-slate-800" : "border-slate-200"}`}>
                       <button
                         onClick={() => handleOpenEdit(row)}
                         title="Edit entry"
@@ -528,7 +528,7 @@ export default function CustomerLedgerPage() {
                 type="button"
                 onClick={() => setReminderLang("ur-Roman")}
                 className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
-                  reminderLang === "ur-Roman" ? "bg-emerald-500 text-slate-950" : "text-slate-400 hover:text-white"
+                  reminderLang === "ur-Roman" ? "bg-emerald-500 text-slate-950 shadow-sm" : theme === "dark" ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Roman Urdu
@@ -537,7 +537,7 @@ export default function CustomerLedgerPage() {
                 type="button"
                 onClick={() => setReminderLang("ur")}
                 className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
-                  reminderLang === "ur" ? "bg-emerald-500 text-slate-950" : "text-slate-400 hover:text-white"
+                  reminderLang === "ur" ? "bg-emerald-500 text-slate-950 shadow-sm" : theme === "dark" ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 اردو
@@ -546,7 +546,7 @@ export default function CustomerLedgerPage() {
                 type="button"
                 onClick={() => setReminderLang("en")}
                 className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
-                  reminderLang === "en" ? "bg-emerald-500 text-slate-950" : "text-slate-400 hover:text-white"
+                  reminderLang === "en" ? "bg-emerald-500 text-slate-950 shadow-sm" : theme === "dark" ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 English
@@ -618,8 +618,8 @@ export default function CustomerLedgerPage() {
       {/* Modal 3: Edit Entry */}
       {editingRow && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#1E1E1E] p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className={`w-full max-w-md rounded-2xl border p-6 space-y-4 shadow-2xl ${theme === "dark" ? "bg-[#1E1E1E] border-slate-700 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
+            <div className={`flex items-center justify-between border-b pb-3 ${theme === "dark" ? "border-slate-800" : "border-slate-200"}`}>
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <Edit2 className="w-4 h-4 text-blue-400" /> Edit Ledger Entry
               </h3>
@@ -639,7 +639,7 @@ export default function CustomerLedgerPage() {
                   step="any"
                   value={editForm.amount}
                   onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
-                  className="w-full px-3 py-2 text-lg font-bold rounded-xl border border-slate-700 bg-[#121212] text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`w-full px-3 py-2 text-lg font-bold rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500 ${theme === "dark" ? "border-slate-700 bg-[#121212] text-white" : "border-slate-200 bg-slate-50 text-slate-900"}`}
                 />
               </div>
 
@@ -649,7 +649,7 @@ export default function CustomerLedgerPage() {
                   type="text"
                   value={editForm.category}
                   onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border border-slate-700 bg-[#121212] text-white focus:outline-none"
+                  className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none ${theme === "dark" ? "border-slate-700 bg-[#121212] text-white" : "border-slate-200 bg-slate-50 text-slate-900"}`}
                 />
               </div>
 
@@ -659,7 +659,7 @@ export default function CustomerLedgerPage() {
                   type="date"
                   value={editForm.date}
                   onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border border-slate-700 bg-[#121212] text-white focus:outline-none"
+                  className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none ${theme === "dark" ? "border-slate-700 bg-[#121212] text-white" : "border-slate-200 bg-slate-50 text-slate-900"}`}
                 />
               </div>
 
@@ -669,7 +669,7 @@ export default function CustomerLedgerPage() {
                   type="text"
                   value={editForm.note}
                   onChange={(e) => setEditForm({ ...editForm, note: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border border-slate-700 bg-[#121212] text-white focus:outline-none"
+                  className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none ${theme === "dark" ? "border-slate-700 bg-[#121212] text-white" : "border-slate-200 bg-slate-50 text-slate-900"}`}
                 />
               </div>
 
@@ -677,7 +677,7 @@ export default function CustomerLedgerPage() {
                 <button
                   type="button"
                   onClick={() => setEditingRow(null)}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-slate-700 hover:bg-slate-800"
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition ${theme === "dark" ? "border-slate-700 hover:bg-slate-800 text-slate-300" : "border-slate-200 hover:bg-slate-100 text-slate-700"}`}
                 >
                   Cancel
                 </button>
@@ -698,7 +698,7 @@ export default function CustomerLedgerPage() {
       {/* Modal 4: Confirm Delete Dialog (Matching Mobile App) */}
       {deletingRow && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-sm rounded-2xl border border-slate-700 bg-[#1E1E1E] p-6 space-y-4 shadow-2xl text-center">
+          <div className={`w-full max-w-sm rounded-2xl border p-6 space-y-4 shadow-2xl text-center ${theme === "dark" ? "bg-[#1E1E1E] border-slate-700 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
             <div className="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 mx-auto flex items-center justify-center">
               <Trash2 className="w-6 h-6" />
             </div>
@@ -712,7 +712,7 @@ export default function CustomerLedgerPage() {
               <button
                 type="button"
                 onClick={() => setDeletingRow(null)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-slate-700 hover:bg-slate-800"
+                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition ${theme === "dark" ? "border-slate-700 hover:bg-slate-800 text-slate-300" : "border-slate-200 hover:bg-slate-100 text-slate-700"}`}
               >
                 Cancel
               </button>
@@ -733,8 +733,8 @@ export default function CustomerLedgerPage() {
       {/* Modal 5: Message Preview */}
       {isPreviewOpen && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#1E1E1E] p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className={`w-full max-w-md rounded-2xl border p-6 space-y-4 shadow-2xl ${theme === "dark" ? "bg-[#1E1E1E] border-slate-700 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
+            <div className={`flex items-center justify-between border-b pb-3 ${theme === "dark" ? "border-slate-800" : "border-slate-200"}`}>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <MessageCircle className="w-4 h-4 text-emerald-400" />
                 Reminder Message Preview ({reminderLang})
@@ -743,7 +743,7 @@ export default function CustomerLedgerPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-4 rounded-xl bg-[#121212] border border-slate-800 text-slate-200 text-sm whitespace-pre-wrap leading-relaxed font-sans">
+            <div className={`p-4 rounded-xl border text-sm whitespace-pre-wrap leading-relaxed font-sans ${theme === "dark" ? "bg-[#121212] border-slate-800 text-slate-200" : "bg-slate-50 border-slate-200 text-slate-800"}`}>
               {previewMessage}
             </div>
             <div className="flex justify-end pt-2">
