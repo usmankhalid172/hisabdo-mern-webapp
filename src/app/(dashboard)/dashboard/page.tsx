@@ -133,7 +133,7 @@ export default function DashboardPage() {
           type: "income",
           title: i.description || "Counter Sale",
           category: i.category_id || "Sales",
-          customerName: c?.name || "Counter / Direct Sale",
+          customerName: c?.name || "",
           customerId: c?.id,
           amount: Number(i.amount),
         });
@@ -147,7 +147,7 @@ export default function DashboardPage() {
           type: "expense",
           title: e.description || "Expense Record",
           category: e.category_id || "Rent",
-          customerName: c?.name || "Store Overhead",
+          customerName: c?.name || "",
           customerId: c?.id,
           amount: Number(e.amount),
         });
@@ -161,7 +161,7 @@ export default function DashboardPage() {
           type: p.type === "received" ? "payment_received" : "payment_sent",
           title: p.note || (p.type === "received" ? "Khata Payment Received" : "Khata Payment Sent"),
           category: p.category || "Payment",
-          customerName: c?.name || "Customer",
+          customerName: c?.name || "",
           customerId: c?.id,
           amount: Number(p.amount),
         });
