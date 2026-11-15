@@ -117,7 +117,8 @@ Day 31/
 │   │       └── auth.ts                 # Zod validation schemas
 │   └── middleware.ts                   # Edge route protection & cookie handler
 ├── scripts/
-│   └── test-auth.mjs                   # Automated E2E Auth Test Suite
+│   ├── test-auth.mjs                   # Automated E2E Auth Test Suite
+│   └── test-standardized-forms.mjs     # Standardized Form Component & Validation Tests
 ├── .env.example                        # Clean environment template
 └── README.md                           # Documentation
 ```
