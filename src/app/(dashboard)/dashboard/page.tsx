@@ -764,9 +764,6 @@ export default function DashboardPage() {
                           </a>
                         )}
                       </div>
-                      {tx.customerName && tx.customerName !== "Direct Sale" && tx.customerName !== "Business Expense" && (
-                        <span className="text-xs text-slate-400 block truncate">{tx.customerName}</span>
-                      )}
                     </div>
                   );
                 })}
