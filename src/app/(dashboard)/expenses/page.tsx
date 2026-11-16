@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
+import { AddExpenseForm } from "@/components/transactions/AddExpenseForm";
 import { hisabDoService, Expense } from "@/services/hisabdoService";
 
 export default function ExpensesPage() {
@@ -27,14 +28,6 @@ export default function ExpensesPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    amount: "",
-    category: "General",
-    description: "",
-    payment_method: "cash",
-    expense_date: new Date().toISOString().split("T")[0],
-  });
-  const [submitting, setSubmitting] = useState(false);
 
   const loadExpenses = useCallback(async () => {
     try {
@@ -52,33 +45,6 @@ export default function ExpensesPage() {
   useEffect(() => {
     loadExpenses();
   }, [loadExpenses]);
-
-  const handleSaveExpense = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.amount) return;
-    setSubmitting(true);
-    const userId = user?.id || "guest";
-    try {
-      await hisabDoService.addExpense(userId, {
-        amount: Number(formData.amount),
-        category_id: formData.category,
-        description: formData.description,
-        payment_method: formData.payment_method,
-        expense_date: formData.expense_date,
-      });
-      setIsModalOpen(false);
-      setFormData({
-        amount: "",
-        category: "General",
-        description: "",
-        payment_method: "cash",
-        expense_date: new Date().toISOString().split("T")[0],
-      });
-      await loadExpenses();
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this expense entry?")) {
@@ -246,113 +212,12 @@ export default function ExpensesPage() {
         )}
       </div>
 
-      {/* Add Expense Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className={`w-full max-w-md rounded-2xl border p-6 space-y-4 shadow-2xl ${
-            theme === "dark" ? "bg-[#1E1E1E] border-[#303030]" : "bg-white border-slate-200"
-          }`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-rose-500">+ Record Expense</h3>
-                <p className="text-xs text-slate-400">Add an operating business expense</p>
-              </div>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveExpense} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold mb-1">Amount ({currencySymbol}) *</label>
-                <input
-                  type="number"
-                  required
-                  placeholder="0.00"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  className="w-full px-3 py-2 text-lg font-bold rounded-xl border bg-transparent focus:outline-none focus:ring-1 focus:ring-rose-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold mb-1">Category</label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none ${
-                    theme === "dark" ? "bg-[#252525] border-slate-700" : "bg-white border-slate-200"
-                  }`}
-                >
-                  <option value="Rent">Shop Rent</option>
-                  <option value="Salaries">Staff Salaries</option>
-                  <option value="Utilities">Electricity & Bills</option>
-                  <option value="Tea & Refreshment">Tea & Refreshment</option>
-                  <option value="Supplies">Packing & Supplies</option>
-                  <option value="Travel">Travel & Transport</option>
-                  <option value="General">Other General Expense</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold mb-1">Description / Notes</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Paid shop rent for September"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border bg-transparent focus:outline-none focus:ring-1 focus:ring-rose-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold mb-1">Payment Method</label>
-                <select
-                  value={formData.payment_method}
-                  onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
-                  className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none ${
-                    theme === "dark" ? "bg-[#252525] border-slate-700" : "bg-white border-slate-200"
-                  }`}
-                >
-                  <option value="cash">Cash (Naqad)</option>
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="easypaisa">Easypaisa</option>
-                  <option value="jazzcash">JazzCash</option>
-                  <option value="cheque">Cheque</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold mb-1">Date</label>
-                <input
-                  type="date"
-                  value={formData.expense_date}
-                  onChange={(e) => setFormData({ ...formData, expense_date: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border bg-transparent focus:outline-none"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-2 rounded-xl text-sm font-semibold border hover:bg-slate-800/40"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 py-2 rounded-xl text-sm font-bold bg-[#E53935] text-white hover:bg-rose-600 flex items-center justify-center gap-2"
-                >
-                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Save Expense
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Reusable Add Expense Form */}
+      <AddExpenseForm
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={loadExpenses}
+      />
     </div>
   );
 }
