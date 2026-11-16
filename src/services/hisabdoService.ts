@@ -461,7 +461,7 @@ export class HisabDoService {
       return { success: false, message: "No transaction IDs provided" };
     }
 
-    if (userId === "guest") {
+    if (userId === "guest" || userId === "guest-user" || userId.startsWith("guest")) {
       const idSet = new Set(ids);
       const incs = this.getLocal<Income[]>(userId, "incomes", []);
       this.setLocal(userId, "incomes", incs.filter((i) => !idSet.has(i.id)));
@@ -479,7 +479,17 @@ export class HisabDoService {
     try {
       let token: string | null = null;
       if (typeof window !== "undefined") {
-        token = localStorage.getItem("hisabdo_token") || localStorage.getItem("token");
+        token =
+          localStorage.getItem("hisabdo_token") ||
+          localStorage.getItem("token") ||
+          localStorage.getItem("accessToken");
+
+        if (!token && typeof document !== "undefined") {
+          const match = document.cookie.match(/(?:^|;\s*)hisabdo_auth_token=([^;]+)/);
+          if (match) {
+            token = decodeURIComponent(match[1]);
+          }
+        }
       }
 
       const headers: Record<string, string> = {

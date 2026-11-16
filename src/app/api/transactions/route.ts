@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import { verifyAuthToken } from "@/lib/auth-token";
+import { getAuthenticatedUser } from "@/lib/server-auth";
 import { handleBulkDelete } from "./bulk-delete-handler";
 
 // Admin client that bypasses Postgres role restrictions
@@ -11,31 +11,6 @@ function getAdminSupabase() {
     "";
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
   return createSupabaseClient(url, serviceKey);
-}
-
-async function getAuthenticatedUser(request: NextRequest) {
-  // 1. Check Bearer token from Authorization header
-  const authHeader = request.headers.get("authorization");
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.split(" ")[1];
-    if (token && token !== "null" && token !== "undefined") {
-      const user = await verifyAuthToken(token);
-      if (user) return user;
-    }
-  }
-
-  // 2. Check HTTP-only cookies
-  const cookieToken =
-    request.cookies.get("hisabdo_auth_token")?.value ||
-    request.cookies.get("token")?.value ||
-    request.cookies.get("accessToken")?.value;
-
-  if (cookieToken) {
-    const user = await verifyAuthToken(cookieToken);
-    if (user) return user;
-  }
-
-  return null;
 }
 
 export async function GET(request: NextRequest) {

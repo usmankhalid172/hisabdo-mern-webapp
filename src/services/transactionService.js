@@ -20,12 +20,37 @@ export const transactionService = {
   },
 
   delete: async (id) => {
-    const response = await apiClient.delete(`/transactions/${id}`);
+    let token = null;
+    if (typeof window !== "undefined") {
+      token =
+        localStorage.getItem("hisabdo_token") ||
+        localStorage.getItem("token") ||
+        localStorage.getItem("accessToken");
+    }
+    const headers = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    const response = await apiClient.delete(`/transactions/${id}`, { headers });
     return response.data;
   },
 
   bulkDelete: async (ids) => {
-    const response = await apiClient.delete('/transactions', { data: { ids } });
+    let token = null;
+    if (typeof window !== "undefined") {
+      token =
+        localStorage.getItem("hisabdo_token") ||
+        localStorage.getItem("token") ||
+        localStorage.getItem("accessToken");
+    }
+    const headers = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    const response = await apiClient.delete('/transactions', {
+      data: { ids },
+      headers,
+    });
     return response.data;
   },
 };

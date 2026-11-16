@@ -14,6 +14,23 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
+    if (typeof window !== "undefined") {
+      let token =
+        localStorage.getItem("hisabdo_token") ||
+        localStorage.getItem("token") ||
+        localStorage.getItem("accessToken");
+
+      if (!token && typeof document !== "undefined") {
+        const match = document.cookie.match(/(?:^|;\s*)hisabdo_auth_token=([^;]+)/);
+        if (match) {
+          token = decodeURIComponent(match[1]);
+        }
+      }
+
+      if (token && !config.headers["Authorization"] && !config.headers["authorization"]) {
+        config.headers["Authorization"] = `Bearer ${token}`;
+      }
+    }
     return config;
   },
   (error) => Promise.reject(error)
