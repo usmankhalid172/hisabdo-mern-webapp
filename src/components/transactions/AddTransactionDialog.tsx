@@ -2,9 +2,7 @@
 
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
-// NOTE: Jab Aiman ka form merge hoga, tab yeh import path check kar lena. 
-// Agar uska path alag hai, toh yahan change karna.
-import { TransactionForm } from "@/components/transactions/TransactionForm"; 
+import { TransactionForm } from "@/components/transactions/TransactionForm";
 
 interface AddTransactionDialogProps {
   open: boolean;
@@ -19,7 +17,12 @@ export function AddTransactionDialog({
 }: AddTransactionDialogProps) {
   const handleSuccess = () => {
     if (onSuccess) onSuccess();
-    onOpenChange(false); // Success par dialog close kar do
+    onOpenChange(false);
+  };
+
+  // Yeh naya function add hua hai
+  const handleCancel = () => {
+    onOpenChange(false);
   };
 
   return (
@@ -28,8 +31,8 @@ export function AddTransactionDialog({
         <DialogHeader>
           <DialogTitle>Add Transaction</DialogTitle>
         </DialogHeader>
-        {/* Aiman ka Shared Form */}
-        <TransactionForm onSuccess={handleSuccess} />
+        {/* onCancel prop add kar diya hai */}
+        <TransactionForm onSuccess={handleSuccess} onCancel={handleCancel} />
       </DialogContent>
     </Dialog>
   );

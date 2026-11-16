@@ -2,7 +2,6 @@
 
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
-// NOTE: Jab Aiman ka form merge hoga, tab yeh import path check kar lena.
 import { TransactionForm } from "@/components/transactions/TransactionForm";
 
 interface PaymentDialogProps {
@@ -20,7 +19,12 @@ export function PaymentDialog({
 }: PaymentDialogProps) {
   const handleSuccess = () => {
     if (onSuccess) onSuccess();
-    onOpenChange(false); // Success par dialog close kar do
+    onOpenChange(false);
+  };
+
+  // Yeh naya function add hua hai
+  const handleCancel = () => {
+    onOpenChange(false);
   };
 
   return (
@@ -29,8 +33,12 @@ export function PaymentDialog({
         <DialogHeader>
           <DialogTitle>Record Payment</DialogTitle>
         </DialogHeader>
-        {/* Aiman ka Shared Form with optional customerId */}
-        <TransactionForm customerId={customerId} onSuccess={handleSuccess} />
+        {/* onCancel prop add kar diya hai */}
+        <TransactionForm 
+          customerId={customerId} 
+          onSuccess={handleSuccess} 
+          onCancel={handleCancel} 
+        />
       </DialogContent>
     </Dialog>
   );
