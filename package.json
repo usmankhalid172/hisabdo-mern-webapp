@@ -27,11 +27,11 @@
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^20",
-    "@types/react": "^18",
+    "@types/node": "20.19.43",
+    "@types/react": "18.3.31",
     "autoprefixer": "^10.5.4",
     "postcss": "^8.5.26",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5"
+    "typescript": "5.9.3"
   }
 }
