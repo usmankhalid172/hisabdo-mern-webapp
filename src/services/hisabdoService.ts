@@ -382,7 +382,66 @@ export class HisabDoService {
     return fallback;
   }
 
-  async addIncome(userId: string, income: Omit<Income, "id" | "created_at">): Promise<Income> {
+  // Utility functions for date validation (shared with UI)
+function isValidDateString(str: string): boolean {
+  const parts = str.split('-');
+  if (parts.length !== 3) return false;
+  const [yyyy, mm, dd] = parts.map((p) => parseInt(p, 10));
+  if (isNaN(yyyy) || isNaN(mm) || isNaN(dd)) return false;
+  if (mm < 1 || mm > 12 || dd < 1) return false;
+  const date = new Date(yyyy, mm - 1, dd);
+  return date.getFullYear() === yyyy && date.getMonth() === mm - 1 && date.getDate() === dd;
+}
+
+function dateWithinLimits(dateStr: string): { ok: boolean; warning?: string } {
+  const date = new Date(dateStr);
+  const today = new Date();
+  const pastLimit = new Date();
+  pastLimit.setFullYear(today.getFullYear() - 5);
+  const futureLimit = new Date();
+  futureLimit.setFullYear(today.getFullYear() + 3);
+  if (date < pastLimit) return { ok: false, warning: 'Date is older than 5 years.' };
+  if (date > futureLimit) return { ok: false, warning: 'Date is more than 3 years in the future.' };
+  const pastWarning = new Date();
+  pastWarning.setDate(today.getDate() - 90);
+  const futureWarning = new Date();
+  futureWarning.setFullYear(today.getFullYear() + 1);
+  if (date < pastWarning) return { ok: true, warning: 'More than 90 days in the past. Confirm?' };
+  if (date > futureWarning) return { ok: true, warning: 'More than 1 year in the future. Confirm?' };
+  return { ok: true };
+}
+
+// Extend addIncome with date validation
+async addIncome(userId: string, income: Omit<Income, "id" | "created_at">): Promise<Income> {
+  if (!isValidDateString(income.income_date)) {
+    throw new Error('Invalid income date format. Expected yyyy-mm-dd');
+  }
+  const limitCheck = dateWithinLimits(income.income_date);
+  if (!limitCheck.ok) {
+    throw new Error(limitCheck.warning || 'Income date out of allowed range');
+  }
+  // existing logic continues
+  const clientUuid = income.client_uuid || createClientUuid();
+  const categoryLabel = String(income.category_id || "Sales");
+  const metadata = {
+    ...asMetadata(income.metadata),
+    legacy_category: isRemoteUuid(categoryLabel) ? undefined : categoryLabel,
+    payment_method: income.payment_method || "cash",
+    currency: "PKR",
+    base_currency: "PKR",
+    exchange_rate: 1,
+  };
+  const newInc: Income = {
+    ...income,
+    id: `local-${clientUuid}`,
+    client_uuid: clientUuid,
+    version: 1,
+    metadata,
+    image_path: income.image_path || undefined,
+    created_at: new Date().toISOString(),
+  };
+  // ... rest unchanged
+
     const clientUuid = income.client_uuid || createClientUuid();
     const categoryLabel = String(income.category_id || "Sales");
     const metadata = {

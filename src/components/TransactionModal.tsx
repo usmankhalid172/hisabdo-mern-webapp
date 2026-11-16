@@ -67,6 +67,101 @@ export function TransactionModal({
   const [submitting, setSubmitting] = useState(false);
   const [generalError, setGeneralError] = useState<string | null>(null);
 
+  // Utility functions for date handling
+function isValidDateString(str: string): boolean {
+  const parts = str.split('-');
+  if (parts.length !== 3) return false;
+  const [dd, mm, yyyy] = parts.map((p) => parseInt(p, 10));
+  if (isNaN(dd) || isNaN(mm) || isNaN(yyyy)) return false;
+  if (dd < 1 || mm < 1 || mm > 12) return false;
+  const date = new Date(yyyy, mm - 1, dd);
+  return date.getFullYear() === yyyy && date.getMonth() === mm - 1 && date.getDate() === dd;
+}
+
+function formatVisibleDate(iso: string): string {
+  const [yyyy, mm, dd] = iso.split('-');
+  return `${dd}-${mm}-${yyyy}`;
+}
+
+function toISODate(visible: string): string {
+  const [dd, mm, yyyy] = visible.split('-');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function dateWithinLimits(dateStr: string): { ok: boolean; warning?: string } {
+  const date = new Date(dateStr);
+  const today = new Date();
+  const pastLimit = new Date();
+  pastLimit.setFullYear(today.getFullYear() - 5);
+  const futureLimit = new Date();
+  futureLimit.setFullYear(today.getFullYear() + 3);
+
+  if (date < pastLimit) return { ok: false, warning: 'Date is older than 5 years.' };
+  if (date > futureLimit) return { ok: false, warning: 'Date is more than 3 years in the future.' };
+
+  // Warnings for confirmation
+  const pastWarning = new Date();
+  pastWarning.setDate(today.getDate() - 90);
+  const futureWarning = new Date();
+  futureWarning.setFullYear(today.getFullYear() + 1);
+
+  if (date < pastWarning) return { ok: true, warning: 'More than 90 days in the past. Confirm?' };
+  if (date > futureWarning) return { ok: true, warning: 'More than 1 year in the future. Confirm?' };
+
+  return { ok: true };
+}
+
+const transactionSchema = z.object({
+  partyName: z.string().min(2, "Party/Customer name is required"),
+  amount: z.coerce.number().positive("Amount must be greater than 0"),
+  type: z.enum(["Got Money", "Gave Money"]),
+  // store visible date as dd-mm-yyyy, transform to ISO for service
+  date: z.string().refine(isValidDateString, { message: "Invalid date (dd-mm-yyyy)" }).transform(toISODate),
+});
+  function isValidDateString(str: string): boolean {
+    const parts = str.split('-');
+    if (parts.length !== 3) return false;
+    const [dd, mm, yyyy] = parts.map((p) => parseInt(p, 10));
+    if (isNaN(dd) || isNaN(mm) || isNaN(yyyy)) return false;
+    if (dd < 1 || mm < 1 || mm > 12) return false;
+    const date = new Date(yyyy, mm - 1, dd);
+    return date.getFullYear() === yyyy && date.getMonth() === mm - 1 && date.getDate() === dd;
+  }
+
+  function formatVisibleDate(iso: string): string {
+    // iso expected yyyy-mm-dd
+    const [yyyy, mm, dd] = iso.split('-');
+    return `${dd}-${mm}-${yyyy}`;
+  }
+
+  function toISODate(visible: string): string {
+    const [dd, mm, yyyy] = visible.split('-');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function dateWithinLimits(dateStr: string): { ok: boolean; warning?: string } {
+    const date = new Date(dateStr);
+    const today = new Date();
+    const pastLimit = new Date();
+    pastLimit.setFullYear(today.getFullYear() - 5);
+    const futureLimit = new Date();
+    futureLimit.setFullYear(today.getFullYear() + 3);
+
+    if (date < pastLimit) return { ok: false, warning: 'Date is older than 5 years.' };
+    if (date > futureLimit) return { ok: false, warning: 'Date is more than 3 years in the future.' };
+
+    // Warnings for confirmation
+    const pastWarning = new Date();
+    pastWarning.setDate(today.getDate() - 90);
+    const futureWarning = new Date();
+    futureWarning.setFullYear(today.getFullYear() + 1);
+
+    if (date < pastWarning) return { ok: true, warning: 'More than 90 days in the past. Confirm?' };
+    if (date > futureWarning) return { ok: true, warning: 'More than 1 year in the future. Confirm?' };
+
+    return { ok: true };
+  }
+
   const {
     register,
     handleSubmit,
@@ -79,7 +174,7 @@ export function TransactionModal({
       partyName: "",
       amount: 0,
       type: defaultType,
-      date: new Date().toISOString().split("T")[0],
+      date: formatVisibleDate(new Date().toISOString().split('T')[0]),
     },
   });
 
@@ -122,7 +217,7 @@ export function TransactionModal({
         partyName: customer ? customer.name : "",
         amount: 0,
         type: defaultType,
-        date: new Date().toISOString().split("T")[0],
+        date: formatVisibleDate(new Date().toISOString().split('T')[0]),
       });
     }
     setGeneralError(null);
@@ -168,7 +263,7 @@ export function TransactionModal({
         partyName: customer ? customer.name : "",
         amount: 0,
         type: defaultType,
-        date: new Date().toISOString().split("T")[0],
+        date: formatVisibleDate(new Date().toISOString().split('T')[0]),
       });
 
       if (onSuccess) await onSuccess(saved);
@@ -238,15 +333,23 @@ export function TransactionModal({
         />
       </div>
 
-      {/* Date */}
-      <div>
-        <Input
-          label="Date"
-          type="date"
-          error={errors.date?.message}
-          {...register("date")}
-        />
-      </div>
+        {/* Date */}
+        <div>
+          <Input
+            label="Date"
+            type="text"
+            placeholder="dd-mm-yyyy"
+            error={errors.date?.message}
+            {...register("date", {
+              onChange: (e) => {
+                let v = e.target.value.replace(/\D/g, "");
+                if (v.length >= 2) v = v.slice(0, 2) + "-" + v.slice(2);
+                if (v.length >= 5) v = v.slice(0, 5) + "-" + v.slice(5, 8);
+                setValue("date", v);
+              },
+            })}
+          />
+        </div>
 
       {/* Actions */}
       <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
