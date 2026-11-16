@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { validateDateRestrictions } from "@/lib/validations/formDateValidation";
 
 export interface Customer {
   id: string;
@@ -380,8 +381,24 @@ export class HisabDoService {
   }
 
   async addIncome(userId: string, income: Omit<Income, "id" | "created_at">): Promise<Income> {
+    const numAmount = Number(income.amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      throw new Error("Amount must be greater than zero");
+    }
+
+    const category = income.category_id ? String(income.category_id).trim() : "";
+    if (!category) {
+      throw new Error("Category is required");
+    }
+
+    const dateStr = income.income_date ? String(income.income_date).trim() : "";
+    const dateCheck = validateDateRestrictions(dateStr);
+    if (!dateCheck.isValid) {
+      throw new Error(dateCheck.error || "Invalid transaction date");
+    }
+
     const clientUuid = income.client_uuid || createClientUuid();
-    const categoryLabel = String(income.category_id || "Sales");
+    const categoryLabel = category;
     const metadata = {
       ...asMetadata(income.metadata),
       legacy_category: isRemoteUuid(categoryLabel) ? undefined : categoryLabel,
@@ -516,8 +533,24 @@ export class HisabDoService {
   }
 
   async addExpense(userId: string, expense: Omit<Expense, "id" | "created_at">): Promise<Expense> {
+    const numAmount = Number(expense.amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      throw new Error("Amount must be greater than zero");
+    }
+
+    const category = expense.category_id ? String(expense.category_id).trim() : "";
+    if (!category) {
+      throw new Error("Category is required");
+    }
+
+    const dateStr = expense.expense_date ? String(expense.expense_date).trim() : "";
+    const dateCheck = validateDateRestrictions(dateStr);
+    if (!dateCheck.isValid) {
+      throw new Error(dateCheck.error || "Invalid transaction date");
+    }
+
     const clientUuid = expense.client_uuid || createClientUuid();
-    const categoryLabel = String(expense.category_id || "General");
+    const categoryLabel = category;
     const metadata = {
       ...asMetadata(expense.metadata),
       legacy_category: isRemoteUuid(categoryLabel) ? undefined : categoryLabel,

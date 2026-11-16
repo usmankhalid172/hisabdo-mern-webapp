@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { Plus, X, Calendar, Loader2, AlertCircle } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Plus, X, Loader2, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { hisabDoService, Customer } from "@/services/hisabdoService";
 import {
   getTodayDateString,
-  isValidDateString,
-  validateTransactionDate,
+  validateDateRestrictions,
 } from "@/lib/validations/formDateValidation";
+import DatePickerPopover from "@/components/ui/DatePickerPopover";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 export const DEFAULT_INCOME_CATEGORIES = [
   "Sales",
@@ -56,8 +57,6 @@ export function AddIncomeForm({
   lockCustomer = false,
   customers: initialCustomers,
   categories = DEFAULT_INCOME_CATEGORIES,
-  minDate = "2000-01-01",
-  maxDate = getTodayDateString(),
   asModal = true,
   initialAmount = "",
   initialCategory = "",
@@ -67,7 +66,7 @@ export function AddIncomeForm({
   onSubmitCustom,
 }: AddIncomeFormProps) {
   const { user } = useAuth();
-  const { currencySymbol, theme } = useSettings();
+  const { currencySymbol } = useSettings();
 
   const [customerList, setCustomerList] = useState<Customer[]>(initialCustomers || []);
   const [formData, setFormData] = useState({
@@ -87,7 +86,14 @@ export function AddIncomeForm({
   }>({});
 
   const [submitting, setSubmitting] = useState(false);
-  const hiddenDateInputRef = useRef<HTMLInputElement>(null);
+  const [confirmedWarning, setConfirmedWarning] = useState(false);
+  const [warningModal, setWarningModal] = useState<{
+    isOpen: boolean;
+    message: string;
+  }>({
+    isOpen: false,
+    message: "",
+  });
 
   const handleCancel = () => {
     if (onCancel) {
@@ -110,6 +116,8 @@ export function AddIncomeForm({
         paymentMethod: paymentMethod || "cash",
       });
       setErrors({});
+      setConfirmedWarning(false);
+      setWarningModal({ isOpen: false, message: "" });
     }
   }, [isOpen, customerId, initialCategory, initialAmount, initialDescription, initialDate, paymentMethod]);
 
@@ -128,23 +136,19 @@ export function AddIncomeForm({
   const validate = (): boolean => {
     const newErrors: typeof errors = {};
 
-    // 1. Amount validation
+    // 1. Amount validation: must be greater than zero
     const numAmount = parseFloat(formData.amount);
     if (!formData.amount || isNaN(numAmount) || numAmount <= 0) {
       newErrors.amount = "Please enter a valid amount greater than 0";
     }
 
-    // 2. Category validation (Required single dropdown selection)
+    // 2. Category validation: required and cannot be empty
     if (!formData.category || !formData.category.trim()) {
       newErrors.category = "Please select a category";
     }
 
-    // 3. Date validation (Calendar selection or manual entry)
-    const dateCheck = validateTransactionDate(formData.date, {
-      minDate,
-      maxDate,
-      required: true,
-    });
+    // 3. Date validation: hard limits and calendar validity
+    const dateCheck = validateDateRestrictions(formData.date);
     if (!dateCheck.isValid) {
       newErrors.date = dateCheck.error || "Please enter a valid date";
     }
@@ -155,7 +159,8 @@ export function AddIncomeForm({
 
   const handleDateChange = (val: string) => {
     setFormData((prev) => ({ ...prev, date: val }));
-    const dateCheck = validateTransactionDate(val, { minDate, maxDate, required: true });
+    setConfirmedWarning(false);
+    const dateCheck = validateDateRestrictions(val);
     setErrors((prev) => ({
       ...prev,
       date: dateCheck.isValid ? undefined : dateCheck.error,
@@ -166,7 +171,7 @@ export function AddIncomeForm({
     setFormData((prev) => ({ ...prev, category: val }));
     setErrors((prev) => ({
       ...prev,
-      category: val ? undefined : "Please select a category",
+      category: val && val.trim() ? undefined : "Please select a category",
     }));
   };
 
@@ -179,12 +184,7 @@ export function AddIncomeForm({
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (submitting) return; // Prevent duplicate submission
-
-    if (!validate()) return;
-
+  const executeSave = async () => {
     setSubmitting(true);
     setErrors((prev) => ({ ...prev, general: undefined }));
 
@@ -222,6 +222,7 @@ export function AddIncomeForm({
         date: getTodayDateString(),
         paymentMethod: "cash",
       });
+      setConfirmedWarning(false);
 
       if (onSuccess) {
         await onSuccess();
@@ -240,25 +241,48 @@ export function AddIncomeForm({
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (submitting) return;
+
+    if (!validate()) return;
+
+    // Check for date confirmation warnings (>90 days past, >1 year future)
+    const dateCheck = validateDateRestrictions(formData.date);
+    if (dateCheck.isWarning && !confirmedWarning) {
+      setWarningModal({
+        isOpen: true,
+        message:
+          dateCheck.warningMessage ||
+          "The selected date requires confirmation. Are you sure you want to proceed?",
+      });
+      return;
+    }
+
+    await executeSave();
+  };
+
+  const handleConfirmWarning = async () => {
+    setConfirmedWarning(true);
+    setWarningModal({ isOpen: false, message: "" });
+    await executeSave();
+  };
+
   const formContent = (
-    <div
-      className={`w-full max-w-md rounded-2xl border p-6 space-y-4 shadow-2xl ${
-        theme === "dark" ? "bg-[#1E1E1E] border-[#303030]" : "bg-white border-slate-200"
-      }`}
-    >
+    <div className="w-full max-w-md rounded-card border border-border bg-surface text-foreground p-6 space-y-4 shadow-dialog">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-bold text-[#00E676] flex items-center gap-1.5">
+          <h3 className="text-lg font-bold text-success flex items-center gap-1.5">
             <Plus className="w-5 h-5" /> + Add Income Entry
           </h3>
-          <p className="text-xs text-slate-400">Record a new accounting transaction</p>
+          <p className="text-xs text-muted-foreground">Record a new accounting transaction</p>
         </div>
         {(onCancel || onClose) && (
           <button
             type="button"
             onClick={handleCancel}
-            className="text-slate-400 hover:text-white transition p-1"
+            className="text-muted-foreground hover:text-foreground transition p-1 rounded-control"
             aria-label="Close modal"
           >
             <X className="w-5 h-5" />
@@ -268,7 +292,7 @@ export function AddIncomeForm({
 
       {/* General Error Banner */}
       {errors.general && (
-        <div className="flex items-center gap-2 p-3 text-xs rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400">
+        <div className="flex items-center gap-2 p-3 text-xs rounded-control bg-danger/10 border border-danger/30 text-danger">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{errors.general}</span>
         </div>
@@ -278,7 +302,7 @@ export function AddIncomeForm({
       <form onSubmit={handleSubmit} className="space-y-3" noValidate>
         {/* 1. Amount */}
         <div>
-          <label htmlFor="income-amount" className="block text-xs font-semibold mb-1">
+          <label htmlFor="income-amount" className="block text-xs font-semibold mb-1 text-foreground">
             Amount ({currencySymbol}) *
           </label>
           <input
@@ -290,18 +314,18 @@ export function AddIncomeForm({
             placeholder="0.00"
             value={formData.amount}
             onChange={(e) => handleAmountChange(e.target.value)}
-            className={`w-full px-3 py-2 text-lg font-bold rounded-xl border bg-transparent focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
-              errors.amount ? "border-rose-500 ring-1 ring-rose-500" : ""
+            className={`w-full px-3 py-2 text-lg font-bold rounded-control border bg-surface text-foreground focus:outline-none focus:ring-1 focus:ring-primary ${
+              errors.amount ? "border-danger ring-1 ring-danger text-danger" : "border-border"
             }`}
             autoFocus
           />
-          {errors.amount && <p className="text-xs text-rose-500 mt-1">{errors.amount}</p>}
+          {errors.amount && <p className="text-xs text-danger mt-1">{errors.amount}</p>}
         </div>
 
-        {/* 2. Customer / Party */}
+        {/* 2. Customer / Party - Hidden if customerId prop is provided */}
         {!customerId && (
           <div>
-            <label htmlFor="income-customer" className="block text-xs font-semibold mb-1">
+            <label htmlFor="income-customer" className="block text-xs font-semibold mb-1 text-foreground">
               Associated Customer / Party
             </label>
             <select
@@ -310,9 +334,9 @@ export function AddIncomeForm({
               disabled={lockCustomer}
               value={formData.customerId}
               onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
-              className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none ${
-                theme === "dark" ? "bg-[#252525] border-slate-700 text-white" : "bg-white border-slate-200 text-slate-900"
-              } ${lockCustomer ? "opacity-75 cursor-not-allowed" : ""}`}
+              className={`w-full px-3 py-2 rounded-control text-sm border bg-surface text-foreground border-border focus:outline-none focus:ring-1 focus:ring-primary ${
+                lockCustomer ? "opacity-75 cursor-not-allowed bg-surface-muted" : ""
+              }`}
             >
               <option value="">Direct / Walk-in (No Party)</option>
               {customerList.map((c) => (
@@ -326,7 +350,7 @@ export function AddIncomeForm({
 
         {/* 3. Category (Single Dropdown Required) */}
         <div>
-          <label htmlFor="income-category" className="block text-xs font-semibold mb-1">
+          <label htmlFor="income-category" className="block text-xs font-semibold mb-1 text-foreground">
             Category *
           </label>
           <select
@@ -335,9 +359,9 @@ export function AddIncomeForm({
             required
             value={formData.category}
             onChange={(e) => handleCategoryChange(e.target.value)}
-            className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
-              theme === "dark" ? "bg-[#252525] border-slate-700 text-white" : "bg-white border-slate-200 text-slate-900"
-            } ${errors.category ? "border-rose-500 ring-1 ring-rose-500" : ""}`}
+            className={`w-full px-3 py-2 rounded-control text-sm border bg-surface text-foreground focus:outline-none focus:ring-1 focus:ring-primary ${
+              errors.category ? "border-danger ring-1 ring-danger text-danger" : "border-border"
+            }`}
           >
             <option value="">Select Category</option>
             {categories.map((cat) => (
@@ -346,12 +370,12 @@ export function AddIncomeForm({
               </option>
             ))}
           </select>
-          {errors.category && <p className="text-xs text-rose-500 mt-1">{errors.category}</p>}
+          {errors.category && <p className="text-xs text-danger mt-1">{errors.category}</p>}
         </div>
 
         {/* 4. Description / Notes */}
         <div>
-          <label htmlFor="income-description" className="block text-xs font-semibold mb-1">
+          <label htmlFor="income-description" className="block text-xs font-semibold mb-1 text-foreground">
             Description / Notes
           </label>
           <input
@@ -361,61 +385,25 @@ export function AddIncomeForm({
             placeholder="e.g. Sold accessories, service payment"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            className="w-full px-3 py-2 rounded-xl text-sm border bg-transparent focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="w-full px-3 py-2 rounded-control text-sm border bg-surface text-foreground border-border focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
 
-        {/* 5. Date Picker & Manual Entry */}
+        {/* 5. Date Picker & Manual Entry (Themed Popover & DD-MM-YYYY) */}
         <div>
-          <label htmlFor="income-date" className="block text-xs font-semibold mb-1">
+          <label htmlFor="income-date" className="block text-xs font-semibold mb-1 text-foreground">
             Date *
           </label>
-          <div className="relative flex items-center">
-            <input
-              id="income-date"
-              name="date"
-              type="text"
-              placeholder="YYYY-MM-DD"
-              value={formData.date}
-              onChange={(e) => handleDateChange(e.target.value)}
-              className={`w-full px-3 py-2 pr-10 rounded-xl text-sm border bg-transparent focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
-                errors.date ? "border-rose-500 ring-1 ring-rose-500" : ""
-              }`}
-            />
-            <div className="absolute right-2.5 flex items-center">
-              <button
-                type="button"
-                onClick={() => {
-                  try {
-                    hiddenDateInputRef.current?.showPicker?.();
-                  } catch {
-                    hiddenDateInputRef.current?.focus();
-                  }
-                }}
-                className="p-1 text-slate-400 hover:text-white transition"
-                title="Open calendar picker"
-                aria-label="Open calendar picker"
-              >
-                <Calendar className="w-4 h-4" />
-              </button>
-              <input
-                type="date"
-                ref={hiddenDateInputRef}
-                min={minDate}
-                max={maxDate}
-                value={isValidDateString(formData.date) ? formData.date : ""}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    handleDateChange(e.target.value);
-                  }
-                }}
-                tabIndex={-1}
-                aria-hidden="true"
-                className="sr-only"
-              />
-            </div>
-          </div>
-          {errors.date && <p className="text-xs text-rose-500 mt-1">{errors.date}</p>}
+          <DatePickerPopover
+            id="income-date"
+            name="date"
+            value={formData.date}
+            onChange={handleDateChange}
+            error={errors.date}
+            variant="income"
+            required
+          />
+          {errors.date && <p className="text-xs text-danger mt-1">{errors.date}</p>}
         </div>
 
         {/* Actions */}
@@ -425,7 +413,7 @@ export function AddIncomeForm({
               type="button"
               onClick={handleCancel}
               disabled={submitting}
-              className="flex-1 py-2 rounded-xl text-sm font-semibold border hover:bg-slate-800/40 transition disabled:opacity-50"
+              className="flex-1 py-2 rounded-control text-sm font-semibold border border-border bg-surface text-foreground hover:bg-surface-muted transition disabled:opacity-50"
             >
               Cancel
             </button>
@@ -433,19 +421,30 @@ export function AddIncomeForm({
           <button
             type="submit"
             disabled={submitting}
-            className="flex-1 py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2 bg-[#00E676] text-[#0B0F17] hover:bg-[#00C853] transition shadow-md disabled:opacity-60"
+            className="flex-1 py-2 rounded-control text-sm font-bold flex items-center justify-center gap-2 bg-success text-white hover:opacity-90 transition shadow-card disabled:opacity-60"
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
             <span>Save Entry</span>
           </button>
         </div>
       </form>
+
+      {/* Confirmation Dialog for Date Warnings (>90 days past, >1 year future) */}
+      <ConfirmDialog
+        isOpen={warningModal.isOpen}
+        onClose={() => setWarningModal({ isOpen: false, message: "" })}
+        onConfirm={handleConfirmWarning}
+        title="Are you sure?"
+        message={warningModal.message}
+        confirmText="Yes, Proceed"
+        cancelText="Review Date"
+      />
     </div>
   );
 
   if (asModal) {
     return (
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         {formContent}
       </div>
     );
@@ -455,4 +454,3 @@ export function AddIncomeForm({
 }
 
 export default AddIncomeForm;
-
