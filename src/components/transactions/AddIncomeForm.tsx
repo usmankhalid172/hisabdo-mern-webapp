@@ -23,6 +23,7 @@ export const DEFAULT_INCOME_CATEGORIES = [
 export interface AddIncomeFormProps {
   isOpen?: boolean;
   onClose?: () => void;
+  onCancel?: () => void;
   onSuccess?: () => void;
   customerId?: string;
   lockCustomer?: boolean;
@@ -49,8 +50,9 @@ export interface AddIncomeFormProps {
 export function AddIncomeForm({
   isOpen = true,
   onClose,
+  onCancel,
   onSuccess,
-  customerId: initialCustomerId = "",
+  customerId = "",
   lockCustomer = false,
   customers: initialCustomers,
   categories = DEFAULT_INCOME_CATEGORIES,
@@ -70,7 +72,7 @@ export function AddIncomeForm({
   const [customerList, setCustomerList] = useState<Customer[]>(initialCustomers || []);
   const [formData, setFormData] = useState({
     amount: initialAmount ? String(initialAmount) : "",
-    customerId: initialCustomerId,
+    customerId: customerId,
     category: initialCategory,
     description: initialDescription,
     date: initialDate || getTodayDateString(),
@@ -87,12 +89,21 @@ export function AddIncomeForm({
   const [submitting, setSubmitting] = useState(false);
   const hiddenDateInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync initial props if modal is reopened
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel();
+    }
+    if (onClose) {
+      onClose();
+    }
+  };
+
+  // Sync initial props if modal is reopened or props change
   useEffect(() => {
     if (isOpen) {
       setFormData({
         amount: initialAmount ? String(initialAmount) : "",
-        customerId: initialCustomerId,
+        customerId: customerId,
         category: initialCategory,
         description: initialDescription,
         date: initialDate || getTodayDateString(),
@@ -100,7 +111,7 @@ export function AddIncomeForm({
       });
       setErrors({});
     }
-  }, [isOpen, initialCustomerId, initialCategory, initialAmount, initialDescription, initialDate, paymentMethod]);
+  }, [isOpen, customerId, initialCategory, initialAmount, initialDescription, initialDate, paymentMethod]);
 
   // Load customers if not supplied
   useEffect(() => {
@@ -205,7 +216,7 @@ export function AddIncomeForm({
       // Reset and trigger callbacks
       setFormData({
         amount: "",
-        customerId: initialCustomerId,
+        customerId: customerId,
         category: "",
         description: "",
         date: getTodayDateString(),
@@ -243,10 +254,10 @@ export function AddIncomeForm({
           </h3>
           <p className="text-xs text-slate-400">Record a new accounting transaction</p>
         </div>
-        {onClose && (
+        {(onCancel || onClose) && (
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleCancel}
             className="text-slate-400 hover:text-white transition p-1"
             aria-label="Close modal"
           >
@@ -288,28 +299,30 @@ export function AddIncomeForm({
         </div>
 
         {/* 2. Customer / Party */}
-        <div>
-          <label htmlFor="income-customer" className="block text-xs font-semibold mb-1">
-            Associated Customer / Party
-          </label>
-          <select
-            id="income-customer"
-            name="customerId"
-            disabled={lockCustomer}
-            value={formData.customerId}
-            onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
-            className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none ${
-              theme === "dark" ? "bg-[#252525] border-slate-700 text-white" : "bg-white border-slate-200 text-slate-900"
-            } ${lockCustomer ? "opacity-75 cursor-not-allowed" : ""}`}
-          >
-            <option value="">Direct / Walk-in (No Party)</option>
-            {customerList.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} {c.phone ? `(${c.phone})` : ""}
-              </option>
-            ))}
-          </select>
-        </div>
+        {!customerId && (
+          <div>
+            <label htmlFor="income-customer" className="block text-xs font-semibold mb-1">
+              Associated Customer / Party
+            </label>
+            <select
+              id="income-customer"
+              name="customerId"
+              disabled={lockCustomer}
+              value={formData.customerId}
+              onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
+              className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none ${
+                theme === "dark" ? "bg-[#252525] border-slate-700 text-white" : "bg-white border-slate-200 text-slate-900"
+              } ${lockCustomer ? "opacity-75 cursor-not-allowed" : ""}`}
+            >
+              <option value="">Direct / Walk-in (No Party)</option>
+              {customerList.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.phone ? `(${c.phone})` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* 3. Category (Single Dropdown Required) */}
         <div>
@@ -407,10 +420,10 @@ export function AddIncomeForm({
 
         {/* Actions */}
         <div className="flex gap-2 pt-2">
-          {onClose && (
+          {(onCancel || onClose) && (
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleCancel}
               disabled={submitting}
               className="flex-1 py-2 rounded-xl text-sm font-semibold border hover:bg-slate-800/40 transition disabled:opacity-50"
             >
