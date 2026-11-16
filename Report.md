@@ -1,70 +1,62 @@
-# Day 3 Implementation Report: Dashboard Summary Cards and Quick Actions
+## Transaction Form – Date Handling & Validation
 
-## 1. Executive Summary & Assigned Scope
+### 1. Overview
 
-- **Working Branch:** `feature/Aiman-dashboard` (based on `feature/design-system`)
-- **Assigned Scope:** `src/app/(dashboard)/dashboard/page.tsx`
-- **Rebuilt Sections:**
-  1. **Summary Cards (5 cards):**
-     - **Income (Lene):** Total commercial sales & receipts with quick navigation to `/transactions?type=income`.
-     - **Expense (Dene):** Total operational expenses & overheads with quick navigation to `/transactions?type=expense`.
-     - **Profit (Nafa):** Net profit calculated as `totalIncome - totalExpense`, with dynamic indicators for positive surplus vs. operating deficit.
-     - **Receivables (Lene):** Total pending balances to collect from customer accounts (`/customers`).
-     - **Payables (Dene):** Total vendor and supplier liabilities (`/vendors`).
-  2. **Quick Actions:**
-     - Global desktop actions in header: "Record Income" (`setActiveModal("income")`), "Record Expense" (`setActiveModal("expense")`), and "Calculator" (`setActiveModal("calculator")`).
-     - Right-column launcher panel: Fast action tiles for Add Income, Add Expense, New Party, and Calculator.
+Implemented date formatting, calendar validation, date-range restrictions, confirmation warnings, and service-side validation for the shared `TransactionModal` component.
 
----
+### 2. Key Changes
 
-## 2. Merged Design System Components Integration
+- Replaced the native date input with a custom text input.
+- Implemented automatic dash insertion after the second and fourth digits.
+- Added support for numeric-only input and pasted dates.
+- Standardized the visible date format to `dd-mm-yyyy`.
+- Added Zod schema validation using `refine()` and `transform()`.
+- Added utility functions:
+  - `isValidDateString` – validates actual calendar dates, including leap years.
+  - `formatVisibleDate` – converts ISO dates into `dd-mm-yyyy`.
+  - `toISODate` – converts visible dates into `yyyy-mm-dd`.
+  - `dateWithinLimits` – validates date restrictions and confirmation warnings.
+- Added confirmation prompts before saving dates that are more than 90 days in the past or more than one year in the future.
+- Added service-side date validation in `hisabdoService.ts` for both `addIncome` and `addExpense`.
+- Added descriptive error handling through the existing error banner.
 
-All components merged into `feature/design-system` were inspected and integrated directly from their canonical paths:
+### 3. Date Validation Rules
 
-| Component | Source Path | Pull Request | Props & Usage in Dashboard |
-| :--- | :--- | :--- | :--- |
-| **`Button`** | `@/components/ui/Button` | PR #55 (Ashir) | `variant="accent"`, `variant="danger"`, `variant="secondary"`, `variant="primary"`, `size="sm"`, `icon={...}`, `onClick={...}` |
-| **`Badge`** | `@/components/ui/Badge` | PR #55 (Ashir) | `variant="green"`, `variant="red"`, `variant="purple"`, `variant="amber"` |
-| **`Card`** | `@/components/ui/design-system/Card` | PR #53 (Shahnila) | Replaces raw wrappers across summary cards and fast actions panel |
-| **`PageHeading`** | `@/components/ui/design-system/PageHeading` | PR #53 (Shahnila) | `title="Dashboard"`, `description="..."`, `action={<QuickActions />}` |
-| **`LoadingState`** | `@/components/ui/design-system/LoadingState` | PR #53 (Shahnila) | `variant="skeleton"`, `message="Loading summary metrics"` |
-| **`EmptyState`** | `@/components/ui/design-system/EmptyState` | PR #53 (Shahnila) | `title="..."`, `message="..."`, `action={<Button ... />}` |
-| **`ErrorState`** | `@/components/ui/design-system/ErrorState` | PR #53 (Shahnila) | `title="..."`, `message="..."`, `onRetry={loadData}` |
+| Validation | Expected Behavior |
+|---|---|
+| Date format | Must follow `dd-mm-yyyy`. |
+| Invalid dates | Rejects impossible calendar dates. |
+| Leap years | Accepts valid leap-year dates and rejects invalid ones. |
+| Past date limit | Rejects dates older than five years. |
+| Future date limit | Rejects dates more than three years ahead. |
+| Past confirmation | Requires confirmation for dates more than 90 days in the past. |
+| Future confirmation | Requires confirmation for dates more than one year ahead. |
+| Service validation | Applies date validation independently of the UI. |
 
-> [!NOTE]
-> **Danish's `Dialog` & `ConfirmDialog` components:** Not merged into `feature/design-system`. Existing modal handlers (`activeModal`) and project modal components were preserved without introducing unmerged or duplicate external components.
+### 4. Backward Compatibility
 
----
+- Preserved existing component props and usages.
+- Kept original props optional.
+- Maintained existing transaction creation behavior.
+- Preserved default date initialization.
+- No changes to API contracts or database schema.
 
-## 3. Financial Calculations & Business Logic
+### 5. Verification Results
 
-- **Authentic Data Display:** No hardcoded financial figures. All metrics derive from `hisabDoService` and live ledger transactions.
-- **Profit Calculation:** Strictly follows existing application business logic:
-  $$\text{Net Profit} = \text{Total Income} - \text{Total Expense}$$
-- **Negative Balance Handling:** When expenses exceed income, the Profit card dynamically transforms to display an operating deficit (`-Rs. ...`), switches the badge from `Net Positive` (`variant="green"`) to `Deficit` (`variant="red"`), and adjusts the visual trend icon to `TrendingDown`.
-- **RTL & Logical Styling:** Built strictly using semantic tokens (`bg-primary`, `text-success`, `text-danger`, `bg-surface`, `rounded-card`, `shadow-card`) and CSS logical properties (`ps-*`, `pe-*`, `ms-*`, `me-*`, `text-start`). No arbitrary hex colors or hardcoded physical directions were introduced.
+| Check | Result |
+|---|---|
+| TypeScript (`tsc --noEmit`) | Passed |
+| Lint (`npm run lint`) | Completed successfully; automatic Next.js TypeScript setup notice appeared. |
+| Manual date validation | Valid and invalid dates tested. |
+| Date range validation | Confirmation and rejection behavior tested. |
+| Service validation | Invalid dates correctly throw descriptive errors. |
+| Existing form usages | Dashboard and Customers pages tested without observed regressions. |
 
----
+### 6. Files Modified
 
-## 4. Loading, Empty, and Error States
+- `src/components/TransactionModal.tsx`
+- `src/services/hisabdoService.ts`
 
-1. **Loading State:**
-   - Displays 5 responsive skeleton cards powered by `<LoadingState variant="skeleton" />`.
-   - Prevents flashing misleading zero values while merchant data is being loaded.
-2. **Empty State:**
-   - Detects when transactions and customer lists are empty (`isDataEmpty`).
-   - Renders an informative `<EmptyState />` banner encouraging merchants to record their first sale or add customer khata.
-3. **Error State:**
-   - If data retrieval fails, renders `<ErrorState />` with a direct "Retry Loading" action (`onRetry={loadData}`).
+### 7. Scope
 
----
-
-## 5. Verification & Test Evidence
-
-| Test Scenario | Verification Method | Result | Evidence File |
-| :--- | :--- | :--- | :--- |
-| **Next.js Production Build** | `npm run build` | **Passed (0 errors)** | Exit Code 0, 46/46 static pages generated |
-| **Light Mode Theme** | Chrome Headless CDP (1280x950) | **Passed** | `screenshots/dashboard-light.png` |
-| **Dark Mode Theme** | Chrome Headless CDP (1280x950) | **Passed** | `screenshots/dashboard-dark.png` |
-| **360px Mobile Viewport** | CDP Mobile Emulation (360x900) | **Passed** (`hasOverflow: false`) | `screenshots/dashboard-mobile-360px.png` |
-| **RTL Layout (Urdu)** | `dir="rtl"`, `lang="ur"` | **Passed** | `screenshots/dashboard-rtl.png` |
+Changes are limited to the existing shared transaction form and required service-side validation. No additional transaction form or database changes were introduced.
