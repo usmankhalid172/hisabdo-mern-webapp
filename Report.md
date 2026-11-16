@@ -68,3 +68,34 @@ All components merged into `feature/design-system` were inspected and integrated
 | **Dark Mode Theme** | Chrome Headless CDP (1280x950) | **Passed** | `screenshots/dashboard-dark.png` |
 | **360px Mobile Viewport** | CDP Mobile Emulation (360x900) | **Passed** (`hasOverflow: false`) | `screenshots/dashboard-mobile-360px.png` |
 | **RTL Layout (Urdu)** | `dir="rtl"`, `lang="ur"` | **Passed** | `screenshots/dashboard-rtl.png` |
+
+---
+
+## Danish — Mobile vs Web Comparison (Day 5)
+
+### Expenses
+*Note: Mobile app uses "Add Payable" form for expenses instead of a dedicated Expenses page.*
+
+| Feature | Mobile | Web | Priority |
+|---------|--------|-----|----------|
+| Dedicated Expenses List Page | ❌ | ✅ | P1 |
+| Add Expense Form (Payable) | ✅ | ✅ | - |
+| Category Dropdown | ✅ | ✅ | - |
+| Red/Green Color Indicator | ✅ | ❌ | P2 |
+
+### Reports & Analytics
+
+| Feature | Mobile | Web | Priority |
+|---------|--------|-----|----------|
+| Interactive Charts | ✅ | ✅ | - |
+| Date Range Filter (Pills vs Dropdown) | ✅ (Pills) | ✅ (Dropdown) | - |
+| Data Syncing (Mobile shows PKR 0) | ❌ | ✅ | P0 (High) |
+| Export to PDF/CSV | ❌ | ✅ | P1 |
+
+### Retail Calculator
+
+| Feature | Mobile | Web | Priority |
+|---------|--------|-----|----------|
+| Multi-Tool Menu (Basic, %, Discount) | ✅ | ❌ | P1 |
+| Single Percentage Tool | ❌ | ✅ | P2 |
+| Bottom Navigation Bar | ✅ | ❌ | P1 |
