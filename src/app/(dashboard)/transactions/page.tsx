@@ -1,26 +1,32 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import {
-  ArrowRightLeft,
   Search,
   Plus,
-  Filter,
-  Calendar,
   Trash2,
   Edit2,
-  TrendingDown,
-  TrendingUp,
   ArrowDownLeft,
   ArrowUpRight,
-  Download,
-  Loader2,
+  RotateCcw,
+  Calendar,
   X,
-  CreditCard,
+  CheckCircle2,
+  AlertCircle,
+  Filter,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { FilterBar } from "@/components/ui/FilterBar";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { Card } from "@/components/ui/design-system/Card";
+import { PageHeading } from "@/components/ui/design-system/PageHeading";
+import { LoadingState } from "@/components/ui/design-system/LoadingState";
+import { EmptyState } from "@/components/ui/design-system/EmptyState";
+import { ErrorState } from "@/components/ui/design-system/ErrorState";
 import { AddIncomeForm } from "@/components/transactions/AddIncomeForm";
 import { AddExpenseForm } from "@/components/transactions/AddExpenseForm";
 import {
@@ -31,7 +37,7 @@ import {
   LedgerTransaction,
 } from "@/services/hisabdoService";
 
-interface UnifiedTransaction {
+export interface UnifiedTransaction {
   id: string;
   sourceTable: "income" | "expenses" | "ledger_transactions";
   type: "income" | "expense" | "payment_received" | "payment_sent";
@@ -46,11 +52,12 @@ interface UnifiedTransaction {
 
 export default function TransactionsPage() {
   const { user } = useAuth();
-  const { formatMoney, currencySymbol, theme, t } = useSettings();
+  const { formatMoney, currencySymbol, t } = useSettings();
 
   const [transactions, setTransactions] = useState<UnifiedTransaction[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -61,13 +68,36 @@ export default function TransactionsPage() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
-  // New Transaction Modal
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<"income" | "expense">("income");
+  // Create Transaction Modals
+  const [createModalType, setCreateModalType] = useState<"income" | "expense" | null>(null);
 
+  // Edit Transaction Modal
+  const [editingTx, setEditingTx] = useState<UnifiedTransaction | null>(null);
+
+  // Delete Confirmation
+  const [txToDelete, setTxToDelete] = useState<UnifiedTransaction | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Action Feedback
+  const [feedback, setFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  // Auto-dismiss feedback after 5 seconds
+  useEffect(() => {
+    if (!feedback) return;
+    const timer = setTimeout(() => {
+      setFeedback(null);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [feedback]);
+
+  // Load Transactions & Customers
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
+      setLoadError(null);
       const userId = user?.id || "guest";
       const [custs, incs, exps, pmts] = await Promise.all([
         hisabDoService.getCustomers(userId),
@@ -130,8 +160,9 @@ export default function TransactionsPage() {
 
       combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setTransactions(combined);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error loading transactions:", err);
+      setLoadError(err?.message || "Failed to load transaction ledger records.");
     } finally {
       setIsLoading(false);
     }
@@ -148,207 +179,380 @@ export default function TransactionsPage() {
     }
   }, [loadData]);
 
-  // Handle Delete
-  const handleDelete = async (tx: UnifiedTransaction) => {
-    if (!confirm("Are you sure you want to delete this transaction record?")) return;
-    const userId = user?.id || "guest";
-    if (tx.sourceTable === "income") {
-      await hisabDoService.deleteIncome(userId, tx.id);
-    } else if (tx.sourceTable === "expenses") {
-      await hisabDoService.deleteExpense(userId, tx.id);
-    } else if (tx.sourceTable === "ledger_transactions") {
-      await hisabDoService.deleteLedgerTransaction(userId, tx.id);
+  // Handle Delete Confirmation
+  const handleConfirmDelete = async () => {
+    if (!txToDelete) return;
+    if (isDeleting) return; // Prevent duplicate clicks
+
+    try {
+      setIsDeleting(true);
+      const userId = user?.id || "guest";
+      if (txToDelete.sourceTable === "income") {
+        await hisabDoService.deleteIncome(userId, txToDelete.id);
+      } else if (txToDelete.sourceTable === "expenses") {
+        await hisabDoService.deleteExpense(userId, txToDelete.id);
+      } else if (txToDelete.sourceTable === "ledger_transactions") {
+        await hisabDoService.deleteLedgerTransaction(userId, txToDelete.id);
+      }
+
+      setFeedback({
+        type: "success",
+        message: `${
+          txToDelete.type === "income"
+            ? "Income"
+            : txToDelete.type === "expense"
+            ? "Expense"
+            : "Payment"
+        } transaction deleted successfully.`,
+      });
+      setTxToDelete(null);
+      await loadData();
+    } catch (err: any) {
+      console.error("Failed to delete transaction:", err);
+      setFeedback({
+        type: "error",
+        message: err?.message || "Failed to delete transaction. Please try again.",
+      });
+    } finally {
+      setIsDeleting(false);
     }
-    await loadData();
   };
 
-  // Filter Logic
-  const filteredTransactions = transactions.filter((tx) => {
-    // Search
-    const search = searchTerm.toLowerCase();
-    const matchesSearch =
-      tx.description.toLowerCase().includes(search) ||
-      (tx.customerName && tx.customerName.toLowerCase().includes(search)) ||
-      tx.category.toLowerCase().includes(search);
-
-    if (!matchesSearch) return false;
-
-    // Type filter
-    if (typeFilter === "income" && tx.type !== "income") return false;
-    if (typeFilter === "expense" && tx.type !== "expense") return false;
-    if (typeFilter === "payment" && tx.type !== "payment_received" && tx.type !== "payment_sent") return false;
-
-    // Customer filter
-    if (selectedCustomerId !== "all" && tx.customerId !== selectedCustomerId) return false;
-
-    // Category filter
-    if (selectedCategory !== "all" && tx.category !== selectedCategory) return false;
-
-    // Date filter
-    const txDate = new Date(tx.date);
-    const now = new Date();
-    if (dateFilter === "today") {
-      const isToday =
-        txDate.getDate() === now.getDate() &&
-        txDate.getMonth() === now.getMonth() &&
-        txDate.getFullYear() === now.getFullYear();
-      if (!isToday) return false;
-    } else if (dateFilter === "week") {
-      const oneWeekAgo = new Date();
-      oneWeekAgo.setDate(now.getDate() - 7);
-      if (txDate < oneWeekAgo) return false;
-    } else if (dateFilter === "month") {
-      const isCurrentMonth =
-        txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear();
-      if (!isCurrentMonth) return false;
-    } else if (dateFilter === "custom") {
-      if (startDate && new Date(tx.date) < new Date(startDate)) return false;
-      if (endDate && new Date(tx.date) > new Date(endDate)) return false;
+  // Handle Edit Submission
+  const handleUpdate = async (
+    tx: UnifiedTransaction,
+    payload: {
+      amount: number;
+      customerId: string | null;
+      category: string;
+      description: string;
+      date: string;
+      paymentMethod: string;
     }
+  ) => {
+    try {
+      const userId = user?.id || "guest";
+      if (tx.sourceTable === "income") {
+        await hisabDoService.updateIncome(userId, tx.id, {
+          amount: payload.amount,
+          customer_id: payload.customerId,
+          description: payload.description,
+          category_id: payload.category,
+          payment_method: payload.paymentMethod,
+          income_date: payload.date,
+        });
+      } else if (tx.sourceTable === "expenses") {
+        await hisabDoService.updateExpense(userId, tx.id, {
+          amount: payload.amount,
+          customer_id: payload.customerId,
+          description: payload.description,
+          category_id: payload.category,
+          payment_method: payload.paymentMethod,
+          expense_date: payload.date,
+        });
+      } else if (tx.sourceTable === "ledger_transactions") {
+        await hisabDoService.updateLedgerTransaction(userId, tx.id, {
+          amount: payload.amount,
+          customerId: payload.customerId || tx.customerId || "",
+          note: payload.description,
+          category: payload.category,
+          date: payload.date,
+        });
+      }
 
-    return true;
-  });
+      setFeedback({
+        type: "success",
+        message: "Transaction updated successfully.",
+      });
+      setEditingTx(null);
+      await loadData();
+    } catch (err: any) {
+      console.error("Failed to update transaction:", err);
+      setFeedback({
+        type: "error",
+        message: err?.message || "Failed to update transaction. Please try again.",
+      });
+    }
+  };
 
   // Unique categories for filter dropdown
-  const categories = Array.from(new Set(transactions.map((t) => t.category))).filter(Boolean);
+  const categories = useMemo(() => {
+    return Array.from(new Set(transactions.map((t) => t.category))).filter(Boolean);
+  }, [transactions]);
+
+  // Combined Filter and Search Logic
+  const filteredTransactions = useMemo(() => {
+    const search = searchTerm.trim().toLowerCase();
+
+    return transactions.filter((tx) => {
+      // 1. Search filter: description, category, and customer name
+      if (search) {
+        const descMatch = tx.description ? tx.description.toLowerCase().includes(search) : false;
+        const catMatch = tx.category ? tx.category.toLowerCase().includes(search) : false;
+        const custMatch = tx.customerName ? tx.customerName.toLowerCase().includes(search) : false;
+
+        if (!descMatch && !catMatch && !custMatch) {
+          return false;
+        }
+      }
+
+      // 2. Type filter
+      if (typeFilter === "income" && tx.type !== "income") return false;
+      if (typeFilter === "expense" && tx.type !== "expense") return false;
+      if (typeFilter === "payment" && tx.type !== "payment_received" && tx.type !== "payment_sent") return false;
+
+      // 3. Customer filter
+      if (selectedCustomerId !== "all" && tx.customerId !== selectedCustomerId) return false;
+
+      // 4. Category filter
+      if (selectedCategory !== "all" && tx.category.toLowerCase() !== selectedCategory.toLowerCase()) {
+        return false;
+      }
+
+      // 5. Date filter
+      const txDate = new Date(tx.date);
+      const now = new Date();
+
+      if (dateFilter === "today") {
+        const isToday =
+          txDate.getDate() === now.getDate() &&
+          txDate.getMonth() === now.getMonth() &&
+          txDate.getFullYear() === now.getFullYear();
+        if (!isToday) return false;
+      } else if (dateFilter === "week") {
+        const txTime = new Date(tx.date).getTime();
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(now.getDate() - 7);
+        oneWeekAgo.setHours(0, 0, 0, 0);
+        if (txTime < oneWeekAgo.getTime()) return false;
+      } else if (dateFilter === "month") {
+        const isCurrentMonth =
+          txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear();
+        if (!isCurrentMonth) return false;
+      } else if (dateFilter === "custom") {
+        if (startDate) {
+          const start = new Date(startDate + "T00:00:00");
+          if (txDate < start) return false;
+        }
+        if (endDate) {
+          const end = new Date(endDate + "T23:59:59.999");
+          if (txDate > end) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [
+    transactions,
+    searchTerm,
+    typeFilter,
+    selectedCustomerId,
+    selectedCategory,
+    dateFilter,
+    startDate,
+    endDate,
+  ]);
+
+  // Check if any filter is actively applied
+  const isFiltered =
+    Boolean(searchTerm.trim()) ||
+    typeFilter !== "all" ||
+    dateFilter !== "all" ||
+    selectedCategory !== "all" ||
+    selectedCustomerId !== "all" ||
+    Boolean(startDate) ||
+    Boolean(endDate);
+
+  const resetFilters = () => {
+    setSearchTerm("");
+    setTypeFilter("all");
+    setDateFilter("all");
+    setStartDate("");
+    setEndDate("");
+    setSelectedCategory("all");
+    setSelectedCustomerId("all");
+  };
 
   // Totals for filtered transactions
-  const totalFilteredIncome = filteredTransactions
-    .filter((t) => t.type === "income" || t.type === "payment_received")
-    .reduce((sum, t) => sum + t.amount, 0);
+  const totalFilteredIncome = useMemo(() => {
+    return filteredTransactions
+      .filter((t) => t.type === "income" || t.type === "payment_received")
+      .reduce((sum, t) => sum + t.amount, 0);
+  }, [filteredTransactions]);
 
-  const totalFilteredExpense = filteredTransactions
-    .filter((t) => t.type === "expense" || t.type === "payment_sent")
-    .reduce((sum, t) => sum + t.amount, 0);
+  const totalFilteredExpense = useMemo(() => {
+    return filteredTransactions
+      .filter((t) => t.type === "expense" || t.type === "payment_sent")
+      .reduce((sum, t) => sum + t.amount, 0);
+  }, [filteredTransactions]);
 
   return (
     <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            {t("transactions")}
-          </h1>
-          <p className="text-sm text-slate-400">
-            Unified chronological ledger of all cashflow, sales, expenses, and party settlements
-          </p>
-        </div>
+      {/* Top Page Heading with Design System Actions */}
+      <PageHeading
+        title={t("transactions") || "Transactions"}
+        description="Unified chronological ledger of all cashflow, sales, expenses, and customer settlements"
+        action={
+          <div className="flex items-center gap-2">
+            <Button
+              variant="accent"
+              size="sm"
+              icon={Plus}
+              onClick={() => setCreateModalType("income")}
+            >
+              Add Income
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              icon={Plus}
+              onClick={() => setCreateModalType("expense")}
+            >
+              Add Expense
+            </Button>
+          </div>
+        }
+      />
 
-        <div className="flex items-center gap-2">
+      {/* Action Feedback Banner */}
+      {feedback && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`flex items-center justify-between p-3.5 rounded-card border transition-all ${
+            feedback.type === "success"
+              ? "border-success/30 bg-success/10 text-success"
+              : "border-danger/30 bg-danger/10 text-danger"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {feedback.type === "success" ? (
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />
+            ) : (
+              <AlertCircle className="w-4 h-4 shrink-0 text-danger" />
+            )}
+            <span className="text-xs sm:text-sm font-semibold">
+              {feedback.message}
+            </span>
+          </div>
           <button
-            onClick={() => {
-              setModalType("income");
-              setIsModalOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-[#00E676] hover:bg-[#00C853] text-[#0B0F17] font-bold text-xs rounded-xl shadow-md transition"
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="p-1 rounded hover:opacity-75 transition focus-visible:outline-none"
+            aria-label="Dismiss message"
           >
-            <Plus className="w-4 h-4" />
-            <span>+ Add Income</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setModalType("expense");
-              setIsModalOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-[#E53935] hover:bg-rose-600 text-white font-bold text-xs rounded-xl shadow-md transition"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Add Expense</span>
+            <X className="w-4 h-4" />
           </button>
         </div>
-      </div>
+      )}
 
-      {/* Summary Filter Cards */}
+      {/* Summary Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className={`p-4 rounded-2xl border ${theme === "dark" ? "bg-[#1E1E1E] border-[#2E2E2E]" : "bg-white border-slate-200 shadow-sm"}`}>
-          <span className="text-xs font-semibold text-slate-400 block mb-1">Total Filtered Inflow</span>
-          <p className="text-2xl font-black text-[#00E676]">+{formatMoney(totalFilteredIncome)}</p>
-          <span className="text-[11px] text-slate-400">Sales and payments received</span>
-        </div>
+        <Card className="p-4">
+          <span className="text-xs font-semibold text-muted-foreground block mb-1">
+            Total Filtered Inflow
+          </span>
+          <p className="text-2xl font-black text-success">
+            +{formatMoney(totalFilteredIncome)}
+          </p>
+          <span className="text-[11px] text-muted-foreground">
+            Sales & payments received
+          </span>
+        </Card>
 
-        <div className={`p-4 rounded-2xl border ${theme === "dark" ? "bg-[#1E1E1E] border-[#2E2E2E]" : "bg-white border-slate-200 shadow-sm"}`}>
-          <span className="text-xs font-semibold text-slate-400 block mb-1">Total Filtered Outflow</span>
-          <p className="text-2xl font-black text-[#E53935]">-{formatMoney(totalFilteredExpense)}</p>
-          <span className="text-[11px] text-slate-400">Expenses and payments paid</span>
-        </div>
+        <Card className="p-4">
+          <span className="text-xs font-semibold text-muted-foreground block mb-1">
+            Total Filtered Outflow
+          </span>
+          <p className="text-2xl font-black text-danger">
+            -{formatMoney(totalFilteredExpense)}
+          </p>
+          <span className="text-[11px] text-muted-foreground">
+            Expenses & payments paid
+          </span>
+        </Card>
 
-        <div className={`p-4 rounded-2xl border ${theme === "dark" ? "bg-[#1E1E1E] border-[#2E2E2E]" : "bg-white border-slate-200 shadow-sm"}`}>
-          <span className="text-xs font-semibold text-slate-400 block mb-1">Net Cashflow Position</span>
-          <p className={`text-2xl font-black ${
-            totalFilteredIncome - totalFilteredExpense >= 0 ? "text-[#00E676]" : "text-[#E53935]"
-          }`}>
+        <Card className="p-4">
+          <span className="text-xs font-semibold text-muted-foreground block mb-1">
+            Net Cashflow Position
+          </span>
+          <p
+            className={`text-2xl font-black ${
+              totalFilteredIncome - totalFilteredExpense >= 0
+                ? "text-success"
+                : "text-danger"
+            }`}
+          >
             {formatMoney(totalFilteredIncome - totalFilteredExpense)}
           </p>
-          <span className="text-[11px] text-slate-400">{filteredTransactions.length} records matching</span>
-        </div>
+          <span className="text-[11px] text-muted-foreground">
+            {filteredTransactions.length} records matching
+          </span>
+        </Card>
       </div>
 
       {/* Filters Toolbar */}
-      <div className={`p-4 rounded-2xl border space-y-3 ${
-        theme === "dark" ? "bg-[#1E1E1E] border-[#2E2E2E]" : "bg-white border-slate-200 shadow-sm"
-      }`}>
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* Search bar */}
+      <Card className="p-4 space-y-3">
+        {/* Search & Type Filter Bar */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {/* Working Search Bar */}
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search
+              className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
             <input
-              type="text"
-              placeholder="Search description, notes, customer name..."
+              type="search"
+              placeholder="Search description, category, customer name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full pl-9 pr-4 py-2 rounded-xl text-xs border focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
-                theme === "dark" ? "bg-[#252525] border-[#353535] text-white" : "bg-slate-50 border-slate-200"
-              }`}
+              aria-label="Search transactions"
+              className="w-full rounded-control border border-border bg-surface-muted ps-9 pe-4 py-2 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
 
-          {/* Type Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+          {/* Type Toggle Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0">
             <button
+              type="button"
               onClick={() => setTypeFilter("all")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
+              className={`px-3 py-1.5 rounded-control text-xs font-semibold whitespace-nowrap transition-colors ${
                 typeFilter === "all"
-                  ? "bg-[#1A237E] text-white"
-                  : theme === "dark"
-                  ? "text-slate-400 hover:bg-[#252525]"
-                  : "text-slate-600 hover:bg-slate-100"
+                  ? "bg-primary text-white shadow-card"
+                  : "text-muted-foreground hover:bg-surface-muted hover:text-foreground"
               }`}
             >
               All Types
             </button>
             <button
+              type="button"
               onClick={() => setTypeFilter("income")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
+              className={`px-3 py-1.5 rounded-control text-xs font-semibold whitespace-nowrap transition-colors ${
                 typeFilter === "income"
-                  ? "bg-emerald-500/20 text-[#00E676] border border-emerald-500/30"
-                  : theme === "dark"
-                  ? "text-slate-400 hover:bg-[#252525]"
-                  : "text-slate-600 hover:bg-slate-100"
+                  ? "bg-success/20 text-success border border-success/40"
+                  : "text-muted-foreground hover:bg-surface-muted hover:text-foreground"
               }`}
             >
-              Income (Sales)
+              Income
             </button>
             <button
+              type="button"
               onClick={() => setTypeFilter("expense")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
+              className={`px-3 py-1.5 rounded-control text-xs font-semibold whitespace-nowrap transition-colors ${
                 typeFilter === "expense"
-                  ? "bg-rose-500/20 text-[#E53935] border border-rose-500/30"
-                  : theme === "dark"
-                  ? "text-slate-400 hover:bg-[#252525]"
-                  : "text-slate-600 hover:bg-slate-100"
+                  ? "bg-danger/20 text-danger border border-danger/40"
+                  : "text-muted-foreground hover:bg-surface-muted hover:text-foreground"
               }`}
             >
               Expenses
             </button>
             <button
+              type="button"
               onClick={() => setTypeFilter("payment")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
+              className={`px-3 py-1.5 rounded-control text-xs font-semibold whitespace-nowrap transition-colors ${
                 typeFilter === "payment"
-                  ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30"
-                  : theme === "dark"
-                  ? "text-slate-400 hover:bg-[#252525]"
-                  : "text-slate-600 hover:bg-slate-100"
+                  ? "bg-info/20 text-info border border-info/40"
+                  : "text-muted-foreground hover:bg-surface-muted hover:text-foreground"
               }`}
             >
               Payments
@@ -356,17 +560,16 @@ export default function TransactionsPage() {
           </div>
         </div>
 
-        {/* Secondary Filters: Date Range, Customer, Category */}
-        <div className={`flex flex-wrap items-center gap-3 pt-2 border-t text-xs ${theme === "dark" ? "border-slate-800/40" : "border-slate-200"}`}>
-          {/* Date Range Selector */}
+        {/* Secondary Filter Controls: Date Range, Customer, Category */}
+        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-border text-xs">
+          {/* Period Selector */}
           <div className="flex items-center gap-1.5">
-            <span className="text-slate-400 font-medium">Period:</span>
+            <span className="text-muted-foreground font-medium">Period:</span>
             <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value as any)}
-              className={`px-2.5 py-1.5 rounded-xl border focus:outline-none ${
-                theme === "dark" ? "bg-[#252525] border-[#353535] text-white" : "bg-slate-50 border-slate-200"
-              }`}
+              aria-label="Filter by time period"
+              className="rounded-control border border-border bg-surface-muted ps-2.5 pe-8 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="all">All Time</option>
               <option value="today">Today</option>
@@ -376,37 +579,35 @@ export default function TransactionsPage() {
             </select>
           </div>
 
+          {/* Custom Date Inputs */}
           {dateFilter === "custom" && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className={`px-2 py-1 rounded-xl border text-xs ${
-                  theme === "dark" ? "bg-[#252525] border-[#353535]" : "bg-white border-slate-200"
-                }`}
+                aria-label="Start date"
+                className="rounded-control border border-border bg-surface-muted ps-2 pe-2 py-1 text-xs text-foreground focus:border-primary focus:outline-none"
               />
-              <span className="text-slate-400">to</span>
+              <span className="text-muted-foreground">to</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className={`px-2 py-1 rounded-xl border text-xs ${
-                  theme === "dark" ? "bg-[#252525] border-[#353535]" : "bg-white border-slate-200"
-                }`}
+                aria-label="End date"
+                className="rounded-control border border-border bg-surface-muted ps-2 pe-2 py-1 text-xs text-foreground focus:border-primary focus:outline-none"
               />
             </div>
           )}
 
-          {/* Customer filter */}
+          {/* Customer Filter */}
           <div className="flex items-center gap-1.5">
-            <span className="text-slate-400 font-medium">Customer:</span>
+            <span className="text-muted-foreground font-medium">Customer:</span>
             <select
               value={selectedCustomerId}
               onChange={(e) => setSelectedCustomerId(e.target.value)}
-              className={`px-2.5 py-1.5 rounded-xl border focus:outline-none max-w-[160px] truncate ${
-                theme === "dark" ? "bg-[#252525] border-[#353535] text-white" : "bg-slate-50 border-slate-200"
-              }`}
+              aria-label="Filter by customer"
+              className="rounded-control border border-border bg-surface-muted ps-2.5 pe-8 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary max-w-[160px] truncate"
             >
               <option value="all">All Customers</option>
               {customers.map((c) => (
@@ -417,15 +618,14 @@ export default function TransactionsPage() {
             </select>
           </div>
 
-          {/* Category filter */}
+          {/* Category Filter */}
           <div className="flex items-center gap-1.5">
-            <span className="text-slate-400 font-medium">Category:</span>
+            <span className="text-muted-foreground font-medium">Category:</span>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className={`px-2.5 py-1.5 rounded-xl border focus:outline-none max-w-[150px] truncate ${
-                theme === "dark" ? "bg-[#252525] border-[#353535] text-white" : "bg-slate-50 border-slate-200"
-              }`}
+              aria-label="Filter by category"
+              className="rounded-control border border-border bg-surface-muted ps-2.5 pe-8 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary max-w-[150px] truncate"
             >
               <option value="all">All Categories</option>
               {categories.map((cat) => (
@@ -435,50 +635,97 @@ export default function TransactionsPage() {
               ))}
             </select>
           </div>
-        </div>
-      </div>
 
-      {/* Transactions Table */}
-      <div className={`rounded-2xl border overflow-hidden ${
-        theme === "dark" ? "bg-[#1E1E1E] border-[#2E2E2E]" : "bg-white border-slate-200 shadow-sm"
-      }`}>
+          {/* Reset Filters Action */}
+          {isFiltered && (
+            <div className="ms-auto">
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={RotateCcw}
+                onClick={resetFilters}
+                className="text-xs py-1"
+              >
+                Clear Filters
+              </Button>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Transaction History Table Card */}
+      <Card className="overflow-hidden">
         {isLoading ? (
-          <div className="p-16 flex flex-col items-center justify-center gap-3">
-            <Loader2 className="w-8 h-8 text-[#00E676] animate-spin" />
-            <p className="text-xs text-slate-400">Loading transactions...</p>
-          </div>
+          <LoadingState variant="skeleton" message="Loading transaction ledger..." />
+        ) : loadError ? (
+          <ErrorState
+            title="Unable to Load Transactions"
+            message={loadError}
+            onRetry={loadData}
+          />
         ) : filteredTransactions.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-sm">
-            <ArrowRightLeft className="w-10 h-10 text-slate-500 mx-auto mb-2" />
-            <p>No transactions found matching your criteria.</p>
-          </div>
+          <EmptyState
+            title={isFiltered ? "No matching transactions" : "No transactions found"}
+            message={
+              isFiltered
+                ? "No transactions match your current search and filter criteria. Try adjusting or clearing your filters."
+                : "No transactions recorded yet. Record your business income or operational expenses to start tracking cashflow."
+            }
+            action={
+              isFiltered ? (
+                <Button variant="secondary" size="sm" onClick={resetFilters}>
+                  Clear Filters
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2 mt-2">
+                  <Button
+                    variant="accent"
+                    size="sm"
+                    icon={Plus}
+                    onClick={() => setCreateModalType("income")}
+                  >
+                    Add Income
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    icon={Plus}
+                    onClick={() => setCreateModalType("expense")}
+                  >
+                    Add Expense
+                  </Button>
+                </div>
+              )
+            }
+          />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className={`text-xs uppercase border-b ${
-                theme === "dark" ? "bg-[#181818] border-slate-800 text-slate-400" : "bg-slate-50 border-slate-200 text-slate-500"
-              }`}>
+            <table className="w-full min-w-[700px] border-collapse text-sm">
+              <thead className="border-b border-border bg-surface-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <th className="py-3 px-4">Date</th>
-                  <th className="py-3 px-4">Type</th>
-                  <th className="py-3 px-4">Customer / Party</th>
-                  <th className="py-3 px-4">Description</th>
-                  <th className="py-3 px-4">Category</th>
-                  <th className="py-3 px-4 text-right">Amount</th>
-                  <th className="py-3 px-3 text-center">Action</th>
+                  {/* Reserved column space for future checkbox (space & structure reserved, no actual checkbox) */}
+                  <th scope="col" className="w-10 px-3 py-3.5 text-center" aria-hidden="true" />
+                  <th scope="col" className="px-4 py-3.5 text-start">Date</th>
+                  <th scope="col" className="px-4 py-3.5 text-start">Type</th>
+                  <th scope="col" className="px-4 py-3.5 text-start">Customer / Party</th>
+                  <th scope="col" className="px-4 py-3.5 text-start">Description</th>
+                  <th scope="col" className="px-4 py-3.5 text-start">Category</th>
+                  <th scope="col" className="px-4 py-3.5 text-end">Amount</th>
+                  <th scope="col" className="px-4 py-3.5 text-center">Actions</th>
                 </tr>
               </thead>
-              <tbody className={`divide-y ${theme === "dark" ? "divide-slate-800/60" : "divide-slate-100"}`}>
+              <tbody className="divide-y divide-border">
                 {filteredTransactions.map((tx) => {
                   const isPositive = tx.type === "income" || tx.type === "payment_received";
                   return (
                     <tr
-                      key={tx.id}
-                      className={`transition-colors ${
-                        theme === "dark" ? "hover:bg-slate-800/30" : "hover:bg-slate-50"
-                      }`}
+                      key={`${tx.sourceTable}-${tx.id}`}
+                      className="transition-colors hover:bg-surface-muted/50"
                     >
-                      <td className="py-3 px-4 text-xs text-slate-400 whitespace-nowrap">
+                      {/* Reserved column space for future checkbox */}
+                      <td className="w-10 px-3 py-3.5 text-center" aria-hidden="true" />
+
+                      <td className="px-4 py-3.5 text-xs text-muted-foreground whitespace-nowrap">
                         {new Date(tx.date).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
@@ -486,61 +733,81 @@ export default function TransactionsPage() {
                         })}
                       </td>
 
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                          tx.type === "income"
-                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                            : tx.type === "expense"
-                            ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
-                            : tx.type === "payment_received"
-                            ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
-                            : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                        }`}>
-                          {tx.type === "income" && <ArrowDownLeft className="w-3 h-3 text-[#00E676]" />}
-                          {tx.type === "expense" && <ArrowUpRight className="w-3 h-3 text-[#E53935]" />}
-                          {tx.type === "payment_received" && <ArrowDownLeft className="w-3 h-3 text-indigo-400" />}
-                          {tx.type === "payment_sent" && <ArrowUpRight className="w-3 h-3 text-amber-400" />}
-                          {tx.type === "income" && "Income"}
-                          {tx.type === "expense" && "Expense"}
-                          {tx.type === "payment_received" && "Payment In"}
-                          {tx.type === "payment_sent" && "Payment Out"}
-                        </span>
-                      </td>
-
-                      <td className="py-3 px-4 text-xs font-semibold whitespace-nowrap">
-                        {tx.customerId ? (
-                          <Link href={`/customers/${tx.customerId}`} className="hover:underline text-indigo-400">
-                            {tx.customerName}
-                          </Link>
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        {tx.type === "income" ? (
+                          <Badge variant="green" className="gap-1">
+                            <ArrowDownLeft className="w-3 h-3 text-success" />
+                            <span>Income</span>
+                          </Badge>
+                        ) : tx.type === "expense" ? (
+                          <Badge variant="red" className="gap-1">
+                            <ArrowUpRight className="w-3 h-3 text-danger" />
+                            <span>Expense</span>
+                          </Badge>
+                        ) : tx.type === "payment_received" ? (
+                          <Badge variant="blue" className="gap-1">
+                            <ArrowDownLeft className="w-3 h-3 text-info" />
+                            <span>Payment In</span>
+                          </Badge>
                         ) : (
-                          <span className="text-slate-400">{tx.customerName}</span>
+                          <Badge variant="amber" className="gap-1">
+                            <ArrowUpRight className="w-3 h-3 text-warning" />
+                            <span>Payment Out</span>
+                          </Badge>
                         )}
                       </td>
 
-                      <td className={`py-3 px-4 text-xs max-w-xs truncate ${theme === "dark" ? "text-slate-300" : "text-slate-700 font-medium"}`}>
+                      <td className="px-4 py-3.5 text-xs font-medium whitespace-nowrap">
+                        {tx.customerId ? (
+                          <Link
+                            href={`/customers/${tx.customerId}`}
+                            className="text-primary hover:underline font-semibold"
+                          >
+                            {tx.customerName}
+                          </Link>
+                        ) : (
+                          <span className="text-muted-foreground">{tx.customerName}</span>
+                        )}
+                      </td>
+
+                      <td className="px-4 py-3.5 text-xs text-foreground font-medium max-w-xs truncate">
                         {tx.description}
                       </td>
 
-                      <td className="py-3 px-4 text-xs text-slate-400 whitespace-nowrap">
-                        <span className={`px-2 py-0.5 rounded-md border text-[11px] font-semibold ${theme === "dark" ? "bg-slate-800/40 border-slate-700/50 text-slate-300" : "bg-slate-100 border-slate-200 text-slate-700"}`}>
-                          {tx.category}
-                        </span>
+                      <td className="px-4 py-3.5 text-xs whitespace-nowrap">
+                        <Badge variant="slate">{tx.category}</Badge>
                       </td>
 
-                      <td className={`py-3 px-4 text-right font-black text-sm whitespace-nowrap ${
-                        isPositive ? "text-[#00E676]" : "text-[#E53935]"
-                      }`}>
-                        {isPositive ? "+" : "-"}{formatMoney(tx.amount)}
+                      <td
+                        className={`px-4 py-3.5 text-end font-bold text-sm whitespace-nowrap ${
+                          isPositive ? "text-success" : "text-danger"
+                        }`}
+                      >
+                        {isPositive ? "+" : "-"}
+                        {formatMoney(tx.amount)}
                       </td>
 
-                      <td className="py-3 px-3 text-center">
-                        <button
-                          onClick={() => handleDelete(tx)}
-                          title="Delete entry"
-                          className="p-1 text-slate-500 hover:text-rose-400 rounded transition"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1 justify-center">
+                          <button
+                            type="button"
+                            onClick={() => setEditingTx(tx)}
+                            title="Edit transaction"
+                            className="p-1.5 rounded-control text-muted-foreground hover:text-primary hover:bg-surface-muted transition"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                            <span className="sr-only">Edit transaction</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTxToDelete(tx)}
+                            title="Delete transaction"
+                            className="p-1.5 rounded-control text-muted-foreground hover:text-danger hover:bg-surface-muted transition"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span className="sr-only">Delete transaction</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -549,22 +816,103 @@ export default function TransactionsPage() {
             </table>
           </div>
         )}
-      </div>
+      </Card>
+
+      {/* Delete Confirmation Modal using ConfirmDialog */}
+      {txToDelete && (
+        <ConfirmDialog
+          isOpen={Boolean(txToDelete)}
+          onClose={() => setTxToDelete(null)}
+          onConfirm={handleConfirmDelete}
+          isLoading={isDeleting}
+          title="Delete Transaction Record"
+          message={`Are you sure you want to delete this ${
+            txToDelete.type === "income"
+              ? "income"
+              : txToDelete.type === "expense"
+              ? "expense"
+              : "payment"
+          } transaction of ${currencySymbol}${txToDelete.amount}? This action cannot be undone.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+        />
+      )}
 
       {/* ================= REUSABLE TRANSACTION FORMS ================= */}
+      {/* Create Forms */}
       <AddIncomeForm
-        isOpen={isModalOpen && modalType === "income"}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={loadData}
+        isOpen={createModalType === "income"}
+        onClose={() => setCreateModalType(null)}
+        onSuccess={() => {
+          setCreateModalType(null);
+          setFeedback({
+            type: "success",
+            message: "Income transaction recorded successfully.",
+          });
+          loadData();
+        }}
         customers={customers}
       />
 
       <AddExpenseForm
-        isOpen={isModalOpen && modalType === "expense"}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={loadData}
+        isOpen={createModalType === "expense"}
+        onClose={() => setCreateModalType(null)}
+        onSuccess={() => {
+          setCreateModalType(null);
+          setFeedback({
+            type: "success",
+            message: "Expense transaction recorded successfully.",
+          });
+          loadData();
+        }}
         customers={customers}
       />
+
+      {/* Edit Form for Income / Payment In */}
+      {editingTx &&
+        (editingTx.sourceTable === "income" ||
+          editingTx.type === "income" ||
+          editingTx.type === "payment_received") && (
+          <AddIncomeForm
+            isOpen={Boolean(editingTx)}
+            onClose={() => setEditingTx(null)}
+            onSuccess={() => {
+              setEditingTx(null);
+              loadData();
+            }}
+            customers={customers}
+            initialAmount={editingTx.amount}
+            initialCategory={editingTx.category}
+            initialDescription={editingTx.description}
+            initialDate={editingTx.date ? editingTx.date.split("T")[0] : undefined}
+            customerId={editingTx.customerId || undefined}
+            paymentMethod={editingTx.paymentMethod}
+            onSubmitCustom={(payload) => handleUpdate(editingTx, payload)}
+          />
+        )}
+
+      {/* Edit Form for Expense / Payment Out */}
+      {editingTx &&
+        (editingTx.sourceTable === "expenses" ||
+          editingTx.type === "expense" ||
+          editingTx.type === "payment_sent") && (
+          <AddExpenseForm
+            isOpen={Boolean(editingTx)}
+            onClose={() => setEditingTx(null)}
+            onSuccess={() => {
+              setEditingTx(null);
+              loadData();
+            }}
+            customers={customers}
+            initialAmount={editingTx.amount}
+            initialCategory={editingTx.category}
+            initialDescription={editingTx.description}
+            initialDate={editingTx.date ? editingTx.date.split("T")[0] : undefined}
+            customerId={editingTx.customerId || undefined}
+            paymentMethod={editingTx.paymentMethod}
+            onSubmitCustom={(payload) => handleUpdate(editingTx, payload)}
+          />
+        )}
     </div>
   );
 }
