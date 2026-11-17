@@ -1,70 +1,64 @@
-# Day 3 Implementation Report: Dashboard Summary Cards and Quick Actions
+# Day 5 Implementation Report: Task 4 – Expenses Page Implementation
 
 ## 1. Executive Summary & Assigned Scope
 
-- **Working Branch:** `feature/Aiman-dashboard` (based on `feature/design-system`)
-- **Assigned Scope:** `src/app/(dashboard)/dashboard/page.tsx`
-- **Rebuilt Sections:**
-  1. **Summary Cards (5 cards):**
-     - **Income (Lene):** Total commercial sales & receipts with quick navigation to `/transactions?type=income`.
-     - **Expense (Dene):** Total operational expenses & overheads with quick navigation to `/transactions?type=expense`.
-     - **Profit (Nafa):** Net profit calculated as `totalIncome - totalExpense`, with dynamic indicators for positive surplus vs. operating deficit.
-     - **Receivables (Lene):** Total pending balances to collect from customer accounts (`/customers`).
-     - **Payables (Dene):** Total vendor and supplier liabilities (`/vendors`).
-  2. **Quick Actions:**
-     - Global desktop actions in header: "Record Income" (`setActiveModal("income")`), "Record Expense" (`setActiveModal("expense")`), and "Calculator" (`setActiveModal("calculator")`).
-     - Right-column launcher panel: Fast action tiles for Add Income, Add Expense, New Party, and Calculator.
+- **Working Branch:** `feature/day5-expenses` (based on `feature/design-system`)
+- **Assigned Scope:** `src/app/(dashboard)/expenses/page.tsx`
+- **Implementation Goal:** Modify and wire the existing Expenses page using the merged design system and shared components without building it from scratch.
 
 ---
 
-## 2. Merged Design System Components Integration
+## 2. Implemented Changes & Functionality
 
-All components merged into `feature/design-system` were inspected and integrated directly from their canonical paths:
+1. **Shared Form Integration & Reuse:**
+   - Integrated the existing canonical `AddExpenseForm` (`@/components/transactions/AddExpenseForm`) for expense creation without recreating or duplicating forms.
+   - Reused `AddExpenseForm` for modal editing of existing expense entries by supplying prefilled initial fields (`initialAmount`, `initialCategory`, `initialDescription`, `initialDate`, `paymentMethod`, `customerId`) and a custom submission handler (`onSubmitCustom`) connected to `hisabDoService.updateExpense`.
 
-| Component | Source Path | Pull Request | Props & Usage in Dashboard |
+2. **Operations & Data Wiring:**
+   - Connected the page directly to `hisabDoService.getExpenses` and `hisabDoService.getCustomers`.
+   - **Creation:** Open modal -> submit via shared form -> reload expenses and display success feedback.
+   - **Editing:** Click edit action -> prefill in shared form -> update via `hisabDoService.updateExpense` -> reload expenses and display success feedback.
+   - **Deletion:** Click delete -> open `ConfirmDialog` modal -> delete via `hisabDoService.deleteExpense` -> reload expenses and display success feedback.
+   - **Duplicate Submission Prevention:** Guarded by `isDeleting` state in delete confirmation and `submitting` state in the shared form.
+
+3. **Design System Components Integration:**
+   - `PageHeading`: Page title, description, and primary "+ Add Expense" action button.
+   - `Card`: Summary KPI metrics and expenses table containers.
+   - `Button`: Primary, secondary, and danger button variants with Lucide icons.
+   - `Badge`: Semantic category badges (`variant="red"`).
+   - `ConfirmDialog`: Modern, accessible confirmation dialog replacing browser `confirm()`.
+   - `LoadingState`: Skeleton loading presentation while fetching records.
+   - `EmptyState`: Contextual empty states for filtered and non-filtered scenarios.
+   - `ErrorState`: Alert state with retry capability (`onRetry={loadExpenses}`).
+
+4. **Action Feedback Banner:**
+   - Added accessible feedback banner (`role="status"`, `aria-live="polite"`) with success and error feedback, manual dismiss button, and 5-second auto-clear timer.
+
+5. **Search & Multi-Filter System:**
+   - Search input filtering across expense description, category, and associated customer/party name.
+   - Category filter dropdown derived dynamically from unique ledger entries.
+   - Time period filter (All Time, Today, This Week, This Month).
+   - "Clear Filters" action to reset all search and filter parameters.
+
+6. **Responsive, Theming & RTL Layout:**
+   - Built exclusively with semantic tokens (`bg-surface`, `bg-surface-muted`, `border-border`, `text-foreground`, `text-muted-foreground`, `text-danger`, `text-primary`).
+   - Uses CSS logical properties (`ps-*`, `pe-*`, `ms-*`, `me-*`, `start-*`, `text-start`, `text-end`).
+   - Supports light mode, dark mode, RTL layout, and 360px mobile viewports via an `overflow-x-auto` table container (`min-w-[650px]`).
+
+---
+
+## 3. Files Changed
+
+- `src/app/(dashboard)/expenses/page.tsx`
+- `Report.md`
+
+---
+
+## 4. Testing & Verification Results
+
+| Test Scenario | Verification Method | Result | Notes |
 | :--- | :--- | :--- | :--- |
-| **`Button`** | `@/components/ui/Button` | PR #55 (Ashir) | `variant="accent"`, `variant="danger"`, `variant="secondary"`, `variant="primary"`, `size="sm"`, `icon={...}`, `onClick={...}` |
-| **`Badge`** | `@/components/ui/Badge` | PR #55 (Ashir) | `variant="green"`, `variant="red"`, `variant="purple"`, `variant="amber"` |
-| **`Card`** | `@/components/ui/design-system/Card` | PR #53 (Shahnila) | Replaces raw wrappers across summary cards and fast actions panel |
-| **`PageHeading`** | `@/components/ui/design-system/PageHeading` | PR #53 (Shahnila) | `title="Dashboard"`, `description="..."`, `action={<QuickActions />}` |
-| **`LoadingState`** | `@/components/ui/design-system/LoadingState` | PR #53 (Shahnila) | `variant="skeleton"`, `message="Loading summary metrics"` |
-| **`EmptyState`** | `@/components/ui/design-system/EmptyState` | PR #53 (Shahnila) | `title="..."`, `message="..."`, `action={<Button ... />}` |
-| **`ErrorState`** | `@/components/ui/design-system/ErrorState` | PR #53 (Shahnila) | `title="..."`, `message="..."`, `onRetry={loadData}` |
-
-> [!NOTE]
-> **Danish's `Dialog` & `ConfirmDialog` components:** Not merged into `feature/design-system`. Existing modal handlers (`activeModal`) and project modal components were preserved without introducing unmerged or duplicate external components.
-
----
-
-## 3. Financial Calculations & Business Logic
-
-- **Authentic Data Display:** No hardcoded financial figures. All metrics derive from `hisabDoService` and live ledger transactions.
-- **Profit Calculation:** Strictly follows existing application business logic:
-  $$\text{Net Profit} = \text{Total Income} - \text{Total Expense}$$
-- **Negative Balance Handling:** When expenses exceed income, the Profit card dynamically transforms to display an operating deficit (`-Rs. ...`), switches the badge from `Net Positive` (`variant="green"`) to `Deficit` (`variant="red"`), and adjusts the visual trend icon to `TrendingDown`.
-- **RTL & Logical Styling:** Built strictly using semantic tokens (`bg-primary`, `text-success`, `text-danger`, `bg-surface`, `rounded-card`, `shadow-card`) and CSS logical properties (`ps-*`, `pe-*`, `ms-*`, `me-*`, `text-start`). No arbitrary hex colors or hardcoded physical directions were introduced.
-
----
-
-## 4. Loading, Empty, and Error States
-
-1. **Loading State:**
-   - Displays 5 responsive skeleton cards powered by `<LoadingState variant="skeleton" />`.
-   - Prevents flashing misleading zero values while merchant data is being loaded.
-2. **Empty State:**
-   - Detects when transactions and customer lists are empty (`isDataEmpty`).
-   - Renders an informative `<EmptyState />` banner encouraging merchants to record their first sale or add customer khata.
-3. **Error State:**
-   - If data retrieval fails, renders `<ErrorState />` with a direct "Retry Loading" action (`onRetry={loadData}`).
-
----
-
-## 5. Verification & Test Evidence
-
-| Test Scenario | Verification Method | Result | Evidence File |
-| :--- | :--- | :--- | :--- |
-| **Next.js Production Build** | `npm run build` | **Passed (0 errors)** | Exit Code 0, 46/46 static pages generated |
-| **Light Mode Theme** | Chrome Headless CDP (1280x950) | **Passed** | `screenshots/dashboard-light.png` |
-| **Dark Mode Theme** | Chrome Headless CDP (1280x950) | **Passed** | `screenshots/dashboard-dark.png` |
-| **360px Mobile Viewport** | CDP Mobile Emulation (360x900) | **Passed** (`hasOverflow: false`) | `screenshots/dashboard-mobile-360px.png` |
-| **RTL Layout (Urdu)** | `dir="rtl"`, `lang="ur"` | **Passed** | `screenshots/dashboard-rtl.png` |
+| **TypeScript Typecheck** | `npx tsc --noEmit` | **Passed (0 errors)** | Zero syntax or type errors |
+| **Standardized Form Tests** | `node --experimental-strip-types scripts/test-standardized-forms.mjs` | **Passed (Tests 1–6)** | Form reuse, dropdown validations, date limits, and submission handling |
+| **Expenses Test Suite** | Automated Node.js test script | **Passed (9/9 suites)** | Form reuse, create/edit/delete operations, feedback, search/filter, and restrictions verified |
+| **Strict Restrictions** | Code inspection | **Passed** | 0 bulk delete code, 0 checkboxes, no hardcoded colors, no database schema changes |
