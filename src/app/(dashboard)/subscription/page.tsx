@@ -15,10 +15,12 @@ import {
   Lock,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useSettings } from "@/context/SettingsContext";
 import { subscriptionService, SubscriptionPlan } from "@/services/subscriptionService";
 
 export default function SubscriptionPage() {
   const { user } = useAuth();
+  const { theme } = useSettings();
   const userId = user?.id || "guest";
 
   const [currentPlan, setCurrentPlan] = useState<SubscriptionPlan>("free");
@@ -52,17 +54,17 @@ export default function SubscriptionPage() {
   };
 
   return (
-    <div className="space-y-8 text-slate-100 max-w-5xl mx-auto py-2">
+    <div className={`space-y-8 max-w-5xl mx-auto py-2 ${theme === "dark" ? "text-slate-100" : "text-slate-900"}`}>
       {/* Header */}
       <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold">
           <Sparkles className="w-3.5 h-3.5" />
           HisabDo Pro Subscription Plans
         </div>
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+        <h1 className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${theme === "dark" ? "text-white" : "text-slate-900"}`}>
           Simple, Transparent Plans for Your Business
         </h1>
-        <p className="text-slate-400 text-sm max-w-xl mx-auto">
+        <p className={`text-sm max-w-xl mx-auto ${theme === "dark" ? "text-slate-400" : "text-slate-600"}`}>
           Start free with daily limits or upgrade to Pro for unlimited PDF statements, branded invoices, and instant merchant tools.
         </p>
       </div>
@@ -90,7 +92,7 @@ export default function SubscriptionPage() {
                 <span className="text-xs uppercase font-bold tracking-wider text-slate-400">
                   Starter Tier
                 </span>
-                <h3 className="text-2xl font-bold text-white mt-1">HisabDo Free</h3>
+                <h3 className={`text-2xl font-bold mt-1 ${theme === "dark" ? "text-white" : "text-slate-900"}`}>HisabDo Free</h3>
                 <p className="text-xs text-slate-400 mt-1">
                   Perfect for micro-retailers & local shopkeepers.
                 </p>
@@ -103,13 +105,13 @@ export default function SubscriptionPage() {
             </div>
 
             <div className="flex items-baseline gap-1">
-              <span className="text-4xl font-extrabold text-white">Rs. 0</span>
+              <span className={`text-4xl font-extrabold ${theme === "dark" ? "text-white" : "text-slate-900"}`}>Rs. 0</span>
               <span className="text-xs text-slate-400">/ forever free</span>
             </div>
 
             {/* Daily Usage Meters */}
-            <div className="bg-[#182032] border border-slate-700/60 rounded-xl p-4 space-y-3">
-              <span className="text-xs font-semibold text-slate-300 block">Daily Entitlement Limits:</span>
+            <div className={`border rounded-xl p-4 space-y-3 ${theme === "dark" ? "bg-[#182032] border-slate-700/60" : "bg-slate-50 border-slate-200"}`}>
+              <span className={`text-xs font-semibold block ${theme === "dark" ? "text-slate-300" : "text-slate-800"}`}>Daily Entitlement Limits:</span>
               
               <div>
                 <div className="flex justify-between text-[11px] mb-1">
@@ -143,7 +145,7 @@ export default function SubscriptionPage() {
             </div>
 
             {/* Features */}
-            <ul className="space-y-3 text-xs text-slate-300">
+            <ul className={`space-y-3 text-xs ${theme === "dark" ? "text-slate-300" : "text-slate-600"}`}>
               <li className="flex items-center gap-2.5">
                 <Check className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span>Unlimited customer khata entries</span>
@@ -204,23 +206,23 @@ export default function SubscriptionPage() {
               <span className="text-xs uppercase font-extrabold tracking-wider text-emerald-400 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" /> Enterprise & Growth
               </span>
-              <h3 className="text-2xl font-bold text-white mt-1">HisabDo Pro</h3>
+              <h3 className={`text-2xl font-bold mt-1 ${theme === "dark" ? "text-white" : "text-slate-900"}`}>HisabDo Pro</h3>
               <p className="text-xs text-slate-300 mt-1">
                 Zero restrictions for growing distributors and busy merchants.
               </p>
             </div>
 
             <div className="flex items-baseline gap-1.5">
-              <span className="text-4xl font-extrabold text-white">Rs. 999</span>
+              <span className={`text-4xl font-extrabold ${theme === "dark" ? "text-white" : "text-slate-900"}`}>Rs. 999</span>
               <span className="text-xs text-slate-400">/ month</span>
             </div>
 
-            <p className="text-xs text-slate-300 bg-indigo-950/40 border border-indigo-500/20 p-3 rounded-xl">
+            <p className={`text-xs p-3 rounded-xl border ${theme === "dark" ? "text-slate-300 bg-indigo-950/40 border-indigo-500/20" : "text-indigo-900 bg-indigo-50 border-indigo-200"}`}>
               Includes unlimited daily invoice generation, statement exports, and ad-free experience.
             </p>
 
             {/* Features List */}
-            <ul className="space-y-3.5 text-xs text-slate-200">
+            <ul className={`space-y-3.5 text-xs ${theme === "dark" ? "text-slate-200" : "text-slate-700 font-medium"}`}>
               <li className="flex items-center gap-2.5">
                 <Check className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span><strong>Unlimited Invoices</strong> with custom shop logo & branding</span>

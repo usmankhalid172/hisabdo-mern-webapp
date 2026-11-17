@@ -4,6 +4,10 @@ import autoTable from "jspdf-autotable";
 
 export interface Customer {
   id: string;
+  client_uuid?: string;
+  version?: number;
+  updated_at?: string;
+  deleted_at?: string | null;
   name: string;
   phone: string;
   email?: string;
@@ -11,40 +15,119 @@ export interface Customer {
   opening_balance: number;
   currency: string;
   notes?: string;
+  metadata?: Record<string, unknown>;
   created_at: string;
 }
 
 export interface Income {
   id: string;
+  client_uuid?: string;
+  version?: number;
+  updated_at?: string;
+  deleted_at?: string | null;
   amount: number;
   customer_id?: string | null;
   category_id?: string | null;
   income_date: string;
   description: string;
   payment_method: string;
+  image_path?: string | null;
+  metadata?: Record<string, unknown>;
   created_at?: string;
 }
 
 export interface Expense {
   id: string;
+  client_uuid?: string;
+  version?: number;
+  updated_at?: string;
+  deleted_at?: string | null;
   amount: number;
   customer_id?: string | null;
   category_id?: string | null;
   expense_date: string;
   description: string;
   payment_method: string;
+  image_path?: string | null;
+  metadata?: Record<string, unknown>;
   created_at?: string;
 }
 
 export interface LedgerTransaction {
   id: string;
+  client_uuid?: string;
+  user_id?: string;
+  version?: number;
+  updated_at?: string;
+  deleted_at?: string | null;
   customerId: string;
   amount: number;
-  type: "received" | "paid"; // received = Jama (customer paid), paid = Naam (we paid)
+  type: "received" | "paid";
   category: string;
   date: string;
   note?: string;
   imagePath?: string;
+  metadata?: Record<string, unknown>;
+}
+
+type SupabaseRow = Record<string, any>;
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function createClientUuid(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
+    const random = Math.floor(Math.random() * 16);
+    return (char === "x" ? random : (random & 0x3) | 0x8).toString(16);
+  });
+}
+
+function asMetadata(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function isRemoteUuid(value: string | null | undefined): value is string {
+  return typeof value === "string" && UUID_RE.test(value);
+}
+
+function normalizeCustomer(row: SupabaseRow): Customer {
+  const metadata = asMetadata(row.metadata);
+  return {
+    ...row,
+    client_uuid: row.client_uuid,
+    opening_balance: Number(metadata.opening_balance ?? row.opening_balance ?? 0),
+    currency: String(metadata.currency ?? row.currency ?? "PKR"),
+    address: String(metadata.address ?? row.address ?? ""),
+    metadata,
+  } as Customer;
+}
+
+function normalizeIncome(row: SupabaseRow): Income {
+  const metadata = asMetadata(row.metadata);
+  return {
+    ...row,
+    income_date: row.income_date ?? row.date,
+    description: row.description ?? row.note ?? "",
+    payment_method: String(metadata.payment_method ?? row.payment_method ?? "cash"),
+    category_id: String(metadata.legacy_category ?? row.categories?.name ?? row.category_id ?? "Sales"),
+    image_path: row.image_path ?? undefined,
+    metadata,
+  } as Income;
+}
+
+function normalizeExpense(row: SupabaseRow): Expense {
+  const metadata = asMetadata(row.metadata);
+  return {
+    ...row,
+    expense_date: row.expense_date ?? row.date,
+    description: row.description ?? row.note ?? "",
+    payment_method: String(metadata.payment_method ?? row.payment_method ?? "cash"),
+    category_id: String(metadata.legacy_category ?? row.categories?.name ?? row.category_id ?? "General"),
+    image_path: row.image_path ?? undefined,
+    metadata,
+  } as Expense;
 }
 
 export interface LedgerRow {
@@ -59,19 +142,42 @@ export interface LedgerRow {
   sourceTable: "income" | "expenses" | "ledger_transactions";
 }
 
-// Clean empty initial state
 const DEFAULT_CUSTOMERS: Customer[] = [];
 const DEFAULT_INCOMES: Income[] = [];
 const DEFAULT_EXPENSES: Expense[] = [];
 const DEFAULT_LEDGER_TXS: LedgerTransaction[] = [];
 
-
 export class HisabDoService {
+  private async resolveCategoryId(userId: string, value: string | null | undefined, type: "receivable" | "payable"): Promise<string | null> {
+    if (!value) return null;
+    if (isRemoteUuid(value)) return value;
+
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("categories")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("name", value)
+      .eq("type", type)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (error) throw error;
+    if (data?.id) return data.id;
+
+    const clientUuid = createClientUuid();
+    const { data: created, error: createError } = await supabase
+      .from("categories")
+      .insert([{ user_id: userId, client_uuid: clientUuid, name: value, type, version: 1 }])
+      .select("id")
+      .single();
+    if (createError) throw createError;
+    return created?.id ?? null;
+  }
+
   private getStorageKey(userId: string, key: string) {
     return `hisabdo_${userId || "guest"}_${key}`;
   }
 
-  // Load state from local storage or defaults
   private getLocal<T>(userId: string, key: string, fallback: T): T {
     if (typeof window === "undefined") return fallback;
     try {
@@ -136,34 +242,51 @@ export class HisabDoService {
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      const customers = (data ?? []).map((row) => ({
-        ...row,
-        opening_balance: Number(row.metadata?.opening_balance ?? 0),
-        currency: row.metadata?.currency ?? "PKR",
-      })) as Customer[];
+      const customers = (data ?? []).map((row) => normalizeCustomer(row as SupabaseRow));
       this.setLocal(userId, "customers", customers);
       return customers;
-    } catch {
-      // Fall back to the last locally cached data while offline.
+    } catch (err) {
+      console.error("getCustomers failed, using local cache:", err);
     }
     return fallback;
   }
 
   async addCustomer(userId: string, customer: Omit<Customer, "id" | "created_at">): Promise<Customer> {
+    const clientUuid = customer.client_uuid || createClientUuid();
+    const metadata = {
+      ...asMetadata(customer.metadata),
+      opening_balance: Number(customer.opening_balance || 0),
+      currency: customer.currency || "PKR",
+      address: customer.address || "",
+    };
     const newCust: Customer = {
       ...customer,
-      id: "cust-" + Date.now(),
+      id: `local-${clientUuid}`,
+      client_uuid: clientUuid,
+      version: 1,
+      metadata,
       created_at: new Date().toISOString(),
     };
 
-    // Try Supabase first
-    try {
+    if (userId !== "guest" && isRemoteUuid(userId)) {
+      try {
       const supabase = createClient();
-      const { data, error } = await supabase.from("customers").insert([newCust]).select().single();
-      if (!error && data) {
-        newCust.id = data.id;
+        const { data, error } = await supabase.from("customers").insert([{
+          user_id: userId,
+          client_uuid: clientUuid,
+          name: customer.name,
+          phone: customer.phone || null,
+          email: customer.email || null,
+          notes: customer.notes || null,
+          metadata,
+          version: 1,
+        }]).select().single();
+        if (error) throw error;
+        if (data) return normalizeCustomer(data as SupabaseRow);
+      } catch (error) {
+        console.warn("Customer cloud save failed; keeping the local copy:", error);
       }
-    } catch {}
+    }
 
     const list = await this.getCustomers(userId);
     const updated = [newCust, ...list.filter((c) => c.id !== newCust.id)];
@@ -173,8 +296,8 @@ export class HisabDoService {
 
   async updateCustomer(userId: string, id: string, updates: Partial<Customer>): Promise<Customer> {
     const list = await this.getCustomers(userId);
-    let updatedCust: Customer | null = null;
-    const updatedList = list.map((c) => {
+    let updatedCust: Customer | null = null;    
+    const updatedList = list.map ((c) => {
       if (c.id === id) {
         updatedCust = { ...c, ...updates };
         return updatedCust;
@@ -182,10 +305,32 @@ export class HisabDoService {
       return c;
     });
 
-    try {
+    if (userId !== "guest" && isRemoteUuid(userId) && isRemoteUuid(id)) {
+      const current = list.find((c) => c.id === id) ?? null;
+      try {
       const supabase = createClient();
-      await supabase.from("customers").update(updates).eq("id", id);
-    } catch {}
+        const metadata = {
+          ...asMetadata(current?.metadata),
+          ...asMetadata(updates.metadata),
+          ...(updates.opening_balance !== undefined ? { opening_balance: Number(updates.opening_balance) } : {}),
+          ...(updates.currency !== undefined ? { currency: updates.currency } : {}),
+          ...(updates.address !== undefined ? { address: updates.address } : {}),
+        };
+        const payload: SupabaseRow = {
+          ...(updates.name !== undefined ? { name: updates.name } : {}),
+          ...(updates.phone !== undefined ? { phone: updates.phone || null } : {}),
+          ...(updates.email !== undefined ? { email: updates.email || null } : {}),
+          ...(updates.notes !== undefined ? { notes: updates.notes || null } : {}),
+          metadata,
+          version: Number(current?.version || 1) + 1,
+          updated_at: new Date().toISOString(),
+        };
+        const { error } = await supabase.from("customers").update(payload).eq("id", id).eq("user_id", userId);
+        if (error) throw error;
+      } catch (error) {
+        console.warn("Customer cloud update failed; keeping the local copy:", error);
+      }
+    }
 
     if (updatedCust) {
       this.setLocal(userId, "customers", updatedList);
@@ -195,10 +340,18 @@ export class HisabDoService {
   }
 
   async deleteCustomer(userId: string, id: string): Promise<void> {
-    try {
-      const supabase = createClient();
-      await supabase.from("customers").delete().eq("id", id);
-    } catch {}
+    if (userId !== "guest" && isRemoteUuid(userId) && isRemoteUuid(id)) {
+      try {
+        const supabase = createClient();
+        const { error } = await supabase.from("customers").update({
+          deleted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }).eq("id", id).eq("user_id", userId);
+        if (error) throw error;
+      } catch (error) {
+        console.warn("Customer cloud delete failed; keeping the local copy:", error);
+      }
+    }
 
     const list = await this.getCustomers(userId);
     this.setLocal(userId, "customers", list.filter((c) => c.id !== id));
@@ -212,40 +365,63 @@ export class HisabDoService {
       const supabase = createClient();
       const { data, error } = await supabase
         .from("income")
-        .select("*")
+        .select("*, categories(name)")
         .eq("user_id", userId)
         .is("deleted_at", null)
         .order("date", { ascending: false });
       if (error) throw error;
-      const incomes = (data ?? []).map((row) => ({
-        ...row,
-        income_date: row.date,
-        description: row.note ?? "",
-        payment_method: row.metadata?.payment_method ?? "cash",
-        category_id: row.metadata?.legacy_category ?? row.category_id ?? "Sales",
-      })) as Income[];
+      const incomes = (data ?? []).map((row) => normalizeIncome(row as SupabaseRow));
       this.setLocal(userId, "incomes", incomes);
       return incomes;
-    } catch {
-      // Fall back to the last locally cached data while offline.
+    } catch (err) {
+      console.error("getIncomes failed, using local cache:", err);
     }
     return fallback;
   }
 
   async addIncome(userId: string, income: Omit<Income, "id" | "created_at">): Promise<Income> {
+    const clientUuid = income.client_uuid || createClientUuid();
+    const categoryLabel = String(income.category_id || "Sales");
+    const metadata = {
+      ...asMetadata(income.metadata),
+      legacy_category: isRemoteUuid(categoryLabel) ? undefined : categoryLabel,
+      payment_method: income.payment_method || "cash",
+      currency: "PKR",
+      base_currency: "PKR",
+      exchange_rate: 1,
+    };
     const newInc: Income = {
       ...income,
-      id: "inc-" + Date.now(),
+      id: `local-${clientUuid}`,
+      client_uuid: clientUuid,
+      version: 1,
+      metadata,
+      image_path: income.image_path || undefined,
       created_at: new Date().toISOString(),
     };
 
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase.from("income").insert([newInc]).select().single();
-      if (!error && data) {
-        newInc.id = data.id;
+    if (userId !== "guest" && isRemoteUuid(userId)) {
+      try {
+        const supabase = createClient();
+        const categoryId = await this.resolveCategoryId(userId, categoryLabel, "receivable");
+        const { data, error } = await supabase.from("income").insert([{
+          user_id: userId,
+          client_uuid: clientUuid,
+          customer_id: isRemoteUuid(income.customer_id) ? income.customer_id : null,
+          category_id: categoryId,
+          amount: Number(income.amount),
+          date: income.income_date,
+          note: income.description || null,
+          image_path: income.image_path || null,
+          metadata,
+          version: 1,
+        }]).select().single();
+        if (error) throw error;
+        if (data) return normalizeIncome(data as SupabaseRow);
+      } catch (error) {
+        console.warn("Income cloud save failed; keeping the local copy:", error);
       }
-    } catch {}
+    }
 
     const list = await this.getIncomes(userId);
     const updated = [newInc, ...list];
@@ -254,10 +430,15 @@ export class HisabDoService {
   }
 
   async deleteIncome(userId: string, id: string): Promise<void> {
-    try {
-      const supabase = createClient();
-      await supabase.from("income").delete().eq("id", id);
-    } catch {}
+    if (userId !== "guest" && isRemoteUuid(userId) && isRemoteUuid(id)) {
+      try {
+        const supabase = createClient();
+        const { error } = await supabase.from("income").update({ deleted_at: new Date().toISOString() }).eq("id", id).eq("user_id", userId);
+        if (error) throw error;
+      } catch (error) {
+        console.warn("Income cloud delete failed; keeping the local copy:", error);
+      }
+    }
 
     const list = await this.getIncomes(userId);
     this.setLocal(userId, "incomes", list.filter((i) => i.id !== id));
@@ -274,10 +455,36 @@ export class HisabDoService {
       return i;
     });
 
-    try {
-      const supabase = createClient();
-      await supabase.from("income").update(updates).eq("id", id);
-    } catch {}
+    if (userId !== "guest" && isRemoteUuid(userId) && isRemoteUuid(id)) {
+      try {
+        const supabase = createClient();
+        const current = list.find((item) => item.id === id);
+        const nextCategory = String(updates.category_id ?? current?.category_id ?? "Sales");
+        const categoryId = updates.category_id !== undefined
+          ? await this.resolveCategoryId(userId, nextCategory, "receivable")
+          : undefined;
+        const metadata = {
+          ...asMetadata(current?.metadata),
+          ...asMetadata(updates.metadata),
+          legacy_category: isRemoteUuid(nextCategory) ? undefined : nextCategory,
+          payment_method: updates.payment_method ?? current?.payment_method ?? "cash",
+        };
+        const payload: SupabaseRow = {
+          ...(updates.amount !== undefined ? { amount: Number(updates.amount) } : {}),
+          ...(updates.customer_id !== undefined ? { customer_id: isRemoteUuid(updates.customer_id) ? updates.customer_id : null } : {}),
+          ...(updates.income_date !== undefined ? { date: updates.income_date } : {}),
+          ...(updates.description !== undefined ? { note: updates.description || null } : {}),
+          ...(updates.category_id !== undefined ? { category_id: categoryId } : {}),
+          ...(updates.image_path !== undefined ? { image_path: updates.image_path || null, metadata } : { metadata }),
+          version: Number(current?.version || 1) + 1,
+          updated_at: new Date().toISOString(),
+        };
+        const { error } = await supabase.from("income").update(payload).eq("id", id).eq("user_id", userId);
+        if (error) throw error;
+      } catch (error) {
+        console.warn("Income cloud update failed; keeping the local copy:", error);
+      }
+    }
 
     if (updatedItem) {
       this.setLocal(userId, "incomes", updatedList);
@@ -294,40 +501,63 @@ export class HisabDoService {
       const supabase = createClient();
       const { data, error } = await supabase
         .from("expenses")
-        .select("*")
+        .select("*, categories(name)")
         .eq("user_id", userId)
         .is("deleted_at", null)
         .order("date", { ascending: false });
       if (error) throw error;
-      const expenses = (data ?? []).map((row) => ({
-        ...row,
-        expense_date: row.date,
-        description: row.note ?? "",
-        payment_method: row.metadata?.payment_method ?? "cash",
-        category_id: row.metadata?.legacy_category ?? row.category_id ?? "General",
-      })) as Expense[];
+      const expenses = (data ?? []).map((row) => normalizeExpense(row as SupabaseRow));
       this.setLocal(userId, "expenses", expenses);
       return expenses;
-    } catch {
-      // Fall back to the last locally cached data while offline.
+    } catch (err) {
+      console.error("getExpenses failed, using local cache:", err);
     }
     return fallback;
   }
 
   async addExpense(userId: string, expense: Omit<Expense, "id" | "created_at">): Promise<Expense> {
+    const clientUuid = expense.client_uuid || createClientUuid();
+    const categoryLabel = String(expense.category_id || "General");
+    const metadata = {
+      ...asMetadata(expense.metadata),
+      legacy_category: isRemoteUuid(categoryLabel) ? undefined : categoryLabel,
+      payment_method: expense.payment_method || "cash",
+      currency: "PKR",
+      base_currency: "PKR",
+      exchange_rate: 1,
+    };
     const newExp: Expense = {
       ...expense,
-      id: "exp-" + Date.now(),
+      id: `local-${clientUuid}`,
+      client_uuid: clientUuid,
+      version: 1,
+      metadata,
+      image_path: expense.image_path || undefined,
       created_at: new Date().toISOString(),
     };
 
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase.from("expenses").insert([newExp]).select().single();
-      if (!error && data) {
-        newExp.id = data.id;
+    if (userId !== "guest" && isRemoteUuid(userId)) {
+      try {
+        const supabase = createClient();
+        const categoryId = await this.resolveCategoryId(userId, categoryLabel, "payable");
+        const { data, error } = await supabase.from("expenses").insert([{
+          user_id: userId,
+          client_uuid: clientUuid,
+          customer_id: isRemoteUuid(expense.customer_id) ? expense.customer_id : null,
+          category_id: categoryId,
+          amount: Number(expense.amount),
+          date: expense.expense_date,
+          note: expense.description || null,
+          image_path: expense.image_path || null,
+          metadata,
+          version: 1,
+        }]).select().single();
+        if (error) throw error;
+        if (data) return normalizeExpense(data as SupabaseRow);
+      } catch (error) {
+        console.warn("Expense cloud save failed; keeping the local copy:", error);
       }
-    } catch {}
+    }
 
     const list = await this.getExpenses(userId);
     const updated = [newExp, ...list];
@@ -336,10 +566,15 @@ export class HisabDoService {
   }
 
   async deleteExpense(userId: string, id: string): Promise<void> {
-    try {
-      const supabase = createClient();
-      await supabase.from("expenses").delete().eq("id", id);
-    } catch {}
+    if (userId !== "guest" && isRemoteUuid(userId) && isRemoteUuid(id)) {
+      try {
+        const supabase = createClient();
+        const { error } = await supabase.from("expenses").update({ deleted_at: new Date().toISOString() }).eq("id", id).eq("user_id", userId);
+        if (error) throw error;
+      } catch (error) {
+        console.warn("Expense cloud delete failed; keeping the local copy:", error);
+      }
+    }
 
     const list = await this.getExpenses(userId);
     this.setLocal(userId, "expenses", list.filter((e) => e.id !== id));
@@ -356,10 +591,36 @@ export class HisabDoService {
       return e;
     });
 
-    try {
-      const supabase = createClient();
-      await supabase.from("expenses").update(updates).eq("id", id);
-    } catch {}
+    if (userId !== "guest" && isRemoteUuid(userId) && isRemoteUuid(id)) {
+      try {
+        const supabase = createClient();
+        const current = list.find((item) => item.id === id);
+        const nextCategory = String(updates.category_id ?? current?.category_id ?? "General");
+        const categoryId = updates.category_id !== undefined
+          ? await this.resolveCategoryId(userId, nextCategory, "payable")
+          : undefined;
+        const metadata = {
+          ...asMetadata(current?.metadata),
+          ...asMetadata(updates.metadata),
+          legacy_category: isRemoteUuid(nextCategory) ? undefined : nextCategory,
+          payment_method: updates.payment_method ?? current?.payment_method ?? "cash",
+        };
+        const payload: SupabaseRow = {
+          ...(updates.amount !== undefined ? { amount: Number(updates.amount) } : {}),
+          ...(updates.customer_id !== undefined ? { customer_id: isRemoteUuid(updates.customer_id) ? updates.customer_id : null } : {}),
+          ...(updates.expense_date !== undefined ? { date: updates.expense_date } : {}),
+          ...(updates.description !== undefined ? { note: updates.description || null } : {}),
+          ...(updates.category_id !== undefined ? { category_id: categoryId } : {}),
+          ...(updates.image_path !== undefined ? { image_path: updates.image_path || null, metadata } : { metadata }),
+          version: Number(current?.version || 1) + 1,
+          updated_at: new Date().toISOString(),
+        };
+        const { error } = await supabase.from("expenses").update(payload).eq("id", id).eq("user_id", userId);
+        if (error) throw error;
+      } catch (error) {
+        console.warn("Expense cloud update failed; keeping the local copy:", error);
+      }
+    }
 
     if (updatedItem) {
       this.setLocal(userId, "expenses", updatedList);
@@ -383,35 +644,67 @@ export class HisabDoService {
       if (error) throw error;
       const transactions = (data ?? []).map((row) => ({
         id: row.id,
+        client_uuid: row.client_uuid,
+        user_id: row.user_id,
+        version: row.version,
+        updated_at: row.updated_at,
+        deleted_at: row.deleted_at,
         customerId: row.customer_id,
         amount: Number(row.amount),
         type: row.type,
         category: row.category ?? "Payment",
         date: row.date,
         note: row.note ?? "",
-        imagePath: row.image_path ?? undefined,
+        imagePath: row.image_path ?? asMetadata(row.metadata).image_path as string | undefined,
+        metadata: asMetadata(row.metadata),
       })) as LedgerTransaction[];
       this.setLocal(userId, "ledger_txs", transactions);
       return transactions;
-    } catch {
-      // Fall back to the last locally cached data while offline.
+    } catch (err) {
+      console.error("getLedgerTransactions failed, using local cache:", err);
     }
     return fallback;
   }
 
   async addLedgerTransaction(userId: string, tx: Omit<LedgerTransaction, "id">): Promise<LedgerTransaction> {
+    const clientUuid = tx.client_uuid || createClientUuid();
     const newTx: LedgerTransaction = {
       ...tx,
-      id: "ltx-" + Date.now(),
+      id: `local-${clientUuid}`,
+      client_uuid: clientUuid,
+      user_id: userId,
+      version: 1,
     };
 
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase.from("ledger_transactions").insert([newTx]).select().single();
-      if (!error && data) {
-        newTx.id = data.id;
+    if (userId !== "guest" && isRemoteUuid(userId)) {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase.from("ledger_transactions").insert([{
+          user_id: userId,
+          client_uuid: clientUuid,
+          customer_id: isRemoteUuid(tx.customerId) ? tx.customerId : null,
+          amount: Number(tx.amount),
+          type: tx.type,
+          category: tx.category || "Payment",
+          date: tx.date,
+          note: tx.note || null,
+          image_path: tx.imagePath || null,
+          metadata: tx.metadata || {},
+          version: 1,
+        }]).select().single();
+        if (error) throw error;
+        if (data) return {
+          ...newTx,
+          id: data.id,
+          client_uuid: data.client_uuid,
+          user_id: data.user_id,
+          version: data.version,
+          updated_at: data.updated_at,
+        };
+      } catch (error) {
+        console.warn("Ledger transaction cloud save failed; keeping the local copy:", error);
       }
-    } catch {}
+    }
 
     const list = await this.getLedgerTransactions(userId);
     const updated = [newTx, ...list];
@@ -420,10 +713,15 @@ export class HisabDoService {
   }
 
   async deleteLedgerTransaction(userId: string, id: string): Promise<void> {
-    try {
-      const supabase = createClient();
-      await supabase.from("ledger_transactions").delete().eq("id", id);
-    } catch {}
+    if (userId !== "guest" && isRemoteUuid(userId) && isRemoteUuid(id)) {
+      try {
+        const supabase = createClient();
+        const { error } = await supabase.from("ledger_transactions").update({ deleted_at: new Date().toISOString() }).eq("id", id).eq("user_id", userId);
+        if (error) throw error;
+      } catch (error) {
+        console.warn("Ledger transaction cloud delete failed; keeping the local copy:", error);
+      }
+    }
 
     const list = await this.getLedgerTransactions(userId);
     this.setLocal(userId, "ledger_txs", list.filter((t) => t.id !== id));
@@ -440,10 +738,27 @@ export class HisabDoService {
       return t;
     });
 
-    try {
-      const supabase = createClient();
-      await supabase.from("ledger_transactions").update(updates).eq("id", id);
-    } catch {}
+    if (userId !== "guest" && isRemoteUuid(userId) && isRemoteUuid(id)) {
+      try {
+        const supabase = createClient();
+        const payload: SupabaseRow = {
+          ...(updates.customerId !== undefined ? { customer_id: isRemoteUuid(updates.customerId) ? updates.customerId : null } : {}),
+          ...(updates.amount !== undefined ? { amount: Number(updates.amount) } : {}),
+          ...(updates.type !== undefined ? { type: updates.type } : {}),
+          ...(updates.category !== undefined ? { category: updates.category } : {}),
+          ...(updates.date !== undefined ? { date: updates.date } : {}),
+          ...(updates.note !== undefined ? { note: updates.note || null } : {}),
+          ...(updates.imagePath !== undefined ? { image_path: updates.imagePath || null } : {}),
+          ...(updates.metadata !== undefined ? { metadata: updates.metadata } : {}),
+          version: Number(list.find((item) => item.id === id)?.version || 1) + 1,
+          updated_at: new Date().toISOString(),
+        };
+        const { error } = await supabase.from("ledger_transactions").update(payload).eq("id", id).eq("user_id", userId);
+        if (error) throw error;
+      } catch (error) {
+        console.warn("Ledger transaction cloud update failed; keeping the local copy:", error);
+      }
+    }
 
     if (updatedItem) {
       this.setLocal(userId, "ledger_txs", updatedList);
@@ -477,7 +792,6 @@ export class HisabDoService {
 
     const tempRows: TempRow[] = [];
 
-    // 1. Incomes linked to this customer (Purchase by customer -> Customer owes us -> +)
     incomes
       .filter((i) => i.customer_id === customerId)
       .forEach((i) => {
@@ -493,7 +807,6 @@ export class HisabDoService {
         });
       });
 
-    // 2. Expenses linked to this customer (Refund or purchase from customer -> -)
     expenses
       .filter((e) => e.customer_id === customerId)
       .forEach((e) => {
@@ -509,7 +822,6 @@ export class HisabDoService {
         });
       });
 
-    // 3. Direct Payments in Ledger
     payments
       .filter((p) => p.customerId === customerId)
       .forEach((p) => {
@@ -525,18 +837,12 @@ export class HisabDoService {
         });
       });
 
-    // Sort chronologically ascending
     tempRows.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     let running = openingBalance;
     const finalRows: LedgerRow[] = [];
 
     for (const r of tempRows) {
-      // 1:1 business logic parity with Flutter customer_ledger_screen.dart & whatsapp_message_service.dart:
-      // Purchase -> +amount
-      // Expense -> -amount
-      // Payment Sent -> +amount
-      // Payment Received -> -amount
       let delta = 0;
       if (r.type === "Purchase") delta = r.amount;
       else if (r.type === "Expense") delta = -r.amount;
@@ -556,7 +862,7 @@ export class HisabDoService {
     const totalPaymentsSent = tempRows.filter((r) => r.type === "Payment Sent").reduce((acc, r) => acc + r.amount, 0);
 
     return {
-      rows: finalRows.reverse(), // latest first for display
+      rows: finalRows.reverse(),
       summary: {
         totalPurchases,
         totalPaymentsReceived,
@@ -566,7 +872,6 @@ export class HisabDoService {
     };
   }
 
-  // Calculate high-level summary for the dashboard
   async getDashboardMetrics(userId: string) {
     const [customers, incomes, expenses, payments] = await Promise.all([
       this.getCustomers(userId),
@@ -575,8 +880,8 @@ export class HisabDoService {
       this.getLedgerTransactions(userId),
     ]);
 
-    let totalReceivable = 0; // Lene (Customers who owe us)
-    let totalPayable = 0; // Dene (Customers to whom we owe advance/credit)
+    let totalReceivable = 0;
+    let totalPayable = 0;
 
     for (const cust of customers) {
       const { summary } = await this.getCustomerLedgerTimeline(userId, cust.id);
@@ -587,7 +892,6 @@ export class HisabDoService {
       }
     }
 
-    // Current Month Income & Expenses
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
@@ -618,7 +922,7 @@ export class HisabDoService {
     };
   }
 
-  // ==================== REMINDER MESSAGES (WHATSAPP & SMS) ====================
+  // ==================== REMINDER MESSAGES ====================
   getReminderMessage(params: {
     customerName: string;
     currency: string;
@@ -650,7 +954,7 @@ export class HisabDoService {
 
   generateWhatsAppReminderUrl(params: {
     customerName: string;
-    phone: string;
+    phone?: string | null;
     currency: string;
     netBalance: number;
     shopName: string;
@@ -659,26 +963,30 @@ export class HisabDoService {
     totalPurchases?: number;
     totalPayments?: number;
   }): string {
-    let cleanPhone = params.phone.replace(/[^0-9]/g, "");
+    const rawPhone = (params.phone || "").trim();
+    if (!rawPhone) return "";
+    let cleanPhone = rawPhone.replace(/[^0-9]/g, "");
     if (cleanPhone.startsWith("0")) {
       cleanPhone = "92" + cleanPhone.slice(1);
     }
     const message = this.getReminderMessage(params);
-    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+    return cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}` : "";
   }
 
   generateSmsReminderUrl(params: {
     customerName: string;
-    phone: string;
+    phone?: string | null;
     currency: string;
     netBalance: number;
     shopName: string;
     shopPhone?: string;
     language?: "en" | "ur" | "ur-Roman";
   }): string {
-    const cleanPhone = params.phone.replace(/[^0-9+]/g, "");
+    const rawPhone = (params.phone || "").trim();
+    if (!rawPhone) return "";
+    const cleanPhone = rawPhone.replace(/[^0-9+]/g, "");
     const message = this.getReminderMessage(params);
-    return `sms:${cleanPhone}?body=${encodeURIComponent(message)}`;
+    return cleanPhone ? `sms:${cleanPhone}?body=${encodeURIComponent(message)}` : "";
   }
 
   // ==================== STATEMENT PDF GENERATOR ====================
@@ -693,8 +1001,7 @@ export class HisabDoService {
   }) {
     const doc = new jsPDF();
 
-    // Primary Header Banner
-    doc.setFillColor(26, 35, 126); // Brand Primary #1A237E
+    doc.setFillColor(26, 35, 126);
     doc.rect(0, 0, 210, 36, "F");
 
     doc.setTextColor(255, 255, 255);
@@ -707,7 +1014,6 @@ export class HisabDoService {
     doc.text(`${params.businessAddress} | Tel: ${params.businessPhone}`, 14, 26);
     doc.text("CUSTOMER STATEMENT / KHATA LEDGER", 14, 32);
 
-    // Customer Info Card Box
     doc.setTextColor(30, 41, 59);
     doc.setFillColor(248, 249, 253);
     doc.roundedRect(14, 42, 182, 28, 3, 3, "F");
@@ -730,7 +1036,6 @@ export class HisabDoService {
     doc.setFont("helvetica", "normal");
     doc.text(new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }), 50, 64);
 
-    // Outstanding Balance highlight on top right
     const isReceivable = params.summary.netBalance >= 0;
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
@@ -745,7 +1050,6 @@ export class HisabDoService {
     doc.setTextColor(100, 116, 139);
     doc.text(isReceivable ? "(Receivable from Customer)" : "(Merchant Owes Customer)", 130, 58);
 
-    // Table Data
     const tableBody = [...params.timeline].reverse().map((row) => {
       const debit = row.type === "Purchase" || row.type === "Payment Sent" ? `${params.currency} ${row.amount.toLocaleString()}` : "-";
       const credit = row.type === "Payment Received" || row.type === "Expense" ? `${params.currency} ${row.amount.toLocaleString()}` : "-";
@@ -789,7 +1093,6 @@ export class HisabDoService {
       },
     });
 
-    // Summary Totals block at bottom
     const finalY = (doc as any).lastAutoTable.finalY + 8;
     doc.setFillColor(241, 245, 249);
     doc.roundedRect(110, finalY, 86, 32, 2, 2, "F");
@@ -808,7 +1111,6 @@ export class HisabDoService {
     doc.text(`Net Outstanding:`, 115, finalY + 25);
     doc.text(`${params.currency} ${params.summary.netBalance.toLocaleString()}`, 190, finalY + 25, { align: "right" });
 
-    // Footer
     doc.setFontSize(8);
     doc.setFont("helvetica", "italic");
     doc.setTextColor(148, 163, 184);
