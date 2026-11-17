@@ -178,7 +178,7 @@ export default function CustomersPage() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             {t("customers")}
           </h1>
           <p className="text-sm text-slate-400">
@@ -423,7 +423,7 @@ export default function CustomersPage() {
                 </div>
 
                 {/* Bottom Card Actions */}
-                <div className="pt-4 border-t border-slate-800/50 mt-4 flex items-center gap-2">
+                <div className={`pt-4 border-t mt-4 flex items-center gap-2 ${theme === "dark" ? "border-slate-800/50" : "border-slate-100"}`}>
                   <Link
                     href={`/customers/${c.id}`}
                     className="flex-1 py-2 px-3 rounded-xl text-xs font-bold bg-[#1A237E] hover:bg-[#0D47A1] text-white flex items-center justify-center gap-1.5 transition"
@@ -496,7 +496,7 @@ export default function CustomersPage() {
                   placeholder="e.g. Haji Bashir Autos"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border bg-transparent focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none focus:ring-1 focus:ring-emerald-500 ${theme === "dark" ? "bg-[#252525] border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
                 />
               </div>
 
@@ -507,7 +507,7 @@ export default function CustomersPage() {
                   placeholder="+92 300 1234567"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border bg-transparent focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none focus:ring-1 focus:ring-emerald-500 ${theme === "dark" ? "bg-[#252525] border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
                 />
               </div>
 
@@ -518,7 +518,7 @@ export default function CustomersPage() {
                   placeholder="customer@gmail.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border bg-transparent focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none focus:ring-1 focus:ring-emerald-500 ${theme === "dark" ? "bg-[#252525] border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
                 />
               </div>
 
@@ -529,7 +529,7 @@ export default function CustomersPage() {
                   placeholder="Shop #, Market, City"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border bg-transparent focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none focus:ring-1 focus:ring-emerald-500 ${theme === "dark" ? "bg-[#252525] border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
                 />
               </div>
 
@@ -540,7 +540,7 @@ export default function CustomersPage() {
                   placeholder="0.00"
                   value={formData.opening_balance || ""}
                   onChange={(e) => setFormData({ ...formData, opening_balance: Number(e.target.value) })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border bg-transparent focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none focus:ring-1 focus:ring-emerald-500 ${theme === "dark" ? "bg-[#252525] border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
                 />
               </div>
 
@@ -551,7 +551,7 @@ export default function CustomersPage() {
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   rows={2}
-                  className="w-full px-3 py-2 rounded-xl text-sm border bg-transparent focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none focus:ring-1 focus:ring-emerald-500 ${theme === "dark" ? "bg-[#252525] border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
                 />
               </div>
 
@@ -559,7 +559,7 @@ export default function CustomersPage() {
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="flex-1 py-2 rounded-xl text-sm font-semibold border hover:bg-slate-800/40"
+                  className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition ${theme === "dark" ? "border-slate-700 hover:bg-slate-800/40 text-slate-300" : "border-slate-200 hover:bg-slate-100 text-slate-700"}`}
                 >
                   Cancel
                 </button>
@@ -666,7 +666,7 @@ export default function CustomersPage() {
                 <button
                   type="button"
                   onClick={() => setPaymentModalCustomer(null)}
-                  className="flex-1 py-2 rounded-xl text-sm font-semibold border hover:bg-slate-800/40"
+                  className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition ${theme === "dark" ? "border-slate-700 hover:bg-slate-800/40 text-slate-300" : "border-slate-200 hover:bg-slate-100 text-slate-700"}`}
                 >
                   Cancel
                 </button>

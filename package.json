@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "node --experimental-strip-types scripts/test-standardized-forms.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
