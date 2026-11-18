@@ -14,21 +14,23 @@ interface CustomerSearchFilterProps {
   onSearchChange: (value: string) => void;
   filterType: CustomerFilterType;
   onFilterChange: (value: CustomerFilterType) => void;
+  customerCount: number;
 }
-
-const filters: { label: string; value: CustomerFilterType }[] = [
-  { label: 'All Customers', value: 'all' },
-  { label: 'Receivable', value: 'receivable' },
-  { label: 'Payable', value: 'payable' },
-  { label: 'Settled', value: 'settled' },
-];
 
 export default function CustomerSearchFilter({
   searchValue,
   onSearchChange,
   filterType,
   onFilterChange,
+  customerCount,
 }: CustomerSearchFilterProps) {
+  const filters: { label: string; value: CustomerFilterType }[] = [
+    { label: `All Parties (${customerCount})`, value: 'all' },
+    { label: 'Lene Hain (Debit)', value: 'receivable' },
+    { label: 'Dene Hain (Credit)', value: 'payable' },
+    { label: 'Settled (0)', value: 'settled' },
+  ];
+
   return (
     <FilterBar
       searchValue={searchValue}

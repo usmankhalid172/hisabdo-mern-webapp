@@ -21,6 +21,8 @@ interface CustomerFormProps {
   onCancel: () => void;
   isSubmitting?: boolean;
   submitLabel?: string;
+  phoneError?: string;
+  onPhoneChange?: () => void;
 }
 
 const defaultValues: CustomerFormValues = {
@@ -38,28 +40,36 @@ export default function CustomerForm({
   onCancel,
   isSubmitting = false,
   submitLabel = 'Save Customer',
+  phoneError,
+  onPhoneChange,
 }: CustomerFormProps) {
   const [formData, setFormData] = useState<CustomerFormValues>({
-    ...defaultValues,
-    ...initialValues,
+    name: initialValues?.name ?? '',
+    phone: initialValues?.phone ?? '',
+    email: initialValues?.email ?? '',
+    address: initialValues?.address ?? '',
     opening_balance: String(initialValues?.opening_balance ?? 0),
+    notes: initialValues?.notes ?? '',
   });
 
-  useEffect(() => {
-    setFormData({
-      ...defaultValues,
-      ...initialValues,
-      opening_balance: String(initialValues?.opening_balance ?? 0),
-    });
-  }, [
-    initialValues?.id,
-    initialValues?.name,
-    initialValues?.phone,
-    initialValues?.email,
-    initialValues?.address,
-    initialValues?.opening_balance,
-    initialValues?.notes,
-  ]);
+useEffect(() => {
+  setFormData({
+    name: initialValues?.name ?? '',
+    phone: initialValues?.phone ?? '',
+    email: initialValues?.email ?? '',
+    address: initialValues?.address ?? '',
+    opening_balance: String(initialValues?.opening_balance ?? 0),
+    notes: initialValues?.notes ?? '',
+  });
+}, [
+  initialValues?.id,
+  initialValues?.name,
+  initialValues?.phone,
+  initialValues?.email,
+  initialValues?.address,
+  initialValues?.opening_balance,
+  initialValues?.notes,
+]);
 
   const handleChange = (
     field: keyof CustomerFormValues,
@@ -85,7 +95,12 @@ export default function CustomerForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form
+      onSubmit={(event) => {
+        void handleSubmit(event);
+      }}
+      className="space-y-4"
+    >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Input
           label="Customer Name"
@@ -96,14 +111,22 @@ export default function CustomerForm({
           disabled={isSubmitting}
         />
 
-        <Input
-          label="Phone Number"
-          type="tel"
-          placeholder="Enter phone number"
-          value={formData.phone}
-          onChange={(event) => handleChange('phone', event.target.value)}
-          disabled={isSubmitting}
-        />
+        <div>
+          <Input
+            label="Phone Number"
+            type="tel"
+            placeholder="Enter phone number"
+            value={formData.phone}
+            onChange={(event) => {
+              handleChange('phone', event.target.value);
+              onPhoneChange?.();
+            }}
+            disabled={isSubmitting}
+          />
+          {phoneError && (
+            <p className="mt-1 text-xs text-red-500">{phoneError}</p>
+          )}
+        </div>
 
         <Input
           label="Email Address"
