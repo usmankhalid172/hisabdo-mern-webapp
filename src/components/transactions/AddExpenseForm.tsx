@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { Minus, X, Calendar, Loader2, AlertCircle } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Minus, X, Loader2, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { hisabDoService, Customer } from "@/services/hisabdoService";
 import {
   getTodayDateString,
-  isValidDateString,
-  validateTransactionDate,
+  validateDateRestrictions,
 } from "@/lib/validations/formDateValidation";
+import DatePickerPopover from "@/components/ui/DatePickerPopover";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 export const DEFAULT_EXPENSE_CATEGORIES = [
   "Rent",
@@ -29,6 +30,7 @@ export const DEFAULT_EXPENSE_CATEGORIES = [
 export interface AddExpenseFormProps {
   isOpen?: boolean;
   onClose?: () => void;
+  onCancel?: () => void;
   onSuccess?: () => void;
   customerId?: string;
   lockCustomer?: boolean;
@@ -55,13 +57,12 @@ export interface AddExpenseFormProps {
 export function AddExpenseForm({
   isOpen = true,
   onClose,
+  onCancel,
   onSuccess,
-  customerId: initialCustomerId = "",
+  customerId = "",
   lockCustomer = false,
   customers: initialCustomers,
   categories = DEFAULT_EXPENSE_CATEGORIES,
-  minDate = "2000-01-01",
-  maxDate = getTodayDateString(),
   asModal = true,
   initialAmount = "",
   initialCategory = "",
@@ -71,12 +72,12 @@ export function AddExpenseForm({
   onSubmitCustom,
 }: AddExpenseFormProps) {
   const { user } = useAuth();
-  const { currencySymbol, theme } = useSettings();
+  const { currencySymbol } = useSettings();
 
   const [customerList, setCustomerList] = useState<Customer[]>(initialCustomers || []);
   const [formData, setFormData] = useState({
     amount: initialAmount ? String(initialAmount) : "",
-    customerId: initialCustomerId,
+    customerId: customerId,
     category: initialCategory,
     description: initialDescription,
     date: initialDate || getTodayDateString(),
@@ -91,22 +92,40 @@ export function AddExpenseForm({
   }>({});
 
   const [submitting, setSubmitting] = useState(false);
-  const hiddenDateInputRef = useRef<HTMLInputElement>(null);
+  const [confirmedWarning, setConfirmedWarning] = useState(false);
+  const [warningModal, setWarningModal] = useState<{
+    isOpen: boolean;
+    message: string;
+  }>({
+    isOpen: false,
+    message: "",
+  });
 
-  // Sync initial props if modal is reopened
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel();
+    }
+    if (onClose) {
+      onClose();
+    }
+  };
+
+  // Sync initial props if modal is reopened or props change
   useEffect(() => {
     if (isOpen) {
       setFormData({
         amount: initialAmount ? String(initialAmount) : "",
-        customerId: initialCustomerId,
+        customerId: customerId,
         category: initialCategory,
         description: initialDescription,
         date: initialDate || getTodayDateString(),
         paymentMethod: paymentMethod || "cash",
       });
       setErrors({});
+      setConfirmedWarning(false);
+      setWarningModal({ isOpen: false, message: "" });
     }
-  }, [isOpen, initialCustomerId, initialCategory, initialAmount, initialDescription, initialDate, paymentMethod]);
+  }, [isOpen, customerId, initialCategory, initialAmount, initialDescription, initialDate, paymentMethod]);
 
   // Load customers if not supplied
   useEffect(() => {
@@ -123,23 +142,19 @@ export function AddExpenseForm({
   const validate = (): boolean => {
     const newErrors: typeof errors = {};
 
-    // 1. Amount validation
+    // 1. Amount validation: must be greater than zero
     const numAmount = parseFloat(formData.amount);
     if (!formData.amount || isNaN(numAmount) || numAmount <= 0) {
       newErrors.amount = "Please enter a valid amount greater than 0";
     }
 
-    // 2. Category validation (Required single dropdown selection)
+    // 2. Category validation: required and cannot be empty
     if (!formData.category || !formData.category.trim()) {
       newErrors.category = "Please select a category";
     }
 
-    // 3. Date validation (Calendar selection or manual entry)
-    const dateCheck = validateTransactionDate(formData.date, {
-      minDate,
-      maxDate,
-      required: true,
-    });
+    // 3. Date validation: hard limits and calendar validity
+    const dateCheck = validateDateRestrictions(formData.date);
     if (!dateCheck.isValid) {
       newErrors.date = dateCheck.error || "Please enter a valid date";
     }
@@ -150,7 +165,8 @@ export function AddExpenseForm({
 
   const handleDateChange = (val: string) => {
     setFormData((prev) => ({ ...prev, date: val }));
-    const dateCheck = validateTransactionDate(val, { minDate, maxDate, required: true });
+    setConfirmedWarning(false);
+    const dateCheck = validateDateRestrictions(val);
     setErrors((prev) => ({
       ...prev,
       date: dateCheck.isValid ? undefined : dateCheck.error,
@@ -161,7 +177,7 @@ export function AddExpenseForm({
     setFormData((prev) => ({ ...prev, category: val }));
     setErrors((prev) => ({
       ...prev,
-      category: val ? undefined : "Please select a category",
+      category: val && val.trim() ? undefined : "Please select a category",
     }));
   };
 
@@ -174,12 +190,7 @@ export function AddExpenseForm({
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (submitting) return; // Prevent duplicate submission
-
-    if (!validate()) return;
-
+  const executeSave = async () => {
     setSubmitting(true);
     setErrors((prev) => ({ ...prev, general: undefined }));
 
@@ -211,12 +222,13 @@ export function AddExpenseForm({
       // Reset and trigger callbacks
       setFormData({
         amount: "",
-        customerId: initialCustomerId,
+        customerId: customerId,
         category: "",
         description: "",
         date: getTodayDateString(),
         paymentMethod: "cash",
       });
+      setConfirmedWarning(false);
 
       if (onSuccess) {
         await onSuccess();
@@ -235,25 +247,48 @@ export function AddExpenseForm({
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (submitting) return;
+
+    if (!validate()) return;
+
+    // Check for date confirmation warnings (>90 days past, >1 year future)
+    const dateCheck = validateDateRestrictions(formData.date);
+    if (dateCheck.isWarning && !confirmedWarning) {
+      setWarningModal({
+        isOpen: true,
+        message:
+          dateCheck.warningMessage ||
+          "The selected date requires confirmation. Are you sure you want to proceed?",
+      });
+      return;
+    }
+
+    await executeSave();
+  };
+
+  const handleConfirmWarning = async () => {
+    setConfirmedWarning(true);
+    setWarningModal({ isOpen: false, message: "" });
+    await executeSave();
+  };
+
   const formContent = (
-    <div
-      className={`w-full max-w-md rounded-2xl border p-6 space-y-4 shadow-2xl ${
-        theme === "dark" ? "bg-[#1E1E1E] border-[#303030]" : "bg-white border-slate-200"
-      }`}
-    >
+    <div className="w-full max-w-md rounded-card border border-border bg-surface text-foreground p-6 space-y-4 shadow-dialog">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-bold text-[#E53935] flex items-center gap-1.5">
+          <h3 className="text-lg font-bold text-danger flex items-center gap-1.5">
             <Minus className="w-5 h-5" /> + Add Expense Entry
           </h3>
-          <p className="text-xs text-slate-400">Record a new accounting transaction</p>
+          <p className="text-xs text-muted-foreground">Record a new accounting transaction</p>
         </div>
-        {onClose && (
+        {(onCancel || onClose) && (
           <button
             type="button"
-            onClick={onClose}
-            className="text-slate-400 hover:text-white transition p-1"
+            onClick={handleCancel}
+            className="text-muted-foreground hover:text-foreground transition p-1 rounded-control"
             aria-label="Close modal"
           >
             <X className="w-5 h-5" />
@@ -263,7 +298,7 @@ export function AddExpenseForm({
 
       {/* General Error Banner */}
       {errors.general && (
-        <div className="flex items-center gap-2 p-3 text-xs rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400">
+        <div className="flex items-center gap-2 p-3 text-xs rounded-control bg-danger/10 border border-danger/30 text-danger">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{errors.general}</span>
         </div>
@@ -273,7 +308,7 @@ export function AddExpenseForm({
       <form onSubmit={handleSubmit} className="space-y-3" noValidate>
         {/* 1. Amount */}
         <div>
-          <label htmlFor="expense-amount" className="block text-xs font-semibold mb-1">
+          <label htmlFor="expense-amount" className="block text-xs font-semibold mb-1 text-foreground">
             Amount ({currencySymbol}) *
           </label>
           <input
@@ -285,41 +320,43 @@ export function AddExpenseForm({
             placeholder="0.00"
             value={formData.amount}
             onChange={(e) => handleAmountChange(e.target.value)}
-            className={`w-full px-3 py-2 text-lg font-bold rounded-xl border bg-transparent focus:outline-none focus:ring-1 focus:ring-rose-500 ${
-              errors.amount ? "border-rose-500 ring-1 ring-rose-500" : ""
+            className={`w-full px-3 py-2 text-lg font-bold rounded-control border bg-surface text-foreground focus:outline-none focus:ring-1 focus:ring-primary ${
+              errors.amount ? "border-danger ring-1 ring-danger text-danger" : "border-border"
             }`}
             autoFocus
           />
-          {errors.amount && <p className="text-xs text-rose-500 mt-1">{errors.amount}</p>}
+          {errors.amount && <p className="text-xs text-danger mt-1">{errors.amount}</p>}
         </div>
 
-        {/* 2. Customer / Party */}
-        <div>
-          <label htmlFor="expense-customer" className="block text-xs font-semibold mb-1">
-            Associated Customer / Party
-          </label>
-          <select
-            id="expense-customer"
-            name="customerId"
-            disabled={lockCustomer}
-            value={formData.customerId}
-            onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
-            className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none ${
-              theme === "dark" ? "bg-[#252525] border-slate-700 text-white" : "bg-white border-slate-200 text-slate-900"
-            } ${lockCustomer ? "opacity-75 cursor-not-allowed" : ""}`}
-          >
-            <option value="">Direct / Walk-in (No Party)</option>
-            {customerList.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} {c.phone ? `(${c.phone})` : ""}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* 2. Customer / Party - Hidden if customerId prop is provided */}
+        {!customerId && (
+          <div>
+            <label htmlFor="expense-customer" className="block text-xs font-semibold mb-1 text-foreground">
+              Associated Customer / Party
+            </label>
+            <select
+              id="expense-customer"
+              name="customerId"
+              disabled={lockCustomer}
+              value={formData.customerId}
+              onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
+              className={`w-full px-3 py-2 rounded-control text-sm border bg-surface text-foreground border-border focus:outline-none focus:ring-1 focus:ring-primary ${
+                lockCustomer ? "opacity-75 cursor-not-allowed bg-surface-muted" : ""
+              }`}
+            >
+              <option value="">Direct / Walk-in (No Party)</option>
+              {customerList.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.phone ? `(${c.phone})` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* 3. Category (Single Dropdown Required) */}
         <div>
-          <label htmlFor="expense-category" className="block text-xs font-semibold mb-1">
+          <label htmlFor="expense-category" className="block text-xs font-semibold mb-1 text-foreground">
             Category *
           </label>
           <select
@@ -328,9 +365,9 @@ export function AddExpenseForm({
             required
             value={formData.category}
             onChange={(e) => handleCategoryChange(e.target.value)}
-            className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none focus:ring-1 focus:ring-rose-500 ${
-              theme === "dark" ? "bg-[#252525] border-slate-700 text-white" : "bg-white border-slate-200 text-slate-900"
-            } ${errors.category ? "border-rose-500 ring-1 ring-rose-500" : ""}`}
+            className={`w-full px-3 py-2 rounded-control text-sm border bg-surface text-foreground focus:outline-none focus:ring-1 focus:ring-primary ${
+              errors.category ? "border-danger ring-1 ring-danger text-danger" : "border-border"
+            }`}
           >
             <option value="">Select Category</option>
             {categories.map((cat) => (
@@ -339,12 +376,12 @@ export function AddExpenseForm({
               </option>
             ))}
           </select>
-          {errors.category && <p className="text-xs text-rose-500 mt-1">{errors.category}</p>}
+          {errors.category && <p className="text-xs text-danger mt-1">{errors.category}</p>}
         </div>
 
         {/* 4. Description / Notes */}
         <div>
-          <label htmlFor="expense-description" className="block text-xs font-semibold mb-1">
+          <label htmlFor="expense-description" className="block text-xs font-semibold mb-1 text-foreground">
             Description / Notes
           </label>
           <input
@@ -354,71 +391,35 @@ export function AddExpenseForm({
             placeholder="e.g. Shop rent, electricity bill, tea"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            className="w-full px-3 py-2 rounded-xl text-sm border bg-transparent focus:outline-none focus:ring-1 focus:ring-rose-500"
+            className="w-full px-3 py-2 rounded-control text-sm border bg-surface text-foreground border-border focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
 
-        {/* 5. Date Picker & Manual Entry */}
+        {/* 5. Date Picker & Manual Entry (Themed Popover & DD-MM-YYYY) */}
         <div>
-          <label htmlFor="expense-date" className="block text-xs font-semibold mb-1">
+          <label htmlFor="expense-date" className="block text-xs font-semibold mb-1 text-foreground">
             Date *
           </label>
-          <div className="relative flex items-center">
-            <input
-              id="expense-date"
-              name="date"
-              type="text"
-              placeholder="YYYY-MM-DD"
-              value={formData.date}
-              onChange={(e) => handleDateChange(e.target.value)}
-              className={`w-full px-3 py-2 pr-10 rounded-xl text-sm border bg-transparent focus:outline-none focus:ring-1 focus:ring-rose-500 ${
-                errors.date ? "border-rose-500 ring-1 ring-rose-500" : ""
-              }`}
-            />
-            <div className="absolute right-2.5 flex items-center">
-              <button
-                type="button"
-                onClick={() => {
-                  try {
-                    hiddenDateInputRef.current?.showPicker?.();
-                  } catch {
-                    hiddenDateInputRef.current?.focus();
-                  }
-                }}
-                className="p-1 text-slate-400 hover:text-white transition"
-                title="Open calendar picker"
-                aria-label="Open calendar picker"
-              >
-                <Calendar className="w-4 h-4" />
-              </button>
-              <input
-                type="date"
-                ref={hiddenDateInputRef}
-                min={minDate}
-                max={maxDate}
-                value={isValidDateString(formData.date) ? formData.date : ""}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    handleDateChange(e.target.value);
-                  }
-                }}
-                tabIndex={-1}
-                aria-hidden="true"
-                className="sr-only"
-              />
-            </div>
-          </div>
-          {errors.date && <p className="text-xs text-rose-500 mt-1">{errors.date}</p>}
+          <DatePickerPopover
+            id="expense-date"
+            name="date"
+            value={formData.date}
+            onChange={handleDateChange}
+            error={errors.date}
+            variant="expense"
+            required
+          />
+          {errors.date && <p className="text-xs text-danger mt-1">{errors.date}</p>}
         </div>
 
         {/* Actions */}
         <div className="flex gap-2 pt-2">
-          {onClose && (
+          {(onCancel || onClose) && (
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleCancel}
               disabled={submitting}
-              className="flex-1 py-2 rounded-xl text-sm font-semibold border hover:bg-slate-800/40 transition disabled:opacity-50"
+              className="flex-1 py-2 rounded-control text-sm font-semibold border border-border bg-surface text-foreground hover:bg-surface-muted transition disabled:opacity-50"
             >
               Cancel
             </button>
@@ -426,19 +427,30 @@ export function AddExpenseForm({
           <button
             type="submit"
             disabled={submitting}
-            className="flex-1 py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2 bg-[#E53935] text-white hover:bg-rose-600 transition shadow-md disabled:opacity-60"
+            className="flex-1 py-2 rounded-control text-sm font-bold flex items-center justify-center gap-2 bg-danger text-white hover:opacity-90 transition shadow-card disabled:opacity-60"
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
             <span>Save Entry</span>
           </button>
         </div>
       </form>
+
+      {/* Confirmation Dialog for Date Warnings (>90 days past, >1 year future) */}
+      <ConfirmDialog
+        isOpen={warningModal.isOpen}
+        onClose={() => setWarningModal({ isOpen: false, message: "" })}
+        onConfirm={handleConfirmWarning}
+        title="Are you sure?"
+        message={warningModal.message}
+        confirmText="Yes, Proceed"
+        cancelText="Review Date"
+      />
     </div>
   );
 
   if (asModal) {
     return (
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         {formContent}
       </div>
     );
@@ -448,4 +460,3 @@ export function AddExpenseForm({
 }
 
 export default AddExpenseForm;
-
