@@ -14,25 +14,51 @@ export default function VerifyEmailPage() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
+    let active = true;
+
     const checkUser = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        router.push("/login");
-        return;
+      const requestedEmail =
+        new URLSearchParams(window.location.search).get("email")?.trim() || "";
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("error") === "verification_failed") {
+        setError("That verification link is invalid or expired. You can request a new one.");
       }
 
-      if (user.email_confirmed_at) {
-        router.push("/dashboard");
-        return;
-      }
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
 
-      setEmail(user.email || "");
-      setChecking(false);
+        if (!active) return;
+
+        if (userError && userError.name !== "AuthSessionMissingError") {
+          setError(userError.message);
+        }
+
+        if (user?.email_confirmed_at) {
+          router.replace("/dashboard");
+          return;
+        }
+
+        setEmail(user?.email || requestedEmail);
+        setChecking(false);
+      } catch (checkError) {
+        console.error("Unable to check verification status:", checkError);
+        if (active) {
+          setEmail(requestedEmail);
+          setError("We could not check your verification status. You can still request a new link.");
+          setChecking(false);
+        }
+      }
     };
 
     checkUser();
+
+    return () => {
+      active = false;
+    };
   }, [router]);
 
   const handleResend = async () => {
@@ -90,9 +116,19 @@ export default function VerifyEmailPage() {
             Check your inbox
           </h1>
           <p className="text-slate-400 text-sm">
-            We sent a verification link to
+            Enter your email address to receive a verification link
           </p>
-          <p className="text-emerald-400 font-semibold mt-1 break-all">{email}</p>
+          {email ? (
+            <p className="text-emerald-400 font-semibold mt-1 break-all">{email}</p>
+          ) : (
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@example.com"
+              className="mt-3 w-full bg-slate-950 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
+            />
+          )}
         </div>
 
         {message && (
@@ -112,7 +148,7 @@ export default function VerifyEmailPage() {
         <div className="space-y-3">
           <button
             onClick={handleResend}
-            disabled={resending}
+            disabled={resending || !email.trim()}
             className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2.5 rounded-xl transition shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {resending ? (

@@ -60,7 +60,7 @@ export default function RegisterPage() {
 
       // Agar email verification pending hai to verify-email par bhejo
       if (result.needsVerification) {
-        router.replace("/verify-email");
+        router.replace(`/verify-email?email=${encodeURIComponent(data.email)}`);
         return;
       }
 

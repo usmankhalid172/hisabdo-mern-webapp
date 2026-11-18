@@ -11,9 +11,22 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (!userError && user?.email_confirmed_at) {
+        return NextResponse.redirect(`${origin}${next}`);
+      }
+
+      const verifyUrl = new URL("/verify-email", origin);
+      if (user?.email) verifyUrl.searchParams.set("email", user.email);
+      return NextResponse.redirect(verifyUrl);
     }
   }
 
-  return NextResponse.redirect(`${origin}/verify-email?error=verification_failed`);
+  const verifyUrl = new URL("/verify-email", origin);
+  verifyUrl.searchParams.set("error", "verification_failed");
+  return NextResponse.redirect(verifyUrl);
 }

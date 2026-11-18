@@ -52,6 +52,11 @@ function LoginForm() {
       const result = await login(data.email, data.password);
 
       if (!result.success) {
+        if (result.needsVerification) {
+          router.replace(`/verify-email?email=${encodeURIComponent(data.email)}`);
+          return;
+        }
+
         setAuthError(result.message || "Invalid credentials. Please try again.");
         return;
       }
@@ -64,7 +69,13 @@ function LoginForm() {
         setAuthError(
           "Please verify your email first. Check your inbox or request a new link."
         );
-        setTimeout(() => router.push("/verify-email"), 2000);
+        setTimeout(
+          () =>
+            router.push(
+              `/verify-email?email=${encodeURIComponent(data.email)}`
+            ),
+          2000
+        );
         return;
       }
 

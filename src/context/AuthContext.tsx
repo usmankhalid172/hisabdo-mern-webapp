@@ -30,7 +30,11 @@ export interface AuthContextType {
   isGuest: boolean;
   activeBranch?: Branch;
   setActiveBranch?: (branch: Branch) => void;
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  login: (email: string, password: string) => Promise<{
+    success: boolean;
+    message?: string;
+    needsVerification?: boolean;
+  }>;
   register: (data: {
     name: string;
     email: string;
@@ -156,6 +160,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
+        if (error.code === "email_not_confirmed") {
+          return {
+            success: false,
+            message: error.message,
+            needsVerification: true,
+          };
+        }
+
         if (email.toLowerCase().includes("demo") || email.toLowerCase().includes("merchant")) {
           const demoUser: UserProfile = {
             id: "demo-user-1",
@@ -217,13 +229,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: formData.email,
         password: formData.password,
         options: {
-  emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
-  data: {
-    full_name: formData.name,
-    phone: formData.phone || "",
-    business_name: formData.shopName || "",
-  },
-},
+          emailRedirectTo:
+            typeof window !== "undefined"
+              ? `${window.location.origin}/auth/callback`
+              : undefined,
+          data: {
+            full_name: formData.name,
+            phone: formData.phone || "",
+            business_name: formData.shopName || "",
+          },
+        },
       });
 
       if (error) {

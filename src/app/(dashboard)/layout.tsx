@@ -40,36 +40,64 @@ export default function DashboardLayout({
   const { theme, toggleTheme, language, setLanguage, t, businessProfile } = useSettings();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
-  const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
+  const [emailVerificationStatus, setEmailVerificationStatus] = useState<
+    "checking" | "verified" | "redirecting" | "error"
+  >("checking");
 
   useEffect(() => {
+    let active = true;
+
     const checkEmailVerification = async () => {
-      // Guest mode skip
+      if (isLoading) return;
+
       if (isGuest) {
-        setEmailVerified(true);
+        setEmailVerificationStatus("verified");
         return;
       }
 
-      // Agar koi user nahi hai to login par bhejo
-      const supabase = createClient();
-      const { data: { user: suUser } } = await supabase.auth.getUser();
+      try {
+        const supabase = createClient();
+        const {
+          data: { user: suUser },
+          error,
+        } = await supabase.auth.getUser();
 
-      if (!suUser) {
-        router.push("/login");
-        return;
+        if (!active) return;
+
+        if (error && error.name !== "AuthSessionMissingError") {
+          console.error("Unable to check email verification:", error);
+          setEmailVerificationStatus("error");
+          return;
+        }
+
+        if (!suUser) {
+          setEmailVerificationStatus("redirecting");
+          router.replace("/login");
+          return;
+        }
+
+        if (!suUser.email_confirmed_at) {
+          setEmailVerificationStatus("redirecting");
+          const query = suUser.email
+            ? `?email=${encodeURIComponent(suUser.email)}`
+            : "";
+          router.replace(`/verify-email${query}`);
+          return;
+        }
+
+        setEmailVerificationStatus("verified");
+      } catch (error) {
+        console.error("Unable to check email verification:", error);
+        if (active) setEmailVerificationStatus("error");
       }
-
-      // ⚠️ Email verification check
-      if (!suUser.email_confirmed_at) {
-        router.push("/verify-email");
-        return;
-      }
-
-      setEmailVerified(true);
     };
 
     checkEmailVerification();
-  }, [isGuest, router]);
+
+    return () => {
+      active = false;
+    };
+  }, [isGuest, isLoading, router]);
 
   const navItems = [
     { name: t("dashboard"), href: "/dashboard", icon: LayoutDashboard },
@@ -92,7 +120,21 @@ export default function DashboardLayout({
   ];
 
   // Loading state — jab tak email verification check nahi hoti
-  if (emailVerified === null) {
+  if (emailVerificationStatus !== "verified") {
+    if (emailVerificationStatus === "error") {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-950 text-slate-300">
+          <p>We couldn&apos;t check your email verification status.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-emerald-400 hover:text-emerald-300 underline"
+          >
+            Try again
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
