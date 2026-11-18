@@ -30,14 +30,18 @@ export interface AuthContextType {
   isGuest: boolean;
   activeBranch?: Branch;
   setActiveBranch?: (branch: Branch) => void;
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  login: (email: string, password: string) => Promise<{
+    success: boolean;
+    message?: string;
+    needsVerification?: boolean;
+  }>;
   register: (data: {
     name: string;
     email: string;
     password: string;
     phone?: string;
     shopName?: string;
-  }) => Promise<{ success: boolean; message?: string }>;
+  }) => Promise<{ success: boolean; message?: string; needsVerification?: boolean }>;
   forgotPassword: (email: string) => Promise<{ success: boolean; message?: string }>;
   loginAsGuest: () => void;
   logout: () => Promise<void>;
@@ -61,10 +65,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Initialize and verify session on load
   const verifySession = useCallback(async () => {
     try {
-      // 0. Clean legacy mock data from local storage if present
       if (typeof window !== "undefined") {
         const keysToClean = [
           "hisabdo_guest_customers", "hisabdo_guest_incomes", "hisabdo_guest_expenses", "hisabdo_guest_ledger_txs",
@@ -81,7 +83,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
 
-      // 1. Check local storage cache first for instant UI response
       const cachedUser = localStorage.getItem("hisabdo_user");
       const cachedToken = localStorage.getItem("hisabdo_token");
 
@@ -123,7 +124,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     verifySession();
 
-    // Listen to Supabase auth state changes
     try {
       const supabase = createClient();
       const {
@@ -161,7 +161,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
-        // Fallback for demo credentials or offline
+        if (error.code === "email_not_confirmed") {
+          return {
+            success: false,
+            message: error.message,
+            needsVerification: true,
+          };
+        }
+
         if (email.toLowerCase().includes("demo") || email.toLowerCase().includes("merchant")) {
           const demoUser: UserProfile = {
             id: "demo-user-1",
@@ -223,6 +230,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: formData.email,
         password: formData.password,
         options: {
+          emailRedirectTo:
+            typeof window !== "undefined"
+              ? `${window.location.origin}/auth/callback`
+              : undefined,
           data: {
             full_name: formData.name,
             phone: formData.phone || "",
@@ -254,14 +265,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           shopName: formData.shopName,
           isGuest: false,
         };
-        setUser(profile);
-        localStorage.setItem("hisabdo_user", JSON.stringify(profile));
+
         if (data.session?.access_token) {
+          setUser(profile);
           setToken(data.session.access_token);
+          localStorage.setItem("hisabdo_user", JSON.stringify(profile));
           localStorage.setItem("hisabdo_token", data.session.access_token);
           document.cookie = `hisabdo_auth_token=${data.session.access_token}; path=/; max-age=86400`;
+          return { success: true, needsVerification: false };
         }
-        return { success: true };
+
+        return {
+          success: true,
+          needsVerification: true,
+          message: "Please check your email to verify your account.",
+        };
       }
 
       return { success: true, message: "Please check your email to confirm registration." };
