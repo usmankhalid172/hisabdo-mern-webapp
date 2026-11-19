@@ -307,3 +307,24 @@ Both forms now support optional customer preselection and lifecycle callbacks, s
 The implementation uses existing dependencies without adding new packages. All seven automated Day 5 tests passed, and the TypeScript check completed without errors.
 
 The only outstanding verification issue is the unrelated pre-existing missing authentication validation module affecting the full production build. Lint status has not been independently confirmed.
+---
+
+## Danish — Day 6 Modules Status (Web vs Mobile)
+
+*Note: ✅ = Exists on web/mobile, ❌ = 404 / Does not exist yet.*
+
+| Module | Web | Mobile | Priority |
+|--------|-----|--------|----------|
+| Account | ❌ | ✅ | P1 |
+| Profile | ❌ | ✅ | P1 |
+| Settings | ✅ | ✅ | P2 |
+| Categories | ❌ | ❌ | P1 |
+| Reminders | ❌ | ❌ | P1 |
+| Tasks | ❌ | ❌ | P1 |
+| Notes | ❌ | ❌ | P1 |
+| Attachments | ❌ | ❌ | P1 |
+
+**Key Notes:**
+- Web currently only has the **Settings** page built. The rest return 404 (being built by Aiman/Shahnila).
+- Mobile has **Account, Profile, and Settings** built. Other modules (Categories, Tasks, Notes, etc.) are not standalone pages on mobile yet.
+- Mobile has a **Bottom Navigation Bar** (Dashboard, Transactions, Customers, Account) which Web lacks. (Priority: P1)
