@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   Plus,
   Trash2,
+  Edit2,
   ArrowDownLeft,
   ArrowUpRight,
   Loader2,
@@ -22,6 +23,7 @@ import { EmptyState } from "@/components/ui/design-system/EmptyState";
 import { ErrorState } from "@/components/ui/design-system/ErrorState";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar } from "@/components/ui/FilterBar";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { AddIncomeForm } from "@/components/transactions/AddIncomeForm";
 import { AddExpenseForm } from "@/components/transactions/AddExpenseForm";
 import {
@@ -53,7 +55,14 @@ export default function TransactionsPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Feedback state
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  // Delete & Edit states
+  const [deleteTarget, setDeleteTarget] = useState<UnifiedTransaction | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<UnifiedTransaction | null>(null);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -68,7 +77,7 @@ export default function TransactionsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<"income" | "expense">("income");
 
-  // Placeholder handler for Add button per Task 2 requirements
+  // Placeholder handler for Add button per Task requirements
   const handleAddTransactionPlaceholder = () => {
     // Placeholder handler for Add Transaction button - Danish's dialog will be integrated in future task
   };
@@ -161,25 +170,79 @@ export default function TransactionsPage() {
     }
   }, [loadData]);
 
-  // Handle Delete
-  const handleDelete = async (tx: UnifiedTransaction) => {
-    if (!confirm("Are you sure you want to delete this transaction record?")) return;
+  // Handle Delete with feedback
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
     const userId = user?.id || "guest";
     try {
-      setDeletingId(tx.id);
-      if (tx.sourceTable === "income") {
-        await hisabDoService.deleteIncome(userId, tx.id);
-      } else if (tx.sourceTable === "expenses") {
-        await hisabDoService.deleteExpense(userId, tx.id);
-      } else if (tx.sourceTable === "ledger_transactions") {
-        await hisabDoService.deleteLedgerTransaction(userId, tx.id);
+      setIsDeleting(true);
+      if (deleteTarget.sourceTable === "income") {
+        await hisabDoService.deleteIncome(userId, deleteTarget.id);
+      } else if (deleteTarget.sourceTable === "expenses") {
+        await hisabDoService.deleteExpense(userId, deleteTarget.id);
+      } else if (deleteTarget.sourceTable === "ledger_transactions") {
+        await hisabDoService.deleteLedgerTransaction(userId, deleteTarget.id);
       }
+      setDeleteTarget(null);
+      setFeedback({
+        type: "success",
+        message: "Transaction record deleted successfully.",
+      });
       await loadData();
     } catch (err: any) {
       console.error("Failed to delete transaction:", err);
-      alert(err?.message || "Failed to delete transaction record.");
+      setFeedback({
+        type: "error",
+        message: err?.message || "Failed to delete transaction record.",
+      });
     } finally {
-      setDeletingId(null);
+      setIsDeleting(false);
+    }
+  };
+
+  // Handle Edit Submit with feedback
+  const handleEditSubmit = async (payload: {
+    amount: number;
+    customerId: string | null;
+    category: string;
+    description: string;
+    date: string;
+    paymentMethod: string;
+  }) => {
+    if (!editingTransaction) return;
+    const userId = user?.id || "guest";
+    try {
+      if (editingTransaction.sourceTable === "income") {
+        await hisabDoService.updateIncome(userId, editingTransaction.id, {
+          amount: payload.amount,
+          customer_id: payload.customerId || undefined,
+          category_id: payload.category,
+          description: payload.description,
+          income_date: payload.date,
+          payment_method: payload.paymentMethod,
+        });
+      } else if (editingTransaction.sourceTable === "expenses") {
+        await hisabDoService.updateExpense(userId, editingTransaction.id, {
+          amount: payload.amount,
+          customer_id: payload.customerId || undefined,
+          category_id: payload.category,
+          description: payload.description,
+          expense_date: payload.date,
+          payment_method: payload.paymentMethod,
+        });
+      }
+      setEditingTransaction(null);
+      setFeedback({
+        type: "success",
+        message: "Transaction updated successfully.",
+      });
+      await loadData();
+    } catch (err: any) {
+      console.error("Failed to update transaction:", err);
+      setFeedback({
+        type: "error",
+        message: err?.message || "Failed to update transaction record.",
+      });
     }
   };
 
@@ -194,7 +257,7 @@ export default function TransactionsPage() {
     setSelectedCategory("all");
   };
 
-  // Filter Logic
+  // Filter Logic (Search across description, customer, category, payment method, amount)
   const filteredTransactions = useMemo(() => {
     return transactions.filter((tx) => {
       // Search
@@ -203,7 +266,9 @@ export default function TransactionsPage() {
         const matchesSearch =
           tx.description.toLowerCase().includes(search) ||
           (tx.customerName && tx.customerName.toLowerCase().includes(search)) ||
-          tx.category.toLowerCase().includes(search);
+          tx.category.toLowerCase().includes(search) ||
+          (tx.paymentMethod && tx.paymentMethod.toLowerCase().includes(search)) ||
+          String(tx.amount).includes(search);
         if (!matchesSearch) return false;
       }
 
@@ -385,19 +450,31 @@ export default function TransactionsPage() {
       header: "Action",
       align: "center",
       render: (tx) => (
-        <button
-          type="button"
-          onClick={() => handleDelete(tx)}
-          title="Delete entry"
-          disabled={deletingId === tx.id}
-          className="p-1.5 text-muted-foreground hover:text-danger rounded-control transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
-        >
-          {deletingId === tx.id ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <Trash2 className="w-3.5 h-3.5" />
+        <div className="flex items-center justify-center gap-1">
+          {(tx.sourceTable === "income" || tx.sourceTable === "expenses") && (
+            <button
+              type="button"
+              onClick={() => setEditingTransaction(tx)}
+              title="Edit entry"
+              className="p-1.5 text-muted-foreground hover:text-primary rounded-control transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </button>
           )}
-        </button>
+          <button
+            type="button"
+            onClick={() => setDeleteTarget(tx)}
+            title="Delete entry"
+            disabled={isDeleting && deleteTarget?.id === tx.id}
+            className="p-1.5 text-muted-foreground hover:text-danger rounded-control transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
+          >
+            {isDeleting && deleteTarget?.id === tx.id ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="w-3.5 h-3.5" />
+            )}
+          </button>
+        </div>
       ),
     },
   ];
@@ -431,6 +508,28 @@ export default function TransactionsPage() {
           }
         />
       </div>
+
+      {/* ================= ACTION FEEDBACK BANNER ================= */}
+      {feedback && (
+        <div
+          role="alert"
+          className={`p-3.5 rounded-control text-xs font-semibold flex items-center justify-between border ${
+            feedback.type === "success"
+              ? "bg-success/10 text-success border-success/30"
+              : "bg-danger/10 text-danger border-danger/30"
+          }`}
+        >
+          <span>{feedback.message}</span>
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="p-1 rounded-control hover:opacity-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current ms-2"
+            aria-label="Dismiss feedback message"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* ================= 2. SUMMARY METRICS CARDS ================= */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -679,19 +778,51 @@ export default function TransactionsPage() {
         />
       )}
 
-      {/* ================= 5. REUSABLE TRANSACTION FORMS (PRESERVED) ================= */}
+      {/* ================= 5. REUSABLE TRANSACTION FORMS (PRESERVED & WIRED FOR EDITING) ================= */}
       <AddIncomeForm
-        isOpen={isModalOpen && modalType === "income"}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={(isModalOpen && modalType === "income") || Boolean(editingTransaction && editingTransaction.sourceTable === "income")}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingTransaction(null);
+        }}
         onSuccess={loadData}
         customers={customers}
+        initialAmount={editingTransaction?.sourceTable === "income" ? editingTransaction.amount : undefined}
+        initialCategory={editingTransaction?.sourceTable === "income" ? editingTransaction.category : undefined}
+        initialDescription={editingTransaction?.sourceTable === "income" ? editingTransaction.description : undefined}
+        initialDate={editingTransaction?.sourceTable === "income" ? editingTransaction.date : undefined}
+        paymentMethod={editingTransaction?.sourceTable === "income" ? editingTransaction.paymentMethod : undefined}
+        customerId={editingTransaction?.sourceTable === "income" ? (editingTransaction.customerId || undefined) : undefined}
+        onSubmitCustom={editingTransaction?.sourceTable === "income" ? handleEditSubmit : undefined}
       />
 
       <AddExpenseForm
-        isOpen={isModalOpen && modalType === "expense"}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={(isModalOpen && modalType === "expense") || Boolean(editingTransaction && editingTransaction.sourceTable === "expenses")}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingTransaction(null);
+        }}
         onSuccess={loadData}
         customers={customers}
+        initialAmount={editingTransaction?.sourceTable === "expenses" ? editingTransaction.amount : undefined}
+        initialCategory={editingTransaction?.sourceTable === "expenses" ? editingTransaction.category : undefined}
+        initialDescription={editingTransaction?.sourceTable === "expenses" ? editingTransaction.description : undefined}
+        initialDate={editingTransaction?.sourceTable === "expenses" ? editingTransaction.date : undefined}
+        paymentMethod={editingTransaction?.sourceTable === "expenses" ? editingTransaction.paymentMethod : undefined}
+        customerId={editingTransaction?.sourceTable === "expenses" ? (editingTransaction.customerId || undefined) : undefined}
+        onSubmitCustom={editingTransaction?.sourceTable === "expenses" ? handleEditSubmit : undefined}
+      />
+
+      {/* ================= 6. CONFIRM DELETE DIALOG (SHARED DESIGN-SYSTEM COMPONENT) ================= */}
+      <ConfirmDialog
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        title="Delete Transaction"
+        message="Are you sure you want to delete this transaction record? This action will permanently remove it from the ledger."
+        isLoading={isDeleting}
+        confirmText="Delete"
+        cancelText="Cancel"
       />
     </div>
   );
