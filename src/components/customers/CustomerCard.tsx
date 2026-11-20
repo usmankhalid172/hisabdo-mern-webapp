@@ -54,14 +54,14 @@ export default function CustomerCard({
     <Card className="flex h-full flex-col gap-4 p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#00E676]/10 text-sm font-bold text-[#00C853]">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-success/10 text-sm font-bold text-success">
             {initials}
           </div>
 
           <div className="min-w-0">
             <Link
               href={`/customers/${customer.id}`}
-              className="truncate text-base font-semibold text-primary hover:text-[#00C853]"
+              className="truncate text-base font-semibold text-primary hover:text-success"
             >
               {customer.name}
             </Link>
@@ -115,7 +115,7 @@ export default function CustomerCard({
         <div className="grid grid-cols-2 gap-2">
           <Link
             href={`/customers/${customer.id}`}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border-color px-3 py-2 text-xs font-semibold text-primary hover:bg-slate-500/10"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border-color px-3 py-2 text-xs font-semibold text-primary hover:bg-surface-muted"
           >
             <ArrowRightLeft size={14} />
             View Ledger
@@ -133,7 +133,7 @@ export default function CustomerCard({
           <button
             type="button"
             onClick={() => onRecordPayment(customer)}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#00E676] px-3 py-2 text-xs font-bold text-black hover:bg-[#00C853]"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-success px-3 py-2 text-xs font-bold text-black hover:bg-success/90"
           >
             <ArrowRightLeft size={14} />
             Record Payment
@@ -144,7 +144,7 @@ export default function CustomerCard({
               href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border-color px-3 py-2 text-xs font-semibold text-primary hover:bg-slate-500/10"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border-color px-3 py-2 text-xs font-semibold text-primary hover:bg-surface-muted"
             >
               <MessageCircle size={14} />
               WhatsApp
@@ -164,7 +164,7 @@ export default function CustomerCard({
         <button
           type="button"
           onClick={() => onDelete(customer)}
-          className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-red-500 hover:bg-red-500/10"
+          className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-danger hover:bg-danger/10"
         >
           <Trash2 size={14} />
           Delete Customer

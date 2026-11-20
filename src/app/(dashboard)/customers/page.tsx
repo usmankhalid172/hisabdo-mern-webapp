@@ -231,10 +231,10 @@ const filteredCustomers = customers.filter((c) => {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground">
             {t("customers")}
           </h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             Manage your party ledgers, credit limits, and WhatsApp reminders
           </p>
         </div>
@@ -245,7 +245,7 @@ const filteredCustomers = customers.filter((c) => {
             setFormData({ name: "", phone: "", email: "", address: "", opening_balance: 0, notes: "" });
             setIsAddModalOpen(true);
           }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#00E676] hover:bg-[#00C853] text-[#0B0F17] font-bold text-sm rounded-xl transition shadow-md shadow-emerald-500/20 self-start sm:self-auto"
+          className="flex items-center gap-2 px-4 py-2.5 bg-success hover:bg-success/90 text-black font-bold text-sm rounded-xl transition shadow-md self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
           <span>{t("addCustomer")}</span>
@@ -254,31 +254,31 @@ const filteredCustomers = customers.filter((c) => {
 
       {/* Summary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className={`p-4 rounded-2xl border ${theme === "dark" ? "bg-[#1E1E1E] border-[#2E2E2E]" : "bg-white border-slate-200 shadow-sm"}`}>
-          <div className="flex items-center justify-between text-xs text-slate-400 font-semibold mb-1">
+        <div className={`p-4 rounded-2xl border ${theme === "dark" ? "bg-surface border-border" : "bg-surface border-border shadow-sm"}`}>
+          <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold mb-1">
             <span>Total Parties</span>
-            <Users className="w-4 h-4 text-indigo-400" />
+            <Users className="w-4 h-4 text-primary" />
           </div>
           <p className="text-2xl font-black">{customers.length}</p>
-          <span className="text-[11px] text-slate-400">Registered accounts</span>
+          <span className="text-[11px] text-muted-foreground">Registered accounts</span>
         </div>
 
-        <div className={`p-4 rounded-2xl border ${theme === "dark" ? "bg-[#1E1E1E] border-[#2E2E2E]" : "bg-white border-slate-200 shadow-sm"}`}>
-          <div className="flex items-center justify-between text-xs text-slate-400 font-semibold mb-1">
+        <div className={`p-4 rounded-2xl border ${theme === "dark" ? "bg-surface border-border" : "bg-surface border-border shadow-sm"}`}>
+          <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold mb-1">
             <span>Total To Receive (Lene Hain)</span>
-            <TrendingDown className="w-4 h-4 text-[#00E676]" />
+            <TrendingDown className="w-4 h-4 text-success" />
           </div>
-          <p className="text-2xl font-black text-[#00E676]">{formatMoney(totalReceivables)}</p>
-          <span className="text-[11px] text-slate-400">Customers owe you</span>
+          <p className="text-2xl font-black text-success">{formatMoney(totalReceivables)}</p>
+          <span className="text-[11px] text-muted-foreground">Customers owe you</span>
         </div>
 
-        <div className={`p-4 rounded-2xl border ${theme === "dark" ? "bg-[#1E1E1E] border-[#2E2E2E]" : "bg-white border-slate-200 shadow-sm"}`}>
-          <div className="flex items-center justify-between text-xs text-slate-400 font-semibold mb-1">
+        <div className={`p-4 rounded-2xl border ${theme === "dark" ? "bg-surface border-border" : "bg-surface border-border shadow-sm"}`}>
+          <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold mb-1">
             <span>Total To Pay (Dene Hain)</span>
-            <TrendingUp className="w-4 h-4 text-[#E53935]" />
+            <TrendingUp className="w-4 h-4 text-danger" />
           </div>
-          <p className="text-2xl font-black text-[#E53935]">{formatMoney(totalPayables)}</p>
-          <span className="text-[11px] text-slate-400">Advance or liability</span>
+          <p className="text-2xl font-black text-danger">{formatMoney(totalPayables)}</p>
+          <span className="text-[11px] text-muted-foreground">Advance or liability</span>
         </div>
       </div>
 
@@ -311,7 +311,7 @@ const filteredCustomers = customers.filter((c) => {
           action={
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="mt-4 px-4 py-2 bg-[#00E676] text-black font-bold text-xs rounded-xl inline-flex items-center gap-1.5"
+              className="mt-4 px-4 py-2 bg-success text-black font-bold text-xs rounded-xl inline-flex items-center gap-1.5"
             >
               <Plus className="w-4 h-4" />
               Add First Party
@@ -357,9 +357,7 @@ const filteredCustomers = customers.filter((c) => {
       {/* Add / Edit Customer Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className={`w-full max-w-md rounded-2xl border p-6 space-y-4 shadow-2xl ${
-            theme === "dark" ? "bg-[#1E1E1E] border-[#303030]" : "bg-white border-slate-200"
-          }`}>
+          <div className="w-full max-w-md rounded-2xl border p-6 space-y-4 shadow-2xl bg-surface border-border">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold">
                 {editingCustomer ? "Edit Customer Details" : "Add New Customer / Party"}
@@ -369,7 +367,7 @@ const filteredCustomers = customers.filter((c) => {
                   setIsAddModalOpen(false);
                   setEditingCustomer(null);
                 }}
-                className="text-slate-400 hover:text-white"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -395,15 +393,13 @@ const filteredCustomers = customers.filter((c) => {
       {/* Record Payment Modal */}
       {paymentModalCustomer && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className={`w-full max-w-md rounded-2xl border p-6 space-y-4 shadow-2xl ${
-            theme === "dark" ? "bg-[#1E1E1E] border-[#303030]" : "bg-white border-slate-200"
-          }`}>
+          <div className="w-full max-w-md rounded-2xl border p-6 space-y-4 shadow-2xl bg-surface border-border">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-bold">Record Payment</h3>
-                <p className="text-xs text-slate-400">For: {paymentModalCustomer.name}</p>
+                <p className="text-xs text-muted-foreground">For: {paymentModalCustomer.name}</p>
               </div>
-              <button onClick={() => setPaymentModalCustomer(null)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setPaymentModalCustomer(null)} className="text-muted-foreground hover:text-foreground">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -417,8 +413,8 @@ const filteredCustomers = customers.filter((c) => {
                     onClick={() => setPaymentForm({ ...paymentForm, type: "received" })}
                     className={`py-2 px-3 rounded-xl text-xs font-bold border transition ${
                       paymentForm.type === "received"
-                        ? "bg-[#00E676] text-black border-[#00E676]"
-                        : "border-slate-700 text-slate-400 hover:text-white"
+                        ? "bg-success text-black border-success"
+                        : "border-border text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     Got Money (Wasool / Jama)
@@ -428,8 +424,8 @@ const filteredCustomers = customers.filter((c) => {
                     onClick={() => setPaymentForm({ ...paymentForm, type: "paid" })}
                     className={`py-2 px-3 rounded-xl text-xs font-bold border transition ${
                       paymentForm.type === "paid"
-                        ? "bg-[#E53935] text-white border-[#E53935]"
-                        : "border-slate-700 text-slate-400 hover:text-white"
+                        ? "bg-danger text-white border-danger"
+                        : "border-border text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     Gave Money (Diya / Naam)
@@ -445,7 +441,7 @@ const filteredCustomers = customers.filter((c) => {
                   placeholder="0.00"
                   value={paymentForm.amount}
                   onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-                  className="w-full px-3 py-2 text-lg font-bold rounded-xl border bg-transparent focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 text-lg font-bold rounded-xl border bg-transparent focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
 
@@ -454,9 +450,7 @@ const filteredCustomers = customers.filter((c) => {
                 <select
                   value={paymentForm.category}
                   onChange={(e) => setPaymentForm({ ...paymentForm, category: e.target.value })}
-                  className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none ${
-                    theme === "dark" ? "bg-[#252525] border-slate-700" : "bg-white border-slate-200"
-                  }`}
+                  className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none bg-surface border-border"
                 >
                   <option value="Cash">Cash (Naqad)</option>
                   <option value="Bank Transfer">Bank Transfer</option>
@@ -473,7 +467,7 @@ const filteredCustomers = customers.filter((c) => {
                   placeholder="e.g. Counter deposit, slip #910"
                   value={paymentForm.note}
                   onChange={(e) => setPaymentForm({ ...paymentForm, note: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border bg-transparent focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 rounded-xl text-sm border bg-transparent focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
 
@@ -481,14 +475,14 @@ const filteredCustomers = customers.filter((c) => {
                 <button
                   type="button"
                   onClick={() => setPaymentModalCustomer(null)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition ${theme === "dark" ? "border-slate-700 hover:bg-slate-800/40 text-slate-300" : "border-slate-200 hover:bg-slate-100 text-slate-700"}`}
+                  className="flex-1 py-2 rounded-xl text-sm font-semibold border transition border-border hover:bg-surface-muted text-muted-foreground"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 py-2 rounded-xl text-sm font-bold bg-[#1A237E] text-white hover:bg-[#0D47A1] flex items-center justify-center gap-2"
+                  className="flex-1 py-2 rounded-xl text-sm font-bold bg-primary text-white hover:bg-primary-hover flex items-center justify-center gap-2"
                 >
                   {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                   Save Payment

@@ -124,7 +124,7 @@ useEffect(() => {
             disabled={isSubmitting}
           />
           {phoneError && (
-            <p className="mt-1 text-xs text-red-500">{phoneError}</p>
+            <p className="mt-1 text-xs text-danger">{phoneError}</p>
           )}
         </div>
 
