@@ -4,10 +4,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { CustomerBalanceSummary } from "@/components/customer-ledger/CustomerBalanceSummary";
+import { AddIncomeForm } from "@/components/transactions/AddIncomeForm";
+import { AddExpenseForm } from "@/components/transactions/AddExpenseForm";
 import { CustomerLedgerTable } from "@/components/customer-ledger/CustomerLedgerTable";
-import { PaymentDialog } from "@/components/customer-ledger/PaymentDialog";
 import { LedgerFeedback } from "@/components/customer-ledger/LedgerFeedback";
 import {
+  Mail,
   ArrowLeft,
   Phone,
   MapPin,
@@ -58,7 +60,8 @@ export default function CustomerLedgerPage() {
   // Edit/Delete
   const [editingRow, setEditingRow] = useState<LedgerRow | null>(null);
   const [deletingRow, setDeletingRow] = useState<LedgerRow | null>(null);
-  const [editForm, setEditForm] = useState({
+// Edit Form
+const [editForm, setEditForm] = useState({
     amount: "",
     category: "",
     date: "",
@@ -68,8 +71,8 @@ export default function CustomerLedgerPage() {
   const [submitting, setSubmitting] = useState(false);
 
   // Payment dialog (uses Aiman's shared form)
-  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
-  const [paymentType, setPaymentType] = useState<"Got Money" | "Gave Money">("Got Money");
+  const [isIncomeModalOpen, setIsIncomeModalOpen] = useState(false);
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
 
   // Success/error feedback
   const [feedback, setFeedback] = useState<{
@@ -311,7 +314,18 @@ export default function CustomerLedgerPage() {
                   {customer.address}
                 </span>
               )}
+               {customer.email && (
+                <span className="flex items-center gap-1">
+                  <Mail className="w-3.5 h-3.5 text-slate-500" />
+                  {customer.email}
+                </span>
+              )}
             </div>
+              {customer.notes && (
+                <p className="text-xs text-slate-400 mt-2">
+                  Notes: {customer.notes}
+                </p>
+              )}
           </div>
         </div>
 
@@ -338,10 +352,7 @@ export default function CustomerLedgerPage() {
       {/* ================= ACTION BUTTONS ================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <button
-          onClick={() => {
-            setPaymentType("Got Money");
-            setIsPaymentOpen(true);
-          }}
+          onClick={() => setIsIncomeModalOpen(true)}
           className="flex items-center justify-center gap-3 py-4 px-6 rounded-card bg-success hover:opacity-90 text-white font-black text-base shadow-card transition transform active:scale-[0.99]"
         >
           <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
@@ -351,10 +362,7 @@ export default function CustomerLedgerPage() {
         </button>
 
         <button
-          onClick={() => {
-            setPaymentType("Gave Money");
-            setIsPaymentOpen(true);
-          }}
+          onClick={() => setIsExpenseModalOpen(true)}
           className="flex items-center justify-center gap-3 py-4 px-6 rounded-card bg-danger hover:opacity-90 text-white font-black text-base shadow-card transition transform active:scale-[0.99]"
         >
           <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
@@ -506,8 +514,30 @@ export default function CustomerLedgerPage() {
         </div>
       </div>
 
-      {/* ================= MODAL: EDIT ENTRY ================= */}
-      {editingRow && (
+{/* ================= MODALS ================= */}
+
+      {/* Reusable Add Income Form */}
+      <AddIncomeForm
+        isOpen={isIncomeModalOpen}
+        onClose={() => setIsIncomeModalOpen(false)}
+        onSuccess={loadLedger}
+        customerId={customer?.id}
+        lockCustomer={true}
+        customers={customer ? [customer] : []}
+      />
+
+      {/* Reusable Add Expense Form */}
+      <AddExpenseForm
+        isOpen={isExpenseModalOpen}
+        onClose={() => setIsExpenseModalOpen(false)}
+        onSuccess={loadLedger}
+        customerId={customer?.id}
+        lockCustomer={true}
+        customers={customer ? [customer] : []}
+      />
+
+      {/* Modal 3: Edit Entry */}
+{editingRow && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-md rounded-card border border-border p-6 space-y-4 shadow-card bg-surface text-foreground">
             <div className="flex items-center justify-between border-b border-border pb-3">
@@ -648,51 +678,6 @@ export default function CustomerLedgerPage() {
           </div>
         </div>
       )}
-
-      {/* ================= PAYMENT DIALOG (AIMAN'S SHARED FORM) ================= */}
-      <PaymentDialog
-        isOpen={isPaymentOpen}
-        onClose={() => setIsPaymentOpen(false)}
-        customerId={customer.id}
-        customerName={customer.name}
-        defaultType={paymentType}
-        onSubmit={async (data) => {
-          const userId = user?.id || "guest";
-          try {
-            if (data.type === "Got Money") {
-              await hisabDoService.addIncome(userId, {
-                amount: data.amount,
-                customer_id: customer.id,
-                category_id: "Other",
-                description: data.partyName || "Payment received",
-                payment_method: "cash",
-                income_date: data.date,
-              });
-            } else {
-              await hisabDoService.addExpense(userId, {
-                amount: data.amount,
-                customer_id: customer.id,
-                category_id: "Other",
-                description: data.partyName || "Payment sent",
-                payment_method: "cash",
-                expense_date: data.date,
-              });
-            }
-            setIsPaymentOpen(false);
-            setFeedback({
-              type: "success",
-              message: "Payment saved successfully.",
-            });
-            await loadLedger();
-          } catch (e) {
-            console.error("Payment save error:", e);
-            setFeedback({
-              type: "error",
-              message: "Payment save nahi hui. Dobara try karo.",
-            });
-          }
-        }}
-      />
     </div>
   );
 }

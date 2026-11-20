@@ -83,8 +83,8 @@ export function AiChatbotWidget() {
   ];
 
   return (
-    <>
-      {/* Expanded Chat Box Modal / Drawer */}
+<div className="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-50 flex flex-col items-end">      
+{/* Expanded Chat Box */}
       {isOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm sm:bg-transparent sm:backdrop-blur-none flex flex-col justify-end sm:justify-auto sm:items-end p-3 pb-20 sm:p-0 sm:pointer-events-none"
@@ -244,6 +244,6 @@ export function AiChatbotWidget() {
           </button>
         </div>
       )}
-    </>
+    </div>
   );
 }
