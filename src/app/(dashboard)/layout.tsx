@@ -18,7 +18,6 @@ import {
   Globe,
   Store,
   ChevronDown,
-  UserCheck,
   ShieldAlert,
   Calculator,
   FileText,
@@ -37,68 +36,68 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, token, isLoading, isGuest, logout, loginAsGuest } = useAuth();
-  const { theme, toggleTheme, language, setLanguage, t, isRTL, businessProfile } = useSettings();
+  const { user, isLoading, isGuest, logout } = useAuth();
+  const { theme, toggleTheme, language, setLanguage, t, businessProfile } = useSettings();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
-  const [emailVerified, setEmailVerified] = useState<boolean | null>(() => (user ? true : null));
+  const [emailVerificationStatus, setEmailVerificationStatus] = useState<
+    "checking" | "verified" | "redirecting" | "error"
+  >("checking");
 
   useEffect(() => {
-    let isMounted = true;
+    let active = true;
 
     const checkEmailVerification = async () => {
-      // 1. Guest, Demo, or already authenticated/verified users skip email verification check
-      const isDemoAccount =
-        token === "demo-token" ||
-        user?.id === "54fed992-4a4f-4669-9c52-161ae531dfe0" ||
-        user?.email === "merchant@hisabdo.com";
+      if (isLoading) return;
 
-      if (isGuest || isDemoAccount || (user && token)) {
-        if (isMounted) setEmailVerified(true);
+      if (isGuest) {
+        setEmailVerificationStatus("verified");
         return;
       }
 
-      // 2. Fast local Supabase session check (0ms network latency)
       try {
         const supabase = createClient();
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { user: suUser },
+          error,
+        } = await supabase.auth.getUser();
 
-        if (session?.user) {
-          if (!session.user.email_confirmed_at) {
-            router.push("/verify-email");
-            return;
-          }
-          if (isMounted) setEmailVerified(true);
+        if (!active) return;
+
+        if (error && error.name !== "AuthSessionMissingError") {
+          console.error("Unable to check email verification:", error);
+          setEmailVerificationStatus("error");
           return;
         }
-      } catch (err) {
-        console.warn("Verification check warning:", err);
-      }
 
-      // 3. Default: allow access if user is present, otherwise redirect to login
-      if (user) {
-        if (isMounted) setEmailVerified(true);
-      } else {
-        router.push("/login");
+        if (!suUser) {
+          setEmailVerificationStatus("redirecting");
+          router.replace("/login");
+          return;
+        }
+
+        if (!suUser.email_confirmed_at) {
+          setEmailVerificationStatus("redirecting");
+          const query = suUser.email
+            ? `?email=${encodeURIComponent(suUser.email)}`
+            : "";
+          router.replace(`/verify-email${query}`);
+          return;
+        }
+
+        setEmailVerificationStatus("verified");
+      } catch (error) {
+        console.error("Unable to check email verification:", error);
+        if (active) setEmailVerificationStatus("error");
       }
     };
 
-    if (!isLoading) {
-      checkEmailVerification();
-    }
-
-    // Safety timeout: ensure dashboard never hangs on a white/spinner screen
-    const timeout = setTimeout(() => {
-      if (isMounted) {
-        setEmailVerified(true);
-      }
-    }, 500);
+    checkEmailVerification();
 
     return () => {
-      isMounted = false;
-      clearTimeout(timeout);
+      active = false;
     };
-  }, [isGuest, token, user, isLoading, router]);
+  }, [isGuest, isLoading, router]);
 
   const navItems = [
     { name: t("dashboard"), href: "/dashboard", icon: LayoutDashboard },
@@ -120,8 +119,22 @@ export default function DashboardLayout({
     { code: "ar", label: "العربية (Arabic)" },
   ];
 
-  // Loading state while checking authentication or verification status
-  if (isLoading && !user) {
+  // Loading state — jab tak email verification check nahi hoti
+  if (emailVerificationStatus !== "verified") {
+    if (emailVerificationStatus === "error") {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-950 text-slate-300">
+          <p>We couldn&apos;t check your email verification status.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-emerald-400 hover:text-emerald-300 underline"
+          >
+            Try again
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
@@ -164,7 +177,7 @@ export default function DashboardLayout({
         </div>
       </header>
 
-      {/* Guest Mode Banner if browsing without full login */}
+      {/* Guest Banner */}
       {isGuest && (
         <div className="md:hidden bg-amber-500/10 border-b border-amber-500/20 px-4 py-1.5 text-xs text-amber-500 flex items-center justify-between">
           <span className="flex items-center gap-1.5 font-medium">
@@ -176,7 +189,7 @@ export default function DashboardLayout({
         </div>
       )}
 
-      {/* Left Sidebar (Desktop + Mobile Drawer) */}
+      {/* Sidebar */}
       <aside
         className={`${
           mobileMenuOpen ? "block" : "hidden"
@@ -185,7 +198,6 @@ export default function DashboardLayout({
         }`}
       >
         <div className="p-4 space-y-6">
-          {/* Logo & Shop Info (Desktop) */}
           <div className="hidden md:flex items-center gap-3 px-2 py-1">
             <img
               src="/logo.png"
@@ -200,7 +212,6 @@ export default function DashboardLayout({
             </div>
           </div>
 
-          {/* Navigation Links */}
           <nav className="space-y-1.5">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -226,9 +237,7 @@ export default function DashboardLayout({
           </nav>
         </div>
 
-        {/* Bottom User Profile & Controls */}
         <div className={`p-4 border-t ${theme === "dark" ? "border-[#2A2A2A]" : "border-slate-200"} space-y-3`}>
-          {/* Language Selector */}
           <div className="relative">
             <button
               onClick={() => setLangDropdownOpen(!langDropdownOpen)}
@@ -271,7 +280,6 @@ export default function DashboardLayout({
             )}
           </div>
 
-          {/* User Status Card */}
           <div className={`p-3 rounded-xl border flex items-center justify-between ${
             theme === "dark" ? "bg-[#202020] border-[#303030]" : "bg-slate-50 border-slate-200"
           }`}>
@@ -292,7 +300,7 @@ export default function DashboardLayout({
             <button
               onClick={() => logout()}
               title="Logout"
-              className={`p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors`}
+              className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -300,9 +308,8 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Desktop Top Bar */}
         <header className={`hidden md:flex items-center justify-between px-8 py-4 border-b ${
           theme === "dark" ? "bg-[#181818]/60 border-[#2A2A2A]" : "bg-white/80 border-slate-200 shadow-sm"
         } backdrop-blur-md sticky top-0 z-30`}>
@@ -371,7 +378,6 @@ export default function DashboardLayout({
           {children}
         </main>
 
-        {/* Mobile Bottom Navigation Bar (Matching Flutter Mobile App) */}
         <div className={`md:hidden fixed bottom-0 left-0 right-0 border-t py-2 px-4 flex items-center justify-around z-40 ${
           theme === "dark" ? "bg-[#181818] border-[#2A2A2A]" : "bg-white border-slate-200 shadow-lg"
         }`}>
@@ -398,7 +404,6 @@ export default function DashboardLayout({
         </div>
       </div>
 
-      {/* Floating AI Chatbot Widget */}
       <AiChatbotWidget />
     </div>
   );

@@ -7,6 +7,7 @@ import { loginSchema, LoginFormData } from "@/lib/validations/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { createClient } from "@/lib/supabase/client";
 import {
   Lock,
   Mail,
@@ -51,7 +52,30 @@ function LoginForm() {
       const result = await login(data.email, data.password);
 
       if (!result.success) {
+        if (result.needsVerification) {
+          router.replace(`/verify-email?email=${encodeURIComponent(data.email)}`);
+          return;
+        }
+
         setAuthError(result.message || "Invalid credentials. Please try again.");
+        return;
+      }
+
+      // ⚠️ Email verification check
+      const supabase = createClient();
+      const { data: { user: suUser } } = await supabase.auth.getUser();
+
+      if (suUser && !suUser.email_confirmed_at) {
+        setAuthError(
+          "Please verify your email first. Check your inbox or request a new link."
+        );
+        setTimeout(
+          () =>
+            router.push(
+              `/verify-email?email=${encodeURIComponent(data.email)}`
+            ),
+          2000
+        );
         return;
       }
 
@@ -89,7 +113,6 @@ function LoginForm() {
   return (
     <div className="w-full max-w-md">
       <div className="bg-slate-900/90 border border-slate-800 backdrop-blur-xl p-8 rounded-2xl shadow-2xl space-y-6">
-        {/* Header */}
         <div className="text-center space-y-1.5">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mb-2">
             <Lock className="w-6 h-6" />
@@ -100,7 +123,6 @@ function LoginForm() {
           </p>
         </div>
 
-        {/* Error Alert */}
         {authError && (
           <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-3 text-rose-400 text-xs animate-shake">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -108,9 +130,7 @@ function LoginForm() {
           </div>
         )}
 
-        {/* Login Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {/* Email Field */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
               Email Address
@@ -132,7 +152,6 @@ function LoginForm() {
             )}
           </div>
 
-          {/* Password Field */}
           <div>
             <div className="flex justify-between items-center mb-1.5">
               <label className="block text-xs font-semibold text-slate-300">Password</label>
@@ -167,7 +186,6 @@ function LoginForm() {
             )}
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={isSubmitting || isDemoLoggingIn}
@@ -187,7 +205,6 @@ function LoginForm() {
           </button>
         </form>
 
-        {/* 1-Click Demo Evaluation Login */}
         <div className="pt-3 border-t border-slate-800/80 space-y-2">
           <div className="flex items-center justify-between text-[11px] text-slate-500">
             <span>Quick 1-Click Evaluation Login:</span>
@@ -221,7 +238,6 @@ function LoginForm() {
           </div>
         </div>
 
-        {/* Footer Link */}
         <p className="text-slate-400 text-xs text-center pt-2">
           Don't have a merchant account?{" "}
           <Link
