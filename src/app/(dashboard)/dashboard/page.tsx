@@ -28,8 +28,7 @@ import { PageHeading } from "@/components/ui/design-system/PageHeading";
 import { LoadingState } from "@/components/ui/design-system/LoadingState";
 import { EmptyState } from "@/components/ui/design-system/EmptyState";
 import { ErrorState } from "@/components/ui/design-system/ErrorState";
-import { Input } from "@/components/ui/Input";
-import Dialog from "@/components/ui/Dialog";
+import { AddTransactionDialog } from "@/components/transactions/AddTransactionDialog";
 import { IncomeExpenseChart, type ChartDataPoint } from "@/components/dashboard/IncomeExpenseChart";
 import { RecentActivity, type RecentActivityTransaction } from "@/components/dashboard/RecentActivity";
 import { useAuth } from "@/context/AuthContext";
@@ -86,13 +85,22 @@ export default function DashboardPage() {
   const [pctAmount, setPctAmount] = useState("");
   const [pctPercent, setPctPercent] = useState("");
 
-  // Placeholder handlers for Quick Actions (Danish's dialog will be wired in a separate task)
+  // Add Transaction Dialog States (Danish's AddTransactionDialog)
+  const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
+  const [transactionDialogType, setTransactionDialogType] = useState<"income" | "expense">("income");
+
   const handleAddIncome = () => {
-    // Placeholder handler for Add Income
+    setTransactionDialogType("income");
+    setIsTransactionDialogOpen(true);
   };
 
   const handleAddExpense = () => {
-    // Placeholder handler for Add Expense
+    setTransactionDialogType("expense");
+    setIsTransactionDialogOpen(true);
+  };
+
+  const handleTransactionSuccess = async () => {
+    await loadData();
   };
 
   const loadData = useCallback(async () => {
@@ -778,270 +786,327 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ================= MODALS (FULLY INTEGRATED WITH SHARED DIALOG & INPUT COMPONENTS) ================= */}
+      {/* ================= MODALS (FULLY THEMED WITH DESIGN SYSTEM TOKENS) ================= */}
 
       {/* Modal 1: Add Customer Modal */}
-      <Dialog
-        isOpen={activeModal === "customer"}
-        onClose={() => setActiveModal(null)}
-        title="Add Customer / Khata Account"
-      >
-        <form onSubmit={handleAddCustomer} className="space-y-3.5">
-          <Input
-            label="Customer / Business Name *"
-            required
-            placeholder="e.g. Muhammad Ahmad"
-            value={formCustomer.name}
-            onChange={(e) => setFormCustomer({ ...formCustomer, name: e.target.value })}
-            autoFocus
-          />
+      {activeModal === "customer" && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-card border border-border bg-surface text-foreground p-6 space-y-4 shadow-dialog">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="text-base font-bold text-primary flex items-center gap-2">
+                <Users className="w-5 h-5" /> Add Customer / Khata Account
+              </h3>
+              <button
+                type="button"
+                onClick={() => setActiveModal(null)}
+                className="text-muted-foreground hover:text-foreground p-1 rounded-control transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-          <Input
-            label="Phone Number (for WhatsApp Reminders)"
-            type="tel"
-            placeholder="03001234567"
-            value={formCustomer.phone}
-            onChange={(e) => setFormCustomer({ ...formCustomer, phone: e.target.value })}
-          />
-
-          <Input
-            label={`Opening Balance (${currencySymbol})`}
-            type="number"
-            step="any"
-            placeholder="0.00"
-            value={formCustomer.opening_balance || ""}
-            onChange={(e) => setFormCustomer({ ...formCustomer, opening_balance: Number(e.target.value) })}
-            helperText="Positive = Customer owes you (Lene). Negative = You owe customer (Dene)."
-          />
-
-          <Input
-            label="Shop Address / Location"
-            placeholder="e.g. Shop # 12, Main Market"
-            value={formCustomer.address}
-            onChange={(e) => setFormCustomer({ ...formCustomer, address: e.target.value })}
-          />
-
-          <div className="flex gap-2 pt-2">
-            <Button
-              type="button"
-              variant="secondary"
-              size="md"
-              onClick={() => setActiveModal(null)}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="md"
-              disabled={submitting}
-              loading={submitting}
-              className="flex-1"
-            >
-              Save Party
-            </Button>
-          </div>
-        </form>
-      </Dialog>
-
-      {/* Modal 2: Retail & Percentage Calculator Modal */}
-      <Dialog
-        isOpen={activeModal === "calculator"}
-        onClose={() => setActiveModal(null)}
-        title="Retail & Percentage Calculator"
-        className="max-w-sm"
-      >
-        <div className="space-y-4">
-          {/* Header with Tab switcher */}
-          <div className="flex items-center gap-1 bg-surface-muted p-1 rounded-control border border-border">
-            <button
-              type="button"
-              onClick={() => setCalcTab("percentage")}
-              className={`px-3 py-1 rounded-control text-xs font-bold transition ${
-                calcTab === "percentage"
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Percentage (%)
-            </button>
-            <button
-              type="button"
-              onClick={() => setCalcTab("standard")}
-              className={`px-3 py-1 rounded-control text-xs font-bold transition ${
-                calcTab === "standard"
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Standard
-            </button>
-          </div>
-
-          {/* Tab 1: Percentage Calculator */}
-          {calcTab === "percentage" && (
-            <div className="space-y-4">
-              <Input
-                label={`Total Amount (${currencySymbol})`}
-                type="number"
-                placeholder="e.g. 5000"
-                value={pctAmount}
-                onChange={(e) => setPctAmount(e.target.value)}
-                className="text-base font-bold bg-surface-muted"
-              />
+            <form onSubmit={handleAddCustomer} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1">
+                  Customer / Business Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Muhammad Ahmad"
+                  value={formCustomer.name}
+                  onChange={(e) => setFormCustomer({ ...formCustomer, name: e.target.value })}
+                  className="w-full px-3 py-2 text-sm rounded-control border border-border bg-surface text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  autoFocus
+                />
+              </div>
 
               <div>
                 <label className="block text-xs font-semibold text-foreground mb-1">
-                  Percentage Rate (%)
+                  Phone Number (for WhatsApp Reminders)
                 </label>
-                <div className="flex items-center gap-2">
-                  <Input
+                <input
+                  type="tel"
+                  placeholder="03001234567"
+                  value={formCustomer.phone}
+                  onChange={(e) => setFormCustomer({ ...formCustomer, phone: e.target.value })}
+                  className="w-full px-3 py-2 text-sm rounded-control border border-border bg-surface text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1">
+                  Opening Balance ({currencySymbol})
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="0.00"
+                  value={formCustomer.opening_balance || ""}
+                  onChange={(e) => setFormCustomer({ ...formCustomer, opening_balance: Number(e.target.value) })}
+                  className="w-full px-3 py-2 text-sm rounded-control border border-border bg-surface text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <span className="text-[10px] text-muted-foreground mt-1 block">
+                  Positive = Customer owes you (Lene). Negative = You owe customer (Dene).
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1">
+                  Shop Address / Location
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Shop # 12, Main Market"
+                  value={formCustomer.address}
+                  onChange={(e) => setFormCustomer({ ...formCustomer, address: e.target.value })}
+                  className="w-full px-3 py-2 text-sm rounded-control border border-border bg-surface text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  onClick={() => setActiveModal(null)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  disabled={submitting}
+                  loading={submitting}
+                  className="flex-1"
+                >
+                  Save Party
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 2: Retail & Percentage Calculator Modal */}
+      {activeModal === "calculator" && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-sm rounded-card border border-border bg-surface text-foreground p-5 space-y-4 shadow-dialog">
+            {/* Header with Tab switcher */}
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-1 bg-surface-muted p-1 rounded-control border border-border">
+                <button
+                  type="button"
+                  onClick={() => setCalcTab("percentage")}
+                  className={`px-3 py-1 rounded-control text-xs font-bold transition ${
+                    calcTab === "percentage"
+                      ? "bg-primary text-white shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Percentage (%)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCalcTab("standard")}
+                  className={`px-3 py-1 rounded-control text-xs font-bold transition ${
+                    calcTab === "standard"
+                      ? "bg-primary text-white shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Standard
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveModal(null)}
+                className="text-muted-foreground hover:text-foreground p-1 rounded-control transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Tab 1: Percentage Calculator */}
+            {calcTab === "percentage" && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-foreground mb-1">
+                    Total Amount ({currencySymbol})
+                  </label>
+                  <input
                     type="number"
-                    placeholder="e.g. 15"
-                    value={pctPercent}
-                    onChange={(e) => setPctPercent(e.target.value)}
-                    className="text-base font-bold bg-surface-muted"
+                    placeholder="e.g. 5000"
+                    value={pctAmount}
+                    onChange={(e) => setPctAmount(e.target.value)}
+                    className="w-full px-3 py-2 text-base font-bold rounded-control border border-border bg-surface-muted text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                   />
-                  <span className="p-2.5 rounded-control bg-primary/10 text-primary font-bold shrink-0">%</span>
                 </div>
 
-                {/* Preset chips */}
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {["5", "10", "15", "18", "20", "25"].map((p) => (
+                <div>
+                  <label className="block text-xs font-semibold text-foreground mb-1">
+                    Percentage Rate (%)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      placeholder="e.g. 15"
+                      value={pctPercent}
+                      onChange={(e) => setPctPercent(e.target.value)}
+                      className="w-full px-3 py-2 text-base font-bold rounded-control border border-border bg-surface-muted text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <span className="p-2.5 rounded-control bg-primary/10 text-primary font-bold">%</span>
+                  </div>
+
+                  {/* Preset chips */}
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {["5", "10", "15", "18", "20", "25"].map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setPctPercent(p)}
+                        className={`px-2.5 py-1 rounded-control text-xs font-bold border transition ${
+                          pctPercent === p
+                            ? "bg-primary text-white border-primary"
+                            : "border-border bg-surface text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {p}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Calculation Results Card */}
+                {calculatedPercentage ? (
+                  <div className="p-4 rounded-control bg-primary/5 border border-primary/20 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-primary font-medium">{pctPercent}% Value:</span>
+                      <span className="text-base font-black text-foreground">
+                        {formatMoney(calculatedPercentage.percentValue)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs border-t border-border pt-2">
+                      <span className="text-muted-foreground">Total with Margin (+):</span>
+                      <span className="font-bold text-success">
+                        {formatMoney(calculatedPercentage.totalWithAdd)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs border-t border-border pt-2">
+                      <span className="text-muted-foreground">Total with Discount (-):</span>
+                      <span className="font-bold text-danger">
+                        {formatMoney(calculatedPercentage.totalWithDiscount)}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-control bg-surface-muted border border-border text-center text-xs text-muted-foreground">
+                    Enter amount and percentage to compute margin
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setPctAmount("");
+                      setPctPercent("");
+                    }}
+                    className="w-full"
+                  >
+                    Clear Fields
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Tab 2: Standard Calculator */}
+            {calcTab === "standard" && (
+              <div className="space-y-3">
+                {/* Display */}
+                <div className="p-3 rounded-control bg-surface-muted border border-border text-end">
+                  <span className="text-xs text-muted-foreground block h-4 truncate">{calcEquation}</span>
+                  <span className="text-2xl font-black text-foreground block truncate">{calcDisplay}</span>
+                </div>
+
+                {/* Keypad */}
+                <div className="grid grid-cols-4 gap-2">
+                  {["C", "/", "*", "-"].map((op) => (
                     <button
-                      key={p}
+                      key={op}
                       type="button"
-                      onClick={() => setPctPercent(p)}
-                      className={`px-2.5 py-1 rounded-control text-xs font-bold border transition ${
-                        pctPercent === p
-                          ? "bg-primary text-white border-primary"
-                          : "border-border bg-surface text-muted-foreground hover:text-foreground"
+                      onClick={() => handleCalcButton(op)}
+                      className="py-3 rounded-control bg-primary/10 text-primary font-bold hover:bg-primary/20 transition"
+                    >
+                      {op}
+                    </button>
+                  ))}
+                  {["7", "8", "9", "+"].map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => handleCalcButton(k)}
+                      className={`py-3 rounded-control font-bold transition ${
+                        k === "+"
+                          ? "bg-primary/10 text-primary hover:bg-primary/20"
+                          : "bg-surface-muted text-foreground hover:bg-surface-muted/80 border border-border"
                       }`}
                     >
-                      {p}%
+                      {k}
+                    </button>
+                  ))}
+                  {["4", "5", "6", "="].map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => handleCalcButton(k)}
+                      className={`py-3 rounded-control font-bold transition ${
+                        k === "="
+                          ? "bg-primary text-white hover:bg-primary-hover row-span-2 flex items-center justify-center shadow-card font-bold"
+                          : "bg-surface-muted text-foreground hover:bg-surface-muted/80 border border-border"
+                      }`}
+                    >
+                      {k}
+                    </button>
+                  ))}
+                  {["1", "2", "3"].map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => handleCalcButton(k)}
+                      className="py-3 rounded-control bg-surface-muted text-foreground font-bold hover:bg-surface-muted/80 border border-border transition"
+                    >
+                      {k}
+                    </button>
+                  ))}
+                  {["0", "."].map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => handleCalcButton(k)}
+                      className="py-3 rounded-control bg-surface-muted text-foreground font-bold hover:bg-surface-muted/80 border border-border transition col-span-1"
+                    >
+                      {k}
                     </button>
                   ))}
                 </div>
               </div>
-
-              {/* Calculation Results Card */}
-              {calculatedPercentage ? (
-                <div className="p-4 rounded-control bg-primary/5 border border-primary/20 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-primary font-medium">{pctPercent}% Value:</span>
-                    <span className="text-base font-black text-foreground">
-                      {formatMoney(calculatedPercentage.percentValue)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs border-t border-border pt-2">
-                    <span className="text-muted-foreground">Total with Margin (+):</span>
-                    <span className="font-bold text-success">
-                      {formatMoney(calculatedPercentage.totalWithAdd)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs border-t border-border pt-2">
-                    <span className="text-muted-foreground">Total with Discount (-):</span>
-                    <span className="font-bold text-danger">
-                      {formatMoney(calculatedPercentage.totalWithDiscount)}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-4 rounded-control bg-surface-muted border border-border text-center text-xs text-muted-foreground">
-                  Enter amount and percentage to compute margin
-                </div>
-              )}
-
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setPctAmount("");
-                  setPctPercent("");
-                }}
-                className="w-full"
-              >
-                Clear Fields
-              </Button>
-            </div>
-          )}
-
-          {/* Tab 2: Standard Calculator */}
-          {calcTab === "standard" && (
-            <div className="space-y-3">
-              {/* Display */}
-              <div className="p-3 rounded-control bg-surface-muted border border-border text-end">
-                <span className="text-xs text-muted-foreground block h-4 truncate">{calcEquation}</span>
-                <span className="text-2xl font-black text-foreground block truncate">{calcDisplay}</span>
-              </div>
-
-              {/* Keypad */}
-              <div className="grid grid-cols-4 gap-2">
-                {["C", "/", "*", "-"].map((op) => (
-                  <button
-                    key={op}
-                    type="button"
-                    onClick={() => handleCalcButton(op)}
-                    className="py-3 rounded-control bg-primary/10 text-primary font-bold hover:bg-primary/20 transition"
-                  >
-                    {op}
-                  </button>
-                ))}
-                {["7", "8", "9", "+"].map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => handleCalcButton(k)}
-                    className={`py-3 rounded-control font-bold transition ${
-                      k === "+"
-                        ? "bg-primary/10 text-primary hover:bg-primary/20"
-                        : "bg-surface-muted text-foreground hover:bg-surface-muted/80 border border-border"
-                    }`}
-                  >
-                    {k}
-                  </button>
-                ))}
-                {["4", "5", "6", "="].map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => handleCalcButton(k)}
-                    className={`py-3 rounded-control font-bold transition ${
-                      k === "="
-                        ? "bg-primary text-white hover:bg-primary-hover row-span-2 flex items-center justify-center shadow-card font-bold"
-                        : "bg-surface-muted text-foreground hover:bg-surface-muted/80 border border-border"
-                    }`}
-                  >
-                    {k}
-                  </button>
-                ))}
-                {["1", "2", "3"].map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => handleCalcButton(k)}
-                    className="py-3 rounded-control bg-surface-muted text-foreground font-bold hover:bg-surface-muted/80 border border-border transition"
-                  >
-                    {k}
-                  </button>
-                ))}
-                {["0", "."].map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => handleCalcButton(k)}
-                    className="py-3 rounded-control bg-surface-muted text-foreground font-bold hover:bg-surface-muted/80 border border-border transition col-span-1"
-                  >
-                    {k}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </Dialog>
+      )}
+
+      {/* Danish's Add Transaction Dialog (Income & Expense) */}
+      <AddTransactionDialog
+        open={isTransactionDialogOpen}
+        onOpenChange={setIsTransactionDialogOpen}
+        type={transactionDialogType}
+        onSuccess={handleTransactionSuccess}
+      />
     </div>
   );
 }
