@@ -1,22 +1,8 @@
 import { createBrowserClient } from '@supabase/ssr'
 
-function readEnv(names: string[]): string | undefined {
-  for (const name of names) {
-    const value = process.env[name]
-    if (value && value.trim() !== '') return value
-  }
-  return undefined
-}
-
 export function createClient() {
-  const url = readEnv([
-    'NEXT_PUBLIC_SUPABASE_URL',
-    'NEXT_SUPABASE_URL',
-  ])
-  const anonKey = readEnv([
-    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-    'NEXT_SUPABASE_ANON_KEY',
-  ])
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_SUPABASE_URL
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_SUPABASE_ANON_KEY
 
   if (!url) {
     throw new Error(
