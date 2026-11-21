@@ -24,6 +24,7 @@ import { ErrorState } from "@/components/ui/design-system/ErrorState";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar } from "@/components/ui/FilterBar";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { AddTransactionDialog } from "@/components/transactions/AddTransactionDialog";
 import { AddIncomeForm } from "@/components/transactions/AddIncomeForm";
 import { AddExpenseForm } from "@/components/transactions/AddExpenseForm";
 import {
@@ -73,13 +74,26 @@ export default function TransactionsPage() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
-  // Reusable transaction forms (modal triggers kept for backward compatibility; Danish's dialog will be wired in future)
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<"income" | "expense">("income");
+  // Danish's Add Transaction Dialog State
+  const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
+  const [transactionDialogType, setTransactionDialogType] = useState<"income" | "expense">("income");
 
-  // Placeholder handler for Add button per Task requirements
-  const handleAddTransactionPlaceholder = () => {
-    // Placeholder handler for Add Transaction button - Danish's dialog will be integrated in future task
+  const handleOpenAddIncome = () => {
+    setTransactionDialogType("income");
+    setIsTransactionDialogOpen(true);
+  };
+
+  const handleOpenAddExpense = () => {
+    setTransactionDialogType("expense");
+    setIsTransactionDialogOpen(true);
+  };
+
+  const handleTransactionSuccess = async () => {
+    setFeedback({
+      type: "success",
+      message: `${transactionDialogType === "income" ? "Income" : "Expense"} transaction recorded successfully!`,
+    });
+    await loadData();
   };
 
   const loadData = useCallback(async () => {
@@ -492,7 +506,7 @@ export default function TransactionsPage() {
                 variant="accent"
                 size="sm"
                 icon={Plus}
-                onClick={handleAddTransactionPlaceholder}
+                onClick={handleOpenAddIncome}
               >
                 Add Income
               </Button>
@@ -500,7 +514,7 @@ export default function TransactionsPage() {
                 variant="danger"
                 size="sm"
                 icon={Plus}
-                onClick={handleAddTransactionPlaceholder}
+                onClick={handleOpenAddExpense}
               >
                 Add Expense
               </Button>
@@ -743,14 +757,22 @@ export default function TransactionsPage() {
             title="No transactions recorded yet"
             message="All your cash sales, operating expenses, and customer khata settlements will appear here."
             action={
-              <div className="flex items-center justify-center gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-2">
                 <Button
                   variant="accent"
                   size="sm"
                   icon={Plus}
-                  onClick={handleAddTransactionPlaceholder}
+                  onClick={handleOpenAddIncome}
                 >
-                  Record Transaction
+                  Add Income
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  icon={Plus}
+                  onClick={handleOpenAddExpense}
+                >
+                  Add Expense
                 </Button>
               </div>
             }
@@ -780,11 +802,8 @@ export default function TransactionsPage() {
 
       {/* ================= 5. REUSABLE TRANSACTION FORMS (PRESERVED & WIRED FOR EDITING) ================= */}
       <AddIncomeForm
-        isOpen={(isModalOpen && modalType === "income") || Boolean(editingTransaction && editingTransaction.sourceTable === "income")}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingTransaction(null);
-        }}
+        isOpen={Boolean(editingTransaction && editingTransaction.sourceTable === "income")}
+        onClose={() => setEditingTransaction(null)}
         onSuccess={loadData}
         customers={customers}
         initialAmount={editingTransaction?.sourceTable === "income" ? editingTransaction.amount : undefined}
@@ -797,11 +816,8 @@ export default function TransactionsPage() {
       />
 
       <AddExpenseForm
-        isOpen={(isModalOpen && modalType === "expense") || Boolean(editingTransaction && editingTransaction.sourceTable === "expenses")}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingTransaction(null);
-        }}
+        isOpen={Boolean(editingTransaction && editingTransaction.sourceTable === "expenses")}
+        onClose={() => setEditingTransaction(null)}
         onSuccess={loadData}
         customers={customers}
         initialAmount={editingTransaction?.sourceTable === "expenses" ? editingTransaction.amount : undefined}
@@ -813,7 +829,16 @@ export default function TransactionsPage() {
         onSubmitCustom={editingTransaction?.sourceTable === "expenses" ? handleEditSubmit : undefined}
       />
 
-      {/* ================= 6. CONFIRM DELETE DIALOG (SHARED DESIGN-SYSTEM COMPONENT) ================= */}
+      {/* ================= 6. DANISH'S ADD TRANSACTION DIALOG (MERGED COMPONENT) ================= */}
+      <AddTransactionDialog
+        open={isTransactionDialogOpen}
+        onOpenChange={setIsTransactionDialogOpen}
+        type={transactionDialogType}
+        customerId={selectedCustomerId !== "all" ? selectedCustomerId : undefined}
+        onSuccess={handleTransactionSuccess}
+      />
+
+      {/* ================= 7. CONFIRM DELETE DIALOG (SHARED DESIGN-SYSTEM COMPONENT) ================= */}
       <ConfirmDialog
         isOpen={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}
