@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { Card } from "@/components/ui/design-system/Card";
 
 interface CashFlowProps {
   totalCashIn: number;
@@ -15,9 +16,9 @@ export const CashFlowChart: React.FC<CashFlowProps> = ({
 }) => {
   if (isLoading) {
     return (
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 h-72 animate-pulse flex items-center justify-center">
-        <span className="text-slate-500 text-sm font-medium">Loading Cash Analytics...</span>
-      </div>
+      <Card className="p-6 h-72 animate-pulse flex items-center justify-center bg-surface border border-border rounded-card">
+        <span className="text-muted-foreground text-sm font-medium">Loading Cash Analytics...</span>
+      </Card>
     );
   }
 
@@ -33,19 +34,19 @@ export const CashFlowChart: React.FC<CashFlowProps> = ({
   const outY = calculateY(totalCashOut);
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+    <Card className="p-6 space-y-6 bg-surface border border-border rounded-card shadow-card">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-4">
         <div>
-          <h2 className="text-lg font-semibold text-white">Cash Flow Analytics</h2>
-          <p className="text-xs text-slate-400">Live dynamic flow trajectory</p>
+          <h2 className="text-lg font-semibold text-foreground">Cash Flow Analytics</h2>
+          <p className="text-xs text-muted-foreground">Live dynamic flow trajectory</p>
         </div>
         <div className="flex items-center gap-4 text-xs">
-          <span className="flex items-center gap-1.5 text-slate-300">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Inflow
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <span className="w-2.5 h-2.5 rounded-full bg-success"></span> Inflow
           </span>
-          <span className="flex items-center gap-1.5 text-slate-300">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-400"></span> Outflow
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <span className="w-2.5 h-2.5 rounded-full bg-danger"></span> Outflow
           </span>
         </div>
       </div>
@@ -63,9 +64,9 @@ export const CashFlowChart: React.FC<CashFlowProps> = ({
             </linearGradient>
           </defs>
 
-          <line x1="0" y1="30" x2="500" y2="30" stroke="#1e293b" strokeDasharray="4 4" />
-          <line x1="0" y1="80" x2="500" y2="80" stroke="#1e293b" strokeDasharray="4 4" />
-          <line x1="0" y1="130" x2="500" y2="130" stroke="#334155" strokeDasharray="2 2" />
+          <line x1="0" y1="30" x2="500" y2="30" className="stroke-border" strokeDasharray="4 4" />
+          <line x1="0" y1="80" x2="500" y2="80" className="stroke-border" strokeDasharray="4 4" />
+          <line x1="0" y1="130" x2="500" y2="130" className="stroke-border" strokeDasharray="2 2" />
 
           <path
             d={`M 0,130 Q 250,${(130 + inY) / 2} 500,${inY} L 500,130 L 0,130 Z`}
@@ -74,7 +75,7 @@ export const CashFlowChart: React.FC<CashFlowProps> = ({
           <path
             d={`M 0,130 Q 250,${(130 + inY) / 2} 500,${inY}`}
             fill="none"
-            stroke="#10b981"
+            className="stroke-success"
             strokeWidth="3"
             strokeLinecap="round"
           />
@@ -86,7 +87,7 @@ export const CashFlowChart: React.FC<CashFlowProps> = ({
           <path
             d={`M 0,130 Q 250,${(130 + outY) / 2} 500,${outY}`}
             fill="none"
-            stroke="#f43f5e"
+            className="stroke-danger"
             strokeWidth="2.5"
             strokeDasharray="6 3"
             strokeLinecap="round"
@@ -94,38 +95,37 @@ export const CashFlowChart: React.FC<CashFlowProps> = ({
 
           {totalCashIn > 0 && (
             <>
-              <circle cx="500" cy={inY} r="5" fill="#10b981" className="animate-ping opacity-75" />
-              <circle cx="500" cy={inY} r="4" fill="#10b981" />
+              <circle cx="500" cy={inY} r="5" className="fill-success animate-ping opacity-75" />
+              <circle cx="500" cy={inY} r="4" className="fill-success" />
             </>
           )}
 
           {totalCashOut > 0 && (
-            <circle cx="500" cy={outY} r="4" fill="#f43f5e" />
+            <circle cx="500" cy={outY} r="4" className="fill-danger" />
           )}
         </svg>
 
-        <div className="flex justify-between text-[11px] text-slate-500 font-mono mt-3">
+        <div className="flex justify-between text-[11px] text-muted-foreground font-mono mt-3">
           <span>Start</span>
           <span>Mid Month</span>
           <span>Today (Live)</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 pt-3 border-t border-slate-800/80">
-        <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/60">
-          <p className="text-[11px] text-slate-400 font-medium">Total Cash In</p>
-          <p className="text-base font-bold text-emerald-400 font-mono mt-0.5">
+      <div className="grid grid-cols-2 gap-4 pt-3 border-t border-border">
+        <div className="bg-surface-muted p-3 rounded-control border border-border">
+          <p className="text-[11px] text-muted-foreground font-medium">Total Cash In</p>
+          <p className="text-base font-bold text-success font-mono mt-0.5">
             Rs. {totalCashIn.toLocaleString()}
           </p>
         </div>
-
-        <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/60">
-          <p className="text-[11px] text-slate-400 font-medium">Total Cash Out</p>
-          <p className="text-base font-bold text-rose-400 font-mono mt-0.5">
+        <div className="bg-surface-muted p-3 rounded-control border border-border">
+          <p className="text-[11px] text-muted-foreground font-medium">Total Cash Out</p>
+          <p className="text-base font-bold text-danger font-mono mt-0.5">
             Rs. {totalCashOut.toLocaleString()}
           </p>
         </div>
       </div>
-    </div>
+    </Card>
   );
 };
