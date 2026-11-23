@@ -1,65 +1,4 @@
-# Day 3 Implementation Report: Dashboard Summary Cards and Quick Actions
-
-## 1. Executive Summary & Assigned Scope
-
-- **Working Branch:** `feature/Aiman-dashboard` (based on `feature/design-system`)
-- **Assigned Scope:** `src/app/(dashboard)/dashboard/page.tsx`
-- **Rebuilt Sections:**
-  1. **Summary Cards (5 cards):**
-     - **Income (Lene):** Total commercial sales & receipts with quick navigation to `/transactions?type=income`.
-     - **Expense (Dene):** Total operational expenses & overheads with quick navigation to `/transactions?type=expense`.
-     - **Profit (Nafa):** Net profit calculated as `totalIncome - totalExpense`, with dynamic indicators for positive surplus vs. operating deficit.
-     - **Receivables (Lene):** Total pending balances to collect from customer accounts (`/customers`).
-     - **Payables (Dene):** Total vendor and supplier liabilities (`/vendors`).
-  2. **Quick Actions:**
-     - Global desktop actions in header: "Record Income" (`setActiveModal("income")`), "Record Expense" (`setActiveModal("expense")`), and "Calculator" (`setActiveModal("calculator")`).
-     - Right-column launcher panel: Fast action tiles for Add Income, Add Expense, New Party, and Calculator.
-
----
-
-## 2. Merged Design System Components Integration
-
-All components merged into `feature/design-system` were inspected and integrated directly from their canonical paths:
-
-| Component | Source Path | Pull Request | Props & Usage in Dashboard |
-| :--- | :--- | :--- | :--- |
-| **`Button`** | `@/components/ui/Button` | PR #55 (Ashir) | `variant="accent"`, `variant="danger"`, `variant="secondary"`, `variant="primary"`, `size="sm"`, `icon={...}`, `onClick={...}` |
-| **`Badge`** | `@/components/ui/Badge` | PR #55 (Ashir) | `variant="green"`, `variant="red"`, `variant="purple"`, `variant="amber"` |
-| **`Card`** | `@/components/ui/design-system/Card` | PR #53 (Shahnila) | Replaces raw wrappers across summary cards and fast actions panel |
-| **`PageHeading`** | `@/components/ui/design-system/PageHeading` | PR #53 (Shahnila) | `title="Dashboard"`, `description="..."`, `action={<QuickActions />}` |
-| **`LoadingState`** | `@/components/ui/design-system/LoadingState` | PR #53 (Shahnila) | `variant="skeleton"`, `message="Loading summary metrics"` |
-| **`EmptyState`** | `@/components/ui/design-system/EmptyState` | PR #53 (Shahnila) | `title="..."`, `message="..."`, `action={<Button ... />}` |
-| **`ErrorState`** | `@/components/ui/design-system/ErrorState` | PR #53 (Shahnila) | `title="..."`, `message="..."`, `onRetry={loadData}` |
-
-> [!NOTE]
-> **Danish's `Dialog` & `ConfirmDialog` components:** Not merged into `feature/design-system`. Existing modal handlers (`activeModal`) and project modal components were preserved without introducing unmerged or duplicate external components.
-
----
-
-## 3. Financial Calculations & Business Logic
-
-- **Authentic Data Display:** No hardcoded financial figures. All metrics derive from `hisabDoService` and live ledger transactions.
-- **Profit Calculation:** Strictly follows existing application business logic:
-  $$\text{Net Profit} = \text{Total Income} - \text{Total Expense}$$
-- **Negative Balance Handling:** When expenses exceed income, the Profit card dynamically transforms to display an operating deficit (`-Rs. ...`), switches the badge from `Net Positive` (`variant="green"`) to `Deficit` (`variant="red"`), and adjusts the visual trend icon to `TrendingDown`.
-- **RTL & Logical Styling:** Built strictly using semantic tokens (`bg-primary`, `text-success`, `text-danger`, `bg-surface`, `rounded-card`, `shadow-card`) and CSS logical properties (`ps-*`, `pe-*`, `ms-*`, `me-*`, `text-start`). No arbitrary hex colors or hardcoded physical directions were introduced.
-
----
-
-## 4. Loading, Empty, and Error States
-
-1. **Loading State:**
-   - Displays 5 responsive skeleton cards powered by `<LoadingState variant="skeleton" />`.
-   - Prevents flashing misleading zero values while merchant data is being loaded.
-2. **Empty State:**
-   - Detects when transactions and customer lists are empty (`isDataEmpty`).
-   - Renders an informative `<EmptyState />` banner encouraging merchants to record their first sale or add customer khata.
-3. **Error State:**
-   - If data retrieval fails, renders `<ErrorState />` with a direct "Retry Loading" action (`onRetry={loadData}`).
-
----
-
-## 5. Verification & Test Evidence
+## Dependency Approval
 
 | Test Scenario | Verification Method | Result | Evidence File |
 | :--- | :--- | :--- | :--- |
@@ -68,6 +7,99 @@ All components merged into `feature/design-system` were inspected and integrated
 | **Dark Mode Theme** | Chrome Headless CDP (1280x950) | **Passed** | `screenshots/dashboard-dark.png` |
 | **360px Mobile Viewport** | CDP Mobile Emulation (360x900) | **Passed** (`hasOverflow: false`) | `screenshots/dashboard-mobile-360px.png` |
 | **RTL Layout (Urdu)** | `dir="rtl"`, `lang="ur"` | **Passed** | `screenshots/dashboard-rtl.png` |
+
+---
+
+## Danish — Mobile vs Web Comparison (Day 5)
+
+### Expenses
+*Note: Mobile app uses "Add Payable" form for expenses instead of a dedicated Expenses page.*
+
+| Feature | Mobile | Web | Priority |
+|---------|--------|-----|----------|
+| Dedicated Expenses List Page | ❌ | ✅ | P1 |
+| Add Expense Form (Payable) | ✅ | ✅ | - |
+| Category Dropdown | ✅ | ✅ | - |
+| Red/Green Color Indicator | ✅ | ❌ | P2 |
+
+### Reports & Analytics
+
+| Feature | Mobile | Web | Priority |
+|---------|--------|-----|----------|
+| Interactive Charts | ✅ | ✅ | - |
+| Date Range Filter (Pills vs Dropdown) | ✅ (Pills) | ✅ (Dropdown) | - |
+| Data Syncing (Mobile shows PKR 0) | ❌ | ✅ | P0 (High) |
+| Export to PDF/CSV | ❌ | ✅ | P1 |
+
+### Retail Calculator
+
+| Feature | Mobile | Web | Priority |
+|---------|--------|-----|----------|
+| Multi-Tool Menu (Basic, %, Discount) | ✅ | ❌ | P1 |
+| Single Percentage Tool | ❌ | ✅ | P2 |
+| Bottom Navigation Bar | ✅ | ❌ | P1 |
+- Checked `package.json` before implementing the calendar.
+- No suitable external date library was installed.
+- Implemented `DatePickerPopover.tsx` without adding dependencies.
+- Reused existing Lucide icons and standard React/DOM APIs.
+- No package installation or dependency changes were required.
+
+---
+
+## Danish — Mobile vs Web Comparison (Day 4)
+
+### Dashboard
+
+| Feature | Mobile | Web | Priority |
+|---------|--------|-----|----------|
+| Bottom Navigation Bar | ✅ | ❌ | P1 |
+| Pull-to-refresh | ✅ | ❌ | P1 |
+| Blue Theme (Light default) | ✅ | ❌ (Dark/Light toggle) | P2 |
+
+### Customers
+
+| Feature | Mobile | Web | Priority |
+|---------|--------|-----|----------|
+| Voice Search (Microphone icon) | ✅ | ❌ | P1 |
+| Filter Pills (All, To Receive, To Pay) | ✅ | ❌ | P1 |
+| Floating "Add Customer" button | ✅ | ❌ | P2 |
+| Bottom Navigation Bar | ✅ | ❌ | P1 |
+
+### Transactions
+
+| Feature | Mobile | Web | Priority |
+|---------|--------|-----|----------|
+| Bottom Navigation Bar | ✅ | ❌ | P1 |
+| Dedicated FAB for quick add | ✅ | ❌ | P2 |
+
+**Priority key:** P0 = must-have (blocker), P1 = should-have (important), P2 = nice-to-have (future).
+
+---
+
+## Final Git Status
+
+| Item | Status |
+|---|---|
+| Base branch | `feature/design-system` |
+| Working branch | `feature/day5-forms-followup` |
+| Step 1 commit | `eb4d956` |
+| Remaining changes commit | `d596777` |
+| Changes pushed | Yes |
+| Working tree | Clean |
+| PR target | `feature/design-system` |
+
+---
+
+## Final Conclusion
+
+The Day 5 shared Income and Expense transaction form follow-up has been implemented and pushed to `feature/day5-forms-followup`.
+
+Both forms now support optional customer preselection and lifecycle callbacks, semantic design tokens, a themed calendar popover, `dd-mm-yyyy` date formatting, calendar validation, date restrictions, confirmation warnings, and service-level category and amount validation.
+
+The implementation uses existing dependencies without adding new packages. All seven automated Day 5 tests passed, and the TypeScript check completed without errors.
+
+The only outstanding verification issue is the unrelated pre-existing missing authentication validation module affecting the full production build. Lint status has not been independently confirmed.
+
 
 ---
 
