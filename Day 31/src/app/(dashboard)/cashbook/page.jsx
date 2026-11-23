@@ -23,6 +23,7 @@ export default function CashbookPage() {
   const [description, setDescription] = useState('');
   const [editModal, setEditModal] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   const totalIn = entries.filter(e => e.type === 'in').reduce((s, e) => s + e.amount, 0);
   const totalOut = entries.filter(e => e.type === 'out').reduce((s, e) => s + e.amount, 0);
@@ -31,7 +32,11 @@ export default function CashbookPage() {
   const handleAddEntry = (e) => {
     e.preventDefault();
     const amt = parseFloat(amount);
-    if (!amt || amt <= 0) return;
+
+    if (!amt || amt <= 0) {
+      setErrorMsg('Error: Amount must be greater than 0.');
+      return;
+    }
 
     const newBalance = type === 'in' ? (entries.length > 0 ? entries[entries.length - 1].balanceAfter + amt : amt) : (entries.length > 0 ? entries[entries.length - 1].balanceAfter - amt : -amt);
 
@@ -51,6 +56,7 @@ export default function CashbookPage() {
     setSuccessMsg(`Cash ${type === 'in' ? 'In' : 'Out'} of Rs. ${amt.toLocaleString()} recorded.`);
   };
 
+
   const handleDelete = (id) => {
     setEntries(entries.filter(e => e.id !== id));
     setSuccessMsg('Cashbook entry deleted.');
@@ -65,6 +71,13 @@ export default function CashbookPage() {
           <p style={{ color: '#94a3b8', fontSize: '0.92rem' }}>Track cash flow, daily receipts, shop expenses, and closing balance.</p>
         </div>
       </div>
+      {errorMsg && (
+        <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', color: '#f87171', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>⚠️ {errorMsg}</div>
+          <button type="button" onClick={() => setErrorMsg('')} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '1.1rem' }}>×</button>
+        </div>
+      )}
+
 
       <SuccessBanner message={successMsg} onDismiss={() => setSuccessMsg('')} />
 

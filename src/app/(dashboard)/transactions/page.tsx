@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
+import { AddIncomeForm } from "@/components/transactions/AddIncomeForm";
+import { AddExpenseForm } from "@/components/transactions/AddExpenseForm";
 import {
   hisabDoService,
   Customer,
@@ -62,15 +64,6 @@ export default function TransactionsPage() {
   // New Transaction Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<"income" | "expense">("income");
-  const [formData, setFormData] = useState({
-    amount: "",
-    customerId: "",
-    description: "",
-    category: "General",
-    paymentMethod: "cash",
-    date: new Date().toISOString().split("T")[0],
-  });
-  const [submitting, setSubmitting] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -154,48 +147,6 @@ export default function TransactionsPage() {
       }
     }
   }, [loadData]);
-
-  // Handle Create Transaction
-  const handleSaveTransaction = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.amount) return;
-    setSubmitting(true);
-    const userId = user?.id || "guest";
-    try {
-      if (modalType === "income") {
-        await hisabDoService.addIncome(userId, {
-          amount: Number(formData.amount),
-          customer_id: formData.customerId || null,
-          description: formData.description,
-          category_id: formData.category,
-          payment_method: formData.paymentMethod,
-          income_date: formData.date,
-        });
-      } else {
-        await hisabDoService.addExpense(userId, {
-          amount: Number(formData.amount),
-          customer_id: formData.customerId || null,
-          description: formData.description,
-          category_id: formData.category,
-          payment_method: formData.paymentMethod,
-          expense_date: formData.date,
-        });
-      }
-
-      setIsModalOpen(false);
-      setFormData({
-        amount: "",
-        customerId: "",
-        description: "",
-        category: "General",
-        paymentMethod: "cash",
-        date: new Date().toISOString().split("T")[0],
-      });
-      await loadData();
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   // Handle Delete
   const handleDelete = async (tx: UnifiedTransaction) => {
@@ -600,114 +551,20 @@ export default function TransactionsPage() {
         )}
       </div>
 
-      {/* ================= ADD TRANSACTION MODAL ================= */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className={`w-full max-w-md rounded-2xl border p-6 space-y-4 shadow-2xl ${
-            theme === "dark" ? "bg-[#1E1E1E] border-[#303030]" : "bg-white border-slate-200"
-          }`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold">
-                  {modalType === "income" ? "+ Add Income Entry" : "+ Add Expense Entry"}
-                </h3>
-                <p className="text-xs text-slate-400">Record a new accounting transaction</p>
-              </div>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {/* ================= REUSABLE TRANSACTION FORMS ================= */}
+      <AddIncomeForm
+        isOpen={isModalOpen && modalType === "income"}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={loadData}
+        customers={customers}
+      />
 
-            <form onSubmit={handleSaveTransaction} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold mb-1">Amount ({currencySymbol}) *</label>
-                <input
-                  type="number"
-                  required
-                  placeholder="0.00"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  className={`w-full px-3 py-2 text-lg font-bold rounded-xl border bg-transparent focus:outline-none focus:ring-1 ${
-                    modalType === "income" ? "focus:ring-emerald-500" : "focus:ring-rose-500"
-                  }`}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold mb-1">Associated Customer / Party</label>
-                <select
-                  value={formData.customerId}
-                  onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
-                  className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none ${
-                    theme === "dark" ? "bg-[#252525] border-slate-700" : "bg-white border-slate-200"
-                  }`}
-                >
-                  <option value="">Direct / Walk-in (No Party)</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.phone})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold mb-1">Category</label>
-                <input
-                  type="text"
-                  placeholder={modalType === "income" ? "e.g. Sales, Service Fee" : "e.g. Rent, Utilities"}
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border bg-transparent focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold mb-1">Description / Notes</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Sold accessories, paid bill"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border bg-transparent focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold mb-1">Date</label>
-                <input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl text-sm border bg-transparent focus:outline-none"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-2 rounded-xl text-sm font-semibold border hover:bg-slate-800/40"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className={`flex-1 py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2 ${
-                    modalType === "income"
-                      ? "bg-[#00E676] text-black hover:bg-[#00C853]"
-                      : "bg-[#E53935] text-white hover:bg-rose-600"
-                  }`}
-                >
-                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Save Entry
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddExpenseForm
+        isOpen={isModalOpen && modalType === "expense"}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={loadData}
+        customers={customers}
+      />
     </div>
   );
 }
