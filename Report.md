@@ -8,6 +8,36 @@
 | **360px Mobile Viewport** | CDP Mobile Emulation (360x900) | **Passed** (`hasOverflow: false`) | `screenshots/dashboard-mobile-360px.png` |
 | **RTL Layout (Urdu)** | `dir="rtl"`, `lang="ur"` | **Passed** | `screenshots/dashboard-rtl.png` |
 
+---
+
+## Danish — Mobile vs Web Comparison (Day 5)
+
+### Expenses
+*Note: Mobile app uses "Add Payable" form for expenses instead of a dedicated Expenses page.*
+
+| Feature | Mobile | Web | Priority |
+|---------|--------|-----|----------|
+| Dedicated Expenses List Page | ❌ | ✅ | P1 |
+| Add Expense Form (Payable) | ✅ | ✅ | - |
+| Category Dropdown | ✅ | ✅ | - |
+| Red/Green Color Indicator | ✅ | ❌ | P2 |
+
+### Reports & Analytics
+
+| Feature | Mobile | Web | Priority |
+|---------|--------|-----|----------|
+| Interactive Charts | ✅ | ✅ | - |
+| Date Range Filter (Pills vs Dropdown) | ✅ (Pills) | ✅ (Dropdown) | - |
+| Data Syncing (Mobile shows PKR 0) | ❌ | ✅ | P0 (High) |
+| Export to PDF/CSV | ❌ | ✅ | P1 |
+
+### Retail Calculator
+
+| Feature | Mobile | Web | Priority |
+|---------|--------|-----|----------|
+| Multi-Tool Menu (Basic, %, Discount) | ✅ | ❌ | P1 |
+| Single Percentage Tool | ❌ | ✅ | P2 |
+| Bottom Navigation Bar | ✅ | ❌ | P1 |
 - Checked `package.json` before implementing the calendar.
 - No suitable external date library was installed.
 - Implemented `DatePickerPopover.tsx` without adding dependencies.
@@ -69,3 +99,35 @@ Both forms now support optional customer preselection and lifecycle callbacks, s
 The implementation uses existing dependencies without adding new packages. All seven automated Day 5 tests passed, and the TypeScript check completed without errors.
 
 The only outstanding verification issue is the unrelated pre-existing missing authentication validation module affecting the full production build. Lint status has not been independently confirmed.
+
+
+---
+
+## Danish — Mobile vs Web Comparison (Day 5)
+
+### Expenses
+*Note: Mobile app uses "Add Payable" form for expenses instead of a dedicated Expenses page.*
+
+| Feature | Mobile | Web | Priority |
+|---------|--------|-----|----------|
+| Dedicated Expenses List Page | ❌ | ✅ | P1 |
+| Add Expense Form (Payable) | ✅ | ✅ | - |
+| Category Dropdown | ✅ | ✅ | - |
+| Red/Green Color Indicator | ✅ | ❌ | P2 |
+
+### Reports & Analytics
+
+| Feature | Mobile | Web | Priority |
+|---------|--------|-----|----------|
+| Interactive Charts | ✅ | ✅ | - |
+| Date Range Filter (Pills vs Dropdown) | ✅ (Pills) | ✅ (Dropdown) | - |
+| Data Syncing (Mobile shows PKR 0) | ❌ | ✅ | P0 (High) |
+| Export to PDF/CSV | ❌ | ✅ | P1 |
+
+### Retail Calculator
+
+| Feature | Mobile | Web | Priority |
+|---------|--------|-----|----------|
+| Multi-Tool Menu (Basic, %, Discount) | ✅ | ❌ | P1 |
+| Single Percentage Tool | ❌ | ✅ | P2 |
+| Bottom Navigation Bar | ✅ | ❌ | P1 |
