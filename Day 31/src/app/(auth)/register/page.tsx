@@ -20,9 +20,6 @@ import {
   ArrowRight,
   UserPlus,
 } from "lucide-react";
-import { getFriendlyErrorMessage } from '@/utils/errorHelper';
-
-
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -57,13 +54,13 @@ export default function RegisterPage() {
       const result = await registerUser(data);
 
       if (!result.success) {
-        setServerError(getFriendlyErrorMessage(result.message || "Registration failed."));
+        setServerError(result.message || "Registration failed. Please try again.");
         return;
       }
 
       router.replace("/dashboard");
     } catch (error) {
-      setServerError(getFriendlyErrorMessage(error));
+      setServerError("Unable to connect to the authentication server.");
     } finally {
       setLoading(false);
     }

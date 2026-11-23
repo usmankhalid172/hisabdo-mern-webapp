@@ -18,8 +18,6 @@ import {
   ShieldCheck,
   Zap,
 } from "lucide-react";
-import { getFriendlyErrorMessage } from '@/utils/errorHelper';
-
 
 function LoginForm() {
   const router = useRouter();
@@ -53,13 +51,13 @@ function LoginForm() {
       const result = await login(data.email, data.password);
 
       if (!result.success) {
-        setAuthError(getFriendlyErrorMessage(result.message || "Invalid credentials"));
+        setAuthError(result.message || "Invalid credentials. Please try again.");
         return;
       }
 
       router.replace(redirectUrl);
     } catch (err) {
-      setAuthError(getFriendlyErrorMessage(err));
+      setAuthError("Unable to connect to the authentication server.");
     } finally {
       setIsSubmitting(false);
     }
@@ -76,15 +74,14 @@ function LoginForm() {
       if (result.success) {
         router.replace(redirectUrl);
       } else {
-        setAuthError(getFriendlyErrorMessage(result.message || "Demo login failed."));
+        setAuthError(result.message || "Demo login failed.");
       }
-    } catch (err) {
-      setAuthError(getFriendlyErrorMessage(err));
+    } catch {
+      setAuthError("Failed to authenticate demo account.");
     } finally {
       setIsDemoLoggingIn(false);
     }
   };
-
 
   return (
     <div className="w-full max-w-md">
