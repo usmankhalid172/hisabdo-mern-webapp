@@ -111,21 +111,6 @@ export default function DashboardLayout({
     { name: t("settings"), href: "/settings", icon: Settings },
   ];
 
-  const configuredBusinessName = businessProfile.businessName.trim();
-  const userShopName = user?.shopName?.trim();
-  const defaultBusinessNames = ["HisabDo Store", "Merchant Store", "HisabDo Enterprise"];
-  const generatedDefaultShopName = user?.name ? `${user.name}'s Khata Store` : "";
-  const hasUserShopName =
-    userShopName &&
-    !defaultBusinessNames.includes(userShopName) &&
-    userShopName !== generatedDefaultShopName;
-  const hasConfiguredBusinessName =
-    configuredBusinessName && !defaultBusinessNames.includes(configuredBusinessName);
-  const displayAccountName =
-    (hasUserShopName ? userShopName : "") ||
-    (hasConfiguredBusinessName ? configuredBusinessName : "") ||
-    "Your Business";
-
   const languages: { code: LanguageCode; label: string }[] = [
     { code: "en", label: "English" },
     { code: "ur", label: "اردو (Urdu)" },
@@ -170,7 +155,7 @@ export default function DashboardLayout({
           <div>
             <span className="font-bold text-base tracking-tight block">HisabDo</span>
             <span className="text-[10px] text-emerald-500 font-semibold block leading-none">
-              {displayAccountName}
+              {businessProfile.businessName || "Web Portal"}
             </span>
           </div>
         </div>
@@ -207,8 +192,8 @@ export default function DashboardLayout({
       {/* Sidebar */}
       <aside
         className={`${
-          mobileMenuOpen ? "fixed inset-x-0 top-14 bottom-16 overflow-y-auto overscroll-contain" : "hidden"
-        } md:flex md:static md:inset-auto md:overflow-visible flex-col justify-between w-full md:w-64 shrink-0 border-r md:sticky md:top-0 md:h-screen z-40 transition-colors duration-200 ${
+          mobileMenuOpen ? "block" : "hidden"
+        } md:flex flex-col justify-between w-full md:w-64 shrink-0 border-r md:sticky md:top-0 md:h-screen z-40 transition-colors duration-200 ${
           theme === "dark" ? "bg-[#181818] border-[#2A2A2A]" : "bg-white border-slate-200 shadow-sm"
         }`}
       >
@@ -222,7 +207,7 @@ export default function DashboardLayout({
             <div className="overflow-hidden">
               <span className="font-extrabold text-lg tracking-tight block">HisabDo</span>
               <span className="text-[11px] text-emerald-500 font-semibold truncate block">
-                {displayAccountName}
+                {businessProfile.businessName || "Business Khata"}
               </span>
             </div>
           </div>
@@ -331,7 +316,10 @@ export default function DashboardLayout({
           <div className="flex items-center gap-3">
             <Store className="w-5 h-5 text-indigo-400" />
             <div>
-              <h2 className="text-sm font-bold tracking-tight">{displayAccountName}</h2>
+              <h2 className="text-sm font-bold tracking-tight">{businessProfile.businessName || "HisabDo Web App"}</h2>
+              <p className="text-[11px] text-slate-400">
+                {businessProfile.address || "Digital Cloud & Local Ledger"}
+              </p>
             </div>
             {isGuest && (
               <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2 py-0.5 rounded-full ml-2">
@@ -368,23 +356,13 @@ export default function DashboardLayout({
                 + {t("addExpense")}
               </Link>
             ) : pathname.startsWith("/invoices") ? (
-              null
-            ) : pathname.startsWith("/transactions") ? (
-              <button
-                type="button"
-                className="px-3.5 py-1.5 text-xs font-semibold bg-[#00E676] hover:bg-[#00C853] text-[#0B0F17] rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+              <Link
+                href="/invoices"
+                className="px-3.5 py-1.5 text-xs font-semibold bg-[#1A237E] hover:bg-indigo-700 text-white rounded-xl transition-all shadow-sm flex items-center gap-1.5"
               >
-                + Add Transaction
-              </button>
-            ) : pathname.startsWith("/reports") ? (
-              null
-            ) : pathname.startsWith("/calculator") ? (
-              null
-            ) : pathname.startsWith("/subscription") ? (
-              null
-            ) : pathname.startsWith("/settings") ? (
-              null
-            ) : pathname.startsWith("/dashboard") ? null : (
+                + Create Invoice
+              </Link>
+            ) : (
               <Link
                 href="/customers"
                 className="px-3.5 py-1.5 text-xs font-semibold bg-[#00E676] hover:bg-[#00C853] text-[#0B0F17] rounded-xl transition-all shadow-sm flex items-center gap-1.5"
