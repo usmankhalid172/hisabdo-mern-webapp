@@ -1,55 +1,111 @@
 'use client';
 
-import React, { useState } from 'react';
-import { BookOpen, PlusCircle, MinusCircle, Edit, Trash2, Calendar, FileText, Download } from 'lucide-react';
-import { Card, CardHeader, CardBody } from '@/components/ui/Card';
+import React, { useState, useEffect, useCallback } from 'react';
+import { PlusCircle, MinusCircle } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { useSettings } from '@/context/SettingsContext';
+import { hisabDoService } from '@/services/hisabdoService';
+import { AddIncomeForm, AddExpenseForm } from '@/components/transactions';
+import { Card } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
-import Table from '@/components/ui/Table';
 import Badge from '@/components/ui/Badge';
-import Modal from '@/components/ui/Modal';
+import { DataTable } from '@/components/ui/DataTable';
 import { SuccessBanner } from '@/components/ui/StateAlert';
 
 export default function CashbookPage() {
-  const [entries, setEntries] = useState([]);
+  const { user } = useAuth();
+  const { formatMoney } = useSettings();
 
-  const [type, setType] = useState('in');
-  const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('Daily Sales');
-  const [description, setDescription] = useState('');
-  const [editModal, setEditModal] = useState(null);
+  const [entries, setEntries] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [showIncomeForm, setShowIncomeForm] = useState(false);
+  const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
   const totalIn = entries.filter(e => e.type === 'in').reduce((s, e) => s + e.amount, 0);
   const totalOut = entries.filter(e => e.type === 'out').reduce((s, e) => s + e.amount, 0);
   const netCash = totalIn - totalOut;
 
-  const handleAddEntry = (e) => {
-    e.preventDefault();
-    const amt = parseFloat(amount);
-    if (!amt || amt <= 0) return;
+  const loadData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError('');
 
-    const newBalance = type === 'in' ? (entries.length > 0 ? entries[entries.length - 1].balanceAfter + amt : amt) : (entries.length > 0 ? entries[entries.length - 1].balanceAfter - amt : -amt);
+      const userId = user?.id || 'guest';
 
-    const newEntry = {
-      id: Date.now(),
-      type,
-      amount: amt,
-      category,
-      description: description.trim() || (type === 'in' ? 'Cash In' : 'Cash Out'),
-      date: new Date().toISOString().split('T')[0],
-      balanceAfter: newBalance
-    };
+      const [incomes, expenses] = await Promise.all([
+        hisabDoService.getIncomes(userId),
+        hisabDoService.getExpenses(userId),
+      ]);
 
-    setEntries([...entries, newEntry]);
-    setAmount('');
-    setDescription('');
-    setSuccessMsg(`Cash ${type === 'in' ? 'In' : 'Out'} of Rs. ${amt.toLocaleString()} recorded.`);
+      const incomeEntries = incomes.map((item) => ({
+        id: item.id,
+        type: 'in',
+        amount: Number(item.amount) || 0,
+        category: item.category_id || 'Income',
+        description: item.description || 'Cash In',
+        date: item.income_date,
+      }));
+
+      const expenseEntries = expenses.map((item) => ({
+        id: item.id,
+        type: 'out',
+        amount: Number(item.amount) || 0,
+        category: item.category_id || 'Expense',
+        description: item.description || 'Cash Out',
+        date: item.expense_date,
+      }));
+
+      const allEntries = [...incomeEntries, ...expenseEntries];
+
+      allEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      setEntries(allEntries);
+    } catch (err) {
+      console.error('Cashbook loading error:', err);
+      setError('Unable to load cashbook records.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleIncomeSuccess = async () => {
+    setShowIncomeForm(false);
+    setSuccessMsg('Income recorded successfully.');
+    await loadData();
   };
 
-  const handleDelete = (id) => {
-    setEntries(entries.filter(e => e.id !== id));
-    setSuccessMsg('Cashbook entry deleted.');
+  const handleExpenseSuccess = async () => {
+    setShowExpenseForm(false);
+    setSuccessMsg('Expense recorded successfully.');
+    await loadData();
+  };
+
+  const handleAddIncome = async (payload) => {
+    await hisabDoService.addIncome(user?.id || 'guest', {
+      amount: payload.amount,
+      customer_id: payload.customerId || null,
+      category_id: payload.category,
+      income_date: payload.date,
+      description: payload.description,
+      payment_method: payload.paymentMethod,
+    });
+  };
+
+  const handleAddExpense = async (payload) => {
+    await hisabDoService.addExpense(user?.id || 'guest', {
+      amount: payload.amount,
+      customer_id: payload.customerId || null,
+      category_id: payload.category,
+      expense_date: payload.date,
+      description: payload.description,
+      payment_method: payload.paymentMethod,
+    });
   };
 
   return (
@@ -60,9 +116,33 @@ export default function CashbookPage() {
           <h1 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'white' }}>Digital Cashbook</h1>
           <p style={{ color: '#94a3b8', fontSize: '0.92rem' }}>Track cash flow, daily receipts, shop expenses, and closing balance.</p>
         </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="success" onClick={() => setShowIncomeForm(true)}>
+            <PlusCircle size={16} />
+            Cash In
+          </Button>
+
+          <Button variant="danger" onClick={() => setShowExpenseForm(true)}>
+            <MinusCircle size={16} />
+            Cash Out
+          </Button>
+        </div>
       </div>
 
       <SuccessBanner message={successMsg} onDismiss={() => setSuccessMsg('')} />
+      <AddIncomeForm
+        isOpen={showIncomeForm}
+        onClose={() => setShowIncomeForm(false)}
+        onSubmitCustom={handleAddIncome}
+        onSuccess={handleIncomeSuccess}
+      />
+
+      <AddExpenseForm
+        isOpen={showExpenseForm}
+        onClose={() => setShowExpenseForm(false)}
+        onSubmitCustom={handleAddExpense}
+        onSuccess={handleExpenseSuccess}
+      />
 
       {/* METRIC ROW */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
@@ -86,68 +166,71 @@ export default function CashbookPage() {
         </Card>
       </div>
 
-      {/* FORM AND TABLE */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-        <Card>
-          <CardHeader title="Record Cash Transaction" subtitle="Enter daily cash income or expenses" icon={BookOpen} />
-          <CardBody>
-            <form onSubmit={handleAddEntry} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', alignItems: 'end' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.35rem', fontWeight: 600 }}>Entry Type</label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="button" onClick={() => setType('in')} style={{ flex: 1, padding: '0.65rem', borderRadius: '8px', border: 'none', background: type === 'in' ? '#10b981' : 'rgba(255,255,255,0.08)', color: 'white', fontWeight: 700, cursor: 'pointer' }}>🟢 Cash In (+)</button>
-                  <button type="button" onClick={() => setType('out')} style={{ flex: 1, padding: '0.65rem', borderRadius: '8px', border: 'none', background: type === 'out' ? '#ef4444' : 'rgba(255,255,255,0.08)', color: 'white', fontWeight: 700, cursor: 'pointer' }}>🔴 Cash Out (-)</button>
-                </div>
-              </div>
+            {/* CASH TRANSACTIONS REGISTER */}
+      <Card>
+        <div className="p-4">
+          <h2 className="text-lg font-semibold text-foreground">
+            Cash Transactions Register
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            History of recorded income and expenses
+          </p>
+        </div>
 
-              <Input label="Amount (PKR)" type="number" placeholder="e.g. 5000" value={amount} onChange={(e) => setAmount(e.target.value)} required />
-              <Input label="Category" placeholder="e.g. Sale, Tea, Salary" value={category} onChange={(e) => setCategory(e.target.value)} />
-              <Input label="Remarks" placeholder="e.g. Cash from customer" value={description} onChange={(e) => setDescription(e.target.value)} />
-
-              <div style={{ marginBottom: '1rem' }}>
-                <Button type="submit" variant={type === 'in' ? 'success' : 'danger'} style={{ width: '100%' }}>
-                  Save Entry
-                </Button>
-              </div>
-            </form>
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardHeader title="Cash Transactions Register" subtitle="Filterable ledger history" icon={Calendar} />
-          <CardBody>
-            <Table
-              columns={[
-                { header: 'Date' },
-                { header: 'Type' },
-                { header: 'Category' },
-                { header: 'Remarks' },
-                { header: 'Amount (PKR)', align: 'right' },
-                { header: 'Actions', align: 'center' }
-              ]}
-              data={entries}
-              renderRow={(e) => (
-                <>
-                  <td style={{ padding: '0.75rem 1rem', color: '#94a3b8' }}>{e.date}</td>
-                  <td style={{ padding: '0.75rem 1rem' }}>
-                    <Badge variant={e.type === 'in' ? 'green' : 'red'}>{e.type === 'in' ? '🟢 Cash In' : '🔴 Cash Out'}</Badge>
-                  </td>
-                  <td style={{ padding: '0.75rem 1rem', color: 'white', fontWeight: 600 }}>{e.category}</td>
-                  <td style={{ padding: '0.75rem 1rem', color: '#94a3b8' }}>{e.description}</td>
-                  <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 800, color: e.type === 'in' ? '#34d399' : '#f87171' }}>
-                    {e.type === 'in' ? '+' : '-'} Rs. {e.amount.toLocaleString()}
-                  </td>
-                  <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
-                    <button onClick={() => handleDelete(e.id)} style={{ background: 'rgba(239, 68, 68, 0.15)', border: 'none', color: '#f87171', padding: '0.35rem 0.5rem', borderRadius: '6px', cursor: 'pointer' }}>
-                      <Trash2 size={14} />
-                    </button>
-                  </td>
-                </>
-              )}
-            />
-          </CardBody>
-        </Card>
-      </div>
+        {isLoading ? (
+          <div className="p-8 text-center text-muted-foreground">
+            Loading cashbook records...
+          </div>
+        ) : error ? (
+          <div className="p-8 text-center text-danger">
+            {error}
+            <Button variant="secondary" onClick={loadData}>
+              Retry
+            </Button>
+          </div>
+        ) : (
+          <DataTable
+            columns={[
+              {
+                key: 'date',
+                header: 'Date',
+                sortable: true,
+              },
+              {
+                key: 'type',
+                header: 'Type',
+                render: (entry) => (
+                  <Badge variant={entry.type === 'in' ? 'green' : 'red'}>
+                    {entry.type === 'in' ? 'Cash In' : 'Cash Out'}
+                  </Badge>
+                ),
+              },
+              {
+                key: 'category',
+                header: 'Category',
+              },
+              {
+                key: 'description',
+                header: 'Remarks',
+              },
+              {
+                key: 'amount',
+                header: 'Amount (PKR)',
+                align: 'right',
+                render: (entry) => (
+                  <span className={entry.type === 'in' ? 'text-success' : 'text-danger'}>
+                    {entry.type === 'in' ? '+' : '-'} {formatMoney(entry.amount)}
+                  </span>
+                ),
+              },
+            ]}
+            data={entries}
+            rowKey={(entry) => `${entry.type}-${entry.id}`}
+            emptyTitle="No cash transactions yet"
+            emptyMessage="Your income and expense records will appear here."
+          />
+        )}
+      </Card>
     </div>
   );
 }
