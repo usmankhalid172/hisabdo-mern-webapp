@@ -11,34 +11,15 @@ import {
   Users,
   Plus,
   Minus,
-  ArrowRightLeft,
-  Receipt,
   Calendar,
-  Wallet,
-  Clock,
-  CheckCircle2,
-  X,
-  Loader2,
-  ArrowRight,
-  BarChart3,
-  Calculator,
+  CreditCard,
   PlusCircle,
   MinusCircle,
   Percent,
-  ListOrdered,
-  ChevronRight,
-  DollarSign,
   MessageCircle,
-  FileText,
-  Sparkles,
-  Phone,
-  Activity,
-  CreditCard,
-  Building,
-  ArrowUp,
-  ArrowDown,
-  AlertCircle,
-  RefreshCw,
+  ArrowRight,
+  Calculator,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -47,97 +28,157 @@ import { PageHeading } from "@/components/ui/design-system/PageHeading";
 import { LoadingState } from "@/components/ui/design-system/LoadingState";
 import { EmptyState } from "@/components/ui/design-system/EmptyState";
 import { ErrorState } from "@/components/ui/design-system/ErrorState";
+import { AddTransactionDialog } from "@/components/transactions/AddTransactionDialog";
+import { IncomeExpenseChart, type ChartDataPoint } from "@/components/dashboard/IncomeExpenseChart";
+import { RecentActivity, type RecentActivityTransaction } from "@/components/dashboard/RecentActivity";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
-import { AddIncomeForm } from "@/components/transactions/AddIncomeForm";
-import { AddExpenseForm } from "@/components/transactions/AddExpenseForm";
 import {
   hisabDoService,
   Customer,
   Income,
   Expense,
-  LedgerTransaction,
 } from "@/services/hisabdoService";
-
-// Standard categories matching HisabDo Mobile App
-const INCOME_CATEGORIES = ["Sales", "Salary", "Gift", "Other"];
-const EXPENSE_CATEGORIES = ["Rent", "Food", "Transport", "Bills", "Shopping", "Other"];
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const { formatMoney, t, currencySymbol, theme, businessProfile } = useSettings();
+  const { formatMoney, currencySymbol, businessProfile } = useSettings();
 
-  // Core Data States
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [incomes, setIncomes] = useState<Income[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [ledgerTransactions, setLedgerTransactions] = useState<LedgerTransaction[]>([]);
-  const [customerBalances, setCustomerBalances] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState({
+    totalReceivable: 0,
+    totalPayable: 0,
+    netBalance: 0,
+    monthlyIncome: 0,
+    monthlyExpenses: 0,
+    cashFlowProfit: 0,
+    totalCustomers: 0,
+    totalTransactions: 0,
+  });
 
-  // Active Modals & Tabs
-  const [activeModal, setActiveModal] = useState<"income" | "expense" | "customer" | "calculator" | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [txFilter, setTxFilter] = useState<"all" | "income" | "expense">("all");
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerBalances, setCustomerBalances] = useState<Record<string, number>>({});
+  const [incomes, setIncomes] = useState<Income[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<RecentActivityTransaction[]>([]);
 
-  // Form State: Add Customer / Khata Modal
+  // Modals state: Add Customer & Calculator modals
+  const [activeModal, setActiveModal] = useState<"customer" | "calculator" | null>(null);
+
+  // Form states
   const [formCustomer, setFormCustomer] = useState({
     name: "",
     phone: "",
     opening_balance: 0,
+    notes: "",
     address: "",
   });
+  const [submitting, setSubmitting] = useState(false);
 
-  // Calculator State
-  const [calcTab, setCalcTab] = useState<"percentage" | "standard">("percentage");
-  const [pctAmount, setPctAmount] = useState<string>("");
-  const [pctPercent, setPctPercent] = useState<string>("");
-  const [calcDisplay, setCalcDisplay] = useState<string>("0");
-  const [calcEquation, setCalcEquation] = useState<string>("");
+  // Calculator Modal States
+  const [calcTab, setCalcTab] = useState<"standard" | "percentage">("percentage");
+  const [calcDisplay, setCalcDisplay] = useState("0");
+  const [calcEquation, setCalcEquation] = useState("");
+  // Percentage Calculator States
+  const [pctAmount, setPctAmount] = useState("");
+  const [pctPercent, setPctPercent] = useState("");
 
-  // Load all core ledger data from hisabDoService
+  // Add Transaction Dialog States (Danish's AddTransactionDialog)
+  const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
+  const [transactionDialogType, setTransactionDialogType] = useState<"income" | "expense">("income");
+
+  const handleAddIncome = () => {
+    setTransactionDialogType("income");
+    setIsTransactionDialogOpen(true);
+  };
+
+  const handleAddExpense = () => {
+    setTransactionDialogType("expense");
+    setIsTransactionDialogOpen(true);
+  };
+
+  const handleTransactionSuccess = async () => {
+    await loadData();
+  };
+
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
       setLoadError(null);
       const userId = user?.id || "guest";
-
-      const [cList, iList, eList, ledger] = await Promise.all([
+      const [m, custs, incs, exps, pmts] = await Promise.all([
+        hisabDoService.getDashboardMetrics(userId),
         hisabDoService.getCustomers(userId),
         hisabDoService.getIncomes(userId),
         hisabDoService.getExpenses(userId),
         hisabDoService.getLedgerTransactions(userId).catch(() => []),
       ]);
 
-      setCustomers(cList || []);
-      setIncomes(iList || []);
-      setExpenses(eList || []);
-      setLedgerTransactions(ledger || []);
+      setMetrics(m);
+      setCustomers(custs);
+      setIncomes(incs);
+      setExpenses(exps);
 
-      // Calculate customer khata balances directly from ledger
+      // Compute running balances for top customer cards
       const balances: Record<string, number> = {};
-      (cList || []).forEach((c) => {
-        balances[c.id] = Number(c.opening_balance || 0);
-      });
-
-      (ledger || []).forEach((tx) => {
-        const cId = tx.customerId || (tx as any).customer_id;
-        if (cId && balances[cId] !== undefined) {
-          const type = tx.type as string;
-          if (type === "payment_received" || type === "credit" || type === "received") {
-            balances[cId] -= Number(tx.amount || 0);
-          } else if (type === "payment_sent" || type === "debit" || type === "paid") {
-            balances[cId] += Number(tx.amount || 0);
-          }
+      for (const c of custs.slice(0, 8)) {
+        try {
+          const { summary } = await hisabDoService.getCustomerLedgerTimeline(userId, c.id);
+          balances[c.id] = summary.netBalance;
+        } catch {
+          balances[c.id] = c.opening_balance || 0;
         }
+      }
+      setCustomerBalances(balances);
+
+      // Build unified recent transactions list for RecentActivity component
+      const combined: RecentActivityTransaction[] = [];
+      incs.forEach((i) => {
+        const c = custs.find((cust) => cust.id === i.customer_id);
+        combined.push({
+          id: i.id,
+          date: i.income_date,
+          type: "income",
+          description: i.description || "Counter Sale",
+          customerName: c?.name || "Counter Customer",
+          amount: Number(i.amount),
+        });
       });
 
-      setCustomerBalances(balances);
+      exps.forEach((e) => {
+        const c = custs.find((cust) => cust.id === e.customer_id);
+        combined.push({
+          id: e.id,
+          date: e.expense_date,
+          type: "expense",
+          description: e.description || "Expense Record",
+          customerName: c?.name || "Business Expense",
+          amount: Number(e.amount),
+        });
+      });
+
+      pmts.forEach((p) => {
+        const c = custs.find((cust) => cust.id === p.customerId);
+        combined.push({
+          id: p.id,
+          date: p.date,
+          type: p.type === "received" ? "payment_received" : "payment_sent",
+          description: p.note || (p.type === "received" ? "Khata Payment Received" : "Khata Payment Sent"),
+          customerName: c?.name || "Khata Party",
+          amount: Number(p.amount),
+        });
+      });
+
+      combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setRecentTransactions(combined);
     } catch (err: any) {
-      console.error("Failed to load dashboard data:", err);
-      setLoadError(err?.message || "Failed to sync merchant ledger. Please click retry.");
+      console.error("Dashboard data load error:", err);
+      setLoadError(
+        err?.message ||
+          "Failed to load dashboard metrics. Please check your network connection and try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -147,172 +188,137 @@ export default function DashboardPage() {
     loadData();
   }, [loadData]);
 
-  // Compute Master Financial Totals
-  const totalIncome = useMemo(() => {
-    return incomes.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  }, [incomes]);
-
-  const totalExpense = useMemo(() => {
-    return expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  }, [expenses]);
-
-  const totalProfit = useMemo(() => {
-    return totalIncome - totalExpense;
-  }, [totalIncome, totalExpense]);
-
-  // Compute Store Metrics & Summary
-  const metrics = useMemo(() => {
-    let totalReceivable = 0;
-    let totalPayable = 0;
-
-    Object.values(customerBalances).forEach((bal) => {
-      if (bal > 0) totalReceivable += bal;
-      if (bal < 0) totalPayable += Math.abs(bal);
-    });
-
-    return {
-      totalReceivable,
-      totalPayable,
-      netKhataWorth: totalReceivable - totalPayable,
-      totalCustomers: customers.length,
-      totalTransactions: incomes.length + expenses.length + ledgerTransactions.length,
-    };
-  }, [customerBalances, customers, incomes, expenses, ledgerTransactions]);
-
-  const isDataEmpty = useMemo(() => {
-    return (
-      !isLoading &&
-      incomes.length === 0 &&
-      expenses.length === 0 &&
-      customers.length === 0 &&
-      ledgerTransactions.length === 0
-    );
-  }, [isLoading, incomes, expenses, customers, ledgerTransactions]);
-
-  // Handle Quick Add Customer Submission
+  // Handle Form Submits
   const handleAddCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formCustomer.name.trim()) return;
     setSubmitting(true);
     try {
-      const userId = user?.id || "guest";
-      await hisabDoService.addCustomer(userId, {
-        name: formCustomer.name.trim(),
-        phone: formCustomer.phone.trim(),
+      await hisabDoService.addCustomer(user?.id || "guest", {
+        name: formCustomer.name,
+        phone: formCustomer.phone,
+        address: formCustomer.address,
         opening_balance: Number(formCustomer.opening_balance || 0),
         currency: "PKR",
-        address: formCustomer.address.trim(),
+        notes: formCustomer.notes,
       });
-      setFormCustomer({ name: "", phone: "", opening_balance: 0, address: "" });
+      setFormCustomer({ name: "", phone: "", opening_balance: 0, notes: "", address: "" });
       setActiveModal(null);
       await loadData();
-    } catch (err) {
-      console.error("Error creating customer:", err);
     } finally {
       setSubmitting(false);
     }
   };
 
   // Calculator Logic
+  const handleCalcButton = (char: string) => {
+    if (char === "C") {
+      setCalcDisplay("0");
+      setCalcEquation("");
+    } else if (char === "=") {
+      try {
+        const sanitized = calcEquation + calcDisplay;
+        const validExpr = sanitized.replace(/[^0-9+\-*/.]/g, "");
+        // eslint-disable-next-line no-eval
+        const result = Function(`'use strict'; return (${validExpr})`)();
+        setCalcDisplay(String(Number(result.toFixed(2))));
+        setCalcEquation("");
+      } catch {
+        setCalcDisplay("Error");
+      }
+    } else if (["+", "-", "*", "/"].includes(char)) {
+      setCalcEquation(calcEquation + calcDisplay + " " + char + " ");
+      setCalcDisplay("0");
+    } else {
+      setCalcDisplay((prev) => (prev === "0" ? char : prev + char));
+    }
+  };
+
+  // Percentage Calculations
   const calculatedPercentage = useMemo(() => {
     const amt = parseFloat(pctAmount);
     const pct = parseFloat(pctPercent);
     if (isNaN(amt) || isNaN(pct)) return null;
-    const percentValue = (amt * pct) / 100;
-    const totalWithAdd = amt + percentValue;
-    const totalWithDiscount = amt - percentValue;
-    return { percentValue, totalWithAdd, totalWithDiscount };
+    const value = (amt * pct) / 100;
+    return {
+      percentValue: value,
+      totalWithAdd: amt + value,
+      totalWithDiscount: amt - value,
+    };
   }, [pctAmount, pctPercent]);
 
-  const handleCalcButton = (val: string) => {
-    if (val === "C") {
-      setCalcDisplay("0");
-      setCalcEquation("");
-      return;
-    }
-    if (val === "=") {
-      try {
-        // Safe evaluation of basic math expressions
-        const sanitized = calcEquation.replace(/[^0-9+\-*/.]/g, "");
-        // eslint-disable-next-line no-eval
-        const result = Function(`'use strict'; return (${sanitized})`)();
-        setCalcDisplay(String(result));
-        setCalcEquation(String(result));
-      } catch {
-        setCalcDisplay("Error");
-      }
-      return;
-    }
-    if (["+", "-", "*", "/"].includes(val)) {
-      setCalcEquation((prev) => prev + " " + val + " ");
-      setCalcDisplay(val);
-      return;
-    }
-    if (calcDisplay === "0" || ["+", "-", "*", "/"].includes(calcDisplay)) {
-      setCalcDisplay(val);
-    } else {
-      setCalcDisplay((prev) => prev + val);
-    }
-    setCalcEquation((prev) => prev + val);
-  };
+  // Overall totals
+  const totalIncome = incomes.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+  const totalExpense = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  const totalProfit = totalIncome - totalExpense;
 
-  // Combined & unified transaction history for live feed
-  const recentTransactions = useMemo(() => {
-    const customerMap = new Map(customers.map((c) => [c.id, c.name]));
+  // Check if initial merchant financial data is empty
+  const isDataEmpty = useMemo(() => {
+    return (
+      incomes.length === 0 &&
+      expenses.length === 0 &&
+      customers.length === 0 &&
+      (metrics.totalReceivable || 0) === 0 &&
+      (metrics.totalPayable || 0) === 0
+    );
+  }, [incomes, expenses, customers, metrics]);
 
-    const incomeRows = incomes.map((inc) => ({
-      id: inc.id || inc.client_uuid || Math.random().toString(),
-      type: "income" as const,
-      amount: Number(inc.amount || 0),
-      date: inc.income_date || inc.created_at || new Date().toISOString(),
-      title: inc.description || "Counter Sale",
-      category: inc.category_id || "Sales",
-      customerId: inc.customer_id,
-      customerName: inc.customer_id ? customerMap.get(inc.customer_id) || "" : "",
-    }));
-
-    const expenseRows = expenses.map((exp) => ({
-      id: exp.id || exp.client_uuid || Math.random().toString(),
-      type: "expense" as const,
-      amount: Number(exp.amount || 0),
-      date: exp.expense_date || exp.created_at || new Date().toISOString(),
-      title: exp.description || "Business Outgoing",
-      category: exp.category_id || "General",
-      customerId: exp.customer_id,
-      customerName: exp.customer_id ? customerMap.get(exp.customer_id) || "" : "",
-    }));
-
-    return [...incomeRows, ...expenseRows]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 10);
-  }, [incomes, expenses, customers]);
-
-  // Top Debtors (Customers with positive balances: owe money to merchant)
+  // Top Debtors (Customers with highest receivable balance)
   const topDebtors = useMemo(() => {
     return customers
       .map((c) => ({
         ...c,
-        balance: customerBalances[c.id] || 0,
+        balance: customerBalances[c.id] ?? c.opening_balance ?? 0,
       }))
       .filter((c) => c.balance > 0)
       .sort((a, b) => b.balance - a.balance)
       .slice(0, 5);
   }, [customers, customerBalances]);
 
-  // Filtered transactions for the desktop table
-  const filteredTransactions = useMemo(() => {
-    if (txFilter === "income") {
-      return recentTransactions.filter((t) => (t.type as string) === "income" || (t.type as string) === "payment_received");
+  // Generate chart data for the IncomeExpenseChart component (last 6 months)
+  const chartData = useMemo<ChartDataPoint[]>(() => {
+    const months: { key: string; period: string; income: number; expense: number }[] = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const period = d.toLocaleDateString("en-US", { month: "short" });
+      months.push({ key, period, income: 0, expense: 0 });
     }
-    if (txFilter === "expense") {
-      return recentTransactions.filter((t) => (t.type as string) === "expense" || (t.type as string) === "payment_sent");
-    }
-    return recentTransactions;
-  }, [recentTransactions, txFilter]);
 
-  // Cash flow ratio
-  const cashflowPercentage = totalIncome > 0 ? Math.min(100, Math.round((totalProfit / totalIncome) * 100)) : 0;
-  const expenseRatio = totalIncome > 0 ? Math.min(100, Math.round((totalExpense / totalIncome) * 100)) : 0;
+    incomes.forEach((inc) => {
+      const d = new Date(inc.income_date);
+      if (!isNaN(d.getTime())) {
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        const match = months.find((m) => m.key === key);
+        if (match) {
+          match.income += Number(inc.amount) || 0;
+        }
+      }
+    });
+
+    expenses.forEach((exp) => {
+      const d = new Date(exp.expense_date);
+      if (!isNaN(d.getTime())) {
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        const match = months.find((m) => m.key === key);
+        if (match) {
+          match.expense += Number(exp.amount) || 0;
+        }
+      }
+    });
+
+    const hasData = months.some((m) => m.income > 0 || m.expense > 0);
+    if (!hasData && incomes.length === 0 && expenses.length === 0) {
+      return [];
+    }
+
+    return months.map(({ period, income, expense }) => ({
+      period,
+      income,
+      expense,
+    }));
+  }, [incomes, expenses]);
 
   return (
     <div className="space-y-6 pb-12">
@@ -337,7 +343,7 @@ export default function DashboardPage() {
                 variant="accent"
                 size="sm"
                 icon={Plus}
-                onClick={() => setActiveModal("income")}
+                onClick={handleAddIncome}
               >
                 Record Income
               </Button>
@@ -346,7 +352,7 @@ export default function DashboardPage() {
                 variant="danger"
                 size="sm"
                 icon={Minus}
-                onClick={() => setActiveModal("expense")}
+                onClick={handleAddExpense}
               >
                 Record Expense
               </Button>
@@ -365,7 +371,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* ================= 2. REBUILT 5 SUMMARY CARDS (MERGED DESIGN SYSTEM) ================= */}
+      {/* ================= 2. 5 SUMMARY CARDS (MERGED DESIGN SYSTEM) ================= */}
       {isLoading ? (
         /* Loading Skeleton State: 5 cards preventing misleading zeroes */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4" aria-busy="true" aria-label="Loading summary metrics">
@@ -399,7 +405,7 @@ export default function DashboardPage() {
                       variant="accent"
                       size="sm"
                       icon={Plus}
-                      onClick={() => setActiveModal("income")}
+                      onClick={handleAddIncome}
                     >
                       First Sale
                     </Button>
@@ -589,213 +595,33 @@ export default function DashboardPage() {
 
       {/* ================= 3. SPLIT MAIN WORKSPACE (8 COLS DATA / 4 COLS ACTION & DEBTORS) ================= */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column (8 of 12): Cashflow Trend + Recent Activity Table */}
+        {/* Left Column (8 of 12): Chart + Recent Activity */}
         <div className="lg:col-span-8 space-y-6">
-          {/* Visual Cash Flow Health Breakdown */}
-          <Card className="p-6 rounded-card border border-border bg-surface text-foreground shadow-card space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div>
-                <h3 className="text-sm font-bold tracking-tight text-foreground flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-success" />
-                  Store Cash Flow &amp; Operating Margin
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Revenue retention ratio and operational expenditure balance.
-                </p>
-              </div>
-              <div className="flex items-center gap-2 self-start sm:self-auto">
-                <span className="text-xs font-semibold text-muted-foreground">Margin:</span>
-                <span className="text-xs font-black text-success px-2 py-0.5 rounded-control bg-success/10 border border-success/20">
-                  {totalIncome > 0 ? `${((totalProfit / totalIncome) * 100).toFixed(1)}%` : "0%"}
-                </span>
-              </div>
-            </div>
+          {/* Income vs Expense Chart (Merged Design System Component) */}
+          <IncomeExpenseChart
+            data={chartData}
+            loading={isLoading}
+            error={loadError}
+            onRetry={loadData}
+            title="Income vs Expense"
+            currency={currencySymbol || "PKR"}
+          />
 
-            {/* Visual Progress Bar */}
-            <div className="space-y-1.5">
-              <div className="h-3 w-full rounded-full bg-surface-muted overflow-hidden flex">
-                <div
-                  style={{ width: `${Math.max(5, 100 - expenseRatio)}%` }}
-                  className="h-full bg-success transition-all duration-500"
-                  title={`Net Margin: ${100 - expenseRatio}%`}
-                />
-                <div
-                  style={{ width: `${Math.min(95, expenseRatio)}%` }}
-                  className="h-full bg-danger transition-all duration-500"
-                  title={`Expense Ratio: ${expenseRatio}%`}
-                />
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground px-0.5">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-success" />
-                  Net Profit ({totalIncome > 0 ? Math.max(0, 100 - expenseRatio) : 0}%)
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-danger" />
-                  Operating Costs ({expenseRatio}%)
-                </span>
-              </div>
-            </div>
-
-            {/* Sub-Metrics Cards */}
-            <div className="grid grid-cols-3 gap-3 pt-2 border-t border-border">
-              <div className="p-3 rounded-control bg-surface-muted border border-border text-center">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">Total Sales</span>
-                <span className="text-sm font-bold text-foreground mt-0.5 block truncate">
-                  {formatMoney(totalIncome)}
-                </span>
-              </div>
-              <div className="p-3 rounded-control bg-surface-muted border border-border text-center">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">Total Outgoings</span>
-                <span className="text-sm font-bold text-foreground mt-0.5 block truncate">
-                  {formatMoney(totalExpense)}
-                </span>
-              </div>
-              <div className="p-3 rounded-control bg-surface-muted border border-border text-center">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">Active Parties</span>
-                <span className="text-sm font-bold text-primary mt-0.5 block">
-                  {customers.length} Accounts
-                </span>
-              </div>
-            </div>
-          </Card>
-
-          {/* Desktop-Grade Recent Transactions Table */}
-          <Card className="p-6 rounded-card border border-border bg-surface text-foreground shadow-card space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h3 className="text-base font-bold tracking-tight text-foreground">
-                  Recent Ledger Activity
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Latest commercial sales, expenses, and khata adjustments.
-                </p>
-              </div>
-
-              {/* Filter Tabs */}
-              <div className="flex items-center gap-1 p-1 rounded-control bg-surface-muted border border-border self-start sm:self-auto">
-                <button
-                  onClick={() => setTxFilter("all")}
-                  className={`px-2.5 py-1 rounded-control text-xs font-semibold transition ${
-                    txFilter === "all"
-                      ? "bg-surface text-foreground shadow-card"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  All ({recentTransactions.length})
-                </button>
-                <button
-                  onClick={() => setTxFilter("income")}
-                  className={`px-2.5 py-1 rounded-control text-xs font-semibold transition ${
-                    txFilter === "income"
-                      ? "bg-success text-white shadow-card"
-                      : "text-muted-foreground hover:text-success"
-                  }`}
-                >
-                  Income
-                </button>
-                <button
-                  onClick={() => setTxFilter("expense")}
-                  className={`px-2.5 py-1 rounded-control text-xs font-semibold transition ${
-                    txFilter === "expense"
-                      ? "bg-danger text-white shadow-card"
-                      : "text-muted-foreground hover:text-danger"
-                  }`}
-                >
-                  Expenses
-                </button>
-              </div>
-            </div>
-
-            {/* Table Content */}
-            {filteredTransactions.length === 0 ? (
-              <div className="p-12 text-center text-muted-foreground text-sm">
-                <Receipt className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>No transactions match the selected filter.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto -mx-6 px-6">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-border text-muted-foreground font-semibold uppercase tracking-wider text-[10px]">
-                      <th className="pb-3 pr-4">Date</th>
-                      <th className="pb-3 px-4">Transaction / Description</th>
-                      <th className="pb-3 px-4">Party / Account</th>
-                      <th className="pb-3 px-4">Category</th>
-                      <th className="pb-3 pl-4 text-right">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border font-medium">
-                    {filteredTransactions.map((tx) => {
-                      const isIncome = (tx.type as string) === "income" || (tx.type as string) === "payment_received";
-                      return (
-                        <tr
-                          key={tx.id}
-                          className="hover:bg-surface-muted/60 transition-colors group"
-                        >
-                          <td className="py-3.5 pr-4 text-muted-foreground whitespace-nowrap">
-                            {new Date(tx.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                          </td>
-                          <td className="py-3.5 px-4 font-bold text-foreground max-w-[200px] truncate">
-                            {tx.title}
-                          </td>
-                          <td className="py-3.5 px-4 text-foreground/90 max-w-[160px] truncate">
-                            {tx.customerId ? (
-                              <Link
-                                href={`/customers/${tx.customerId}`}
-                                className="hover:text-primary hover:underline inline-flex items-center gap-1"
-                              >
-                                {tx.customerName}
-                              </Link>
-                            ) : (
-                              tx.customerName && tx.customerName !== "Direct Sale" && tx.customerName !== "Business Expense" ? (
-                                <span>{tx.customerName}</span>
-                              ) : null
-                            )}
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <span className="inline-block px-2 py-0.5 rounded-control text-[10px] font-semibold bg-surface-muted text-muted-foreground border border-border">
-                              {tx.category}
-                            </span>
-                          </td>
-                          <td className="py-3.5 pl-4 text-right whitespace-nowrap">
-                            <span
-                              className={`font-black text-sm ${
-                                isIncome ? "text-success" : "text-danger"
-                              }`}
-                            >
-                              {isIncome ? "+" : "-"}
-                              {formatMoney(tx.amount)}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Footer View All */}
-            <div className="pt-3 border-t border-border flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                Showing {filteredTransactions.length} of {metrics.totalTransactions} total entries
-              </span>
-              <Link
-                href="/transactions"
-                className="text-xs font-bold text-success hover:underline flex items-center gap-1"
-              >
-                <span>Full Ledger Explorer</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          </Card>
+          {/* Recent Activity (Merged Design System Component) */}
+          <RecentActivity
+            transactions={recentTransactions}
+            formatMoney={formatMoney}
+            isLoading={isLoading}
+            error={loadError}
+            onRetry={loadData}
+            limit={8}
+          />
         </div>
 
         {/* Right Column (4 of 12): Fast Action Drawer & Top Khata Debtors */}
         <div className="lg:col-span-4 space-y-6">
-          {/* Rebuilt Fast Actions & Entries Launcher Panel (Merged Card Component) */}
-          <Card className="p-5 rounded-card border border-border bg-surface text-foreground shadow-card space-y-3.5">
+          {/* Fast Actions & Entries Launcher Panel (Merged Card Component) */}
+          <Card className="p-5 rounded-card shadow-card space-y-3.5">
             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Fast Actions &amp; Entries
             </h3>
@@ -803,7 +629,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
-                onClick={() => setActiveModal("income")}
+                onClick={handleAddIncome}
                 className="p-3.5 rounded-control border border-success/20 bg-success/5 hover:bg-success/10 text-start transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success"
               >
                 <div className="w-8 h-8 rounded-control bg-success/15 text-success flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
@@ -815,7 +641,7 @@ export default function DashboardPage() {
 
               <button
                 type="button"
-                onClick={() => setActiveModal("expense")}
+                onClick={handleAddExpense}
                 className="p-3.5 rounded-control border border-danger/20 bg-danger/5 hover:bg-danger/10 text-start transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
               >
                 <div className="w-8 h-8 rounded-control bg-danger/15 text-danger flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
@@ -852,7 +678,7 @@ export default function DashboardPage() {
           </Card>
 
           {/* Top Khata Debtors Panel (Direct WhatsApp Reminders) */}
-          <Card className="p-5 rounded-card border border-border bg-surface text-foreground shadow-card space-y-3.5">
+          <Card className="p-5 rounded-card shadow-card space-y-3.5">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold tracking-tight text-foreground">
@@ -870,11 +696,19 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            {topDebtors.length === 0 ? (
-              <div className="p-6 text-center text-muted-foreground text-xs">
-                <Users className="w-6 h-6 mx-auto mb-1.5 opacity-50" />
-                <p>No outstanding customer balances.</p>
-              </div>
+            {isLoading ? (
+              <LoadingState variant="skeleton" message="Loading khata debtors..." />
+            ) : loadError ? (
+              <ErrorState
+                title="Unable to load debtors"
+                message={loadError}
+                onRetry={loadData}
+              />
+            ) : topDebtors.length === 0 ? (
+              <EmptyState
+                title="No outstanding balances"
+                message="No customers have pending receivables."
+              />
             ) : (
               <div className="divide-y divide-border">
                 {topDebtors.map((debtor) => {
@@ -930,41 +764,31 @@ export default function DashboardPage() {
           </Card>
 
           {/* Quick Accounting Summary Card */}
-          <Card className="p-5 rounded-card border border-border bg-surface text-foreground shadow-card space-y-2">
+          <Card className="p-5 rounded-card shadow-card bg-primary/5 border border-primary/20 space-y-2">
             <span className="text-[11px] font-bold text-primary uppercase tracking-wider block">
               Business Health Summary
             </span>
-            <p className="text-xs text-foreground/80">
-              Total of <strong>{metrics.totalCustomers}</strong> registered customer accounts with <strong>{metrics.totalTransactions}</strong> lifetime ledger transactions.
-            </p>
-            <div className="pt-2 flex items-center gap-3 text-xs text-muted-foreground">
-              <span>Currency: <strong>{currencySymbol} (PKR)</strong></span>
-              <span>&bull;</span>
-              <span>Ledger: <strong>Double-entry Parity</strong></span>
-            </div>
+            {isLoading ? (
+              <LoadingState variant="skeleton" message="Loading summary..." />
+            ) : (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  Total of <strong className="text-foreground">{metrics.totalCustomers}</strong> registered customer accounts with <strong className="text-foreground">{metrics.totalTransactions}</strong> lifetime ledger transactions.
+                </p>
+                <div className="pt-2 flex items-center gap-3 text-xs text-muted-foreground border-t border-border">
+                  <span>Currency: <strong className="text-foreground">{currencySymbol} (PKR)</strong></span>
+                  <span>&bull;</span>
+                  <span>Ledger: <strong className="text-foreground">Double-entry Parity</strong></span>
+                </div>
+              </>
+            )}
           </Card>
         </div>
       </div>
 
-      {/* ================= MODALS (FULLY THEMED) ================= */}
+      {/* ================= MODALS (FULLY THEMED WITH DESIGN SYSTEM TOKENS) ================= */}
 
-      {/* Reusable Add Income Form */}
-      <AddIncomeForm
-        isOpen={activeModal === "income"}
-        onClose={() => setActiveModal(null)}
-        onSuccess={loadData}
-        customers={customers}
-      />
-
-      {/* Reusable Add Expense Form */}
-      <AddExpenseForm
-        isOpen={activeModal === "expense"}
-        onClose={() => setActiveModal(null)}
-        onSuccess={loadData}
-        customers={customers}
-      />
-
-      {/* Modal 3: Add Customer Modal */}
+      {/* Modal 1: Add Customer Modal */}
       {activeModal === "customer" && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-md rounded-card border border-border bg-surface text-foreground p-6 space-y-4 shadow-dialog">
@@ -992,7 +816,7 @@ export default function DashboardPage() {
                   placeholder="e.g. Muhammad Ahmad"
                   value={formCustomer.name}
                   onChange={(e) => setFormCustomer({ ...formCustomer, name: e.target.value })}
-                  className="w-full px-3 py-2 text-sm rounded-control border border-border bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 text-sm rounded-control border border-border bg-surface text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                   autoFocus
                 />
               </div>
@@ -1006,7 +830,7 @@ export default function DashboardPage() {
                   placeholder="03001234567"
                   value={formCustomer.phone}
                   onChange={(e) => setFormCustomer({ ...formCustomer, phone: e.target.value })}
-                  className="w-full px-3 py-2 text-sm rounded-control border border-border bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 text-sm rounded-control border border-border bg-surface text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
 
@@ -1020,7 +844,7 @@ export default function DashboardPage() {
                   placeholder="0.00"
                   value={formCustomer.opening_balance || ""}
                   onChange={(e) => setFormCustomer({ ...formCustomer, opening_balance: Number(e.target.value) })}
-                  className="w-full px-3 py-2 text-sm rounded-control border border-border bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 text-sm rounded-control border border-border bg-surface text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <span className="text-[10px] text-muted-foreground mt-1 block">
                   Positive = Customer owes you (Lene). Negative = You owe customer (Dene).
@@ -1036,7 +860,7 @@ export default function DashboardPage() {
                   placeholder="e.g. Shop # 12, Main Market"
                   value={formCustomer.address}
                   onChange={(e) => setFormCustomer({ ...formCustomer, address: e.target.value })}
-                  className="w-full px-3 py-2 text-sm rounded-control border border-border bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 text-sm rounded-control border border-border bg-surface text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
 
@@ -1044,6 +868,7 @@ export default function DashboardPage() {
                 <Button
                   type="button"
                   variant="secondary"
+                  size="md"
                   onClick={() => setActiveModal(null)}
                   className="flex-1"
                 >
@@ -1052,6 +877,8 @@ export default function DashboardPage() {
                 <Button
                   type="submit"
                   variant="primary"
+                  size="md"
+                  disabled={submitting}
                   loading={submitting}
                   className="flex-1"
                 >
@@ -1063,7 +890,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Modal 4: Retail & Percentage Calculator Modal */}
+      {/* Modal 2: Retail & Percentage Calculator Modal */}
       {activeModal === "calculator" && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-sm rounded-card border border-border bg-surface text-foreground p-5 space-y-4 shadow-dialog">
@@ -1075,7 +902,7 @@ export default function DashboardPage() {
                   onClick={() => setCalcTab("percentage")}
                   className={`px-3 py-1 rounded-control text-xs font-bold transition ${
                     calcTab === "percentage"
-                      ? "bg-primary text-white shadow-card"
+                      ? "bg-primary text-white shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -1086,7 +913,7 @@ export default function DashboardPage() {
                   onClick={() => setCalcTab("standard")}
                   className={`px-3 py-1 rounded-control text-xs font-bold transition ${
                     calcTab === "standard"
-                      ? "bg-primary text-white shadow-card"
+                      ? "bg-primary text-white shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -1114,7 +941,7 @@ export default function DashboardPage() {
                     placeholder="e.g. 5000"
                     value={pctAmount}
                     onChange={(e) => setPctAmount(e.target.value)}
-                    className="w-full px-3 py-2 text-base font-bold rounded-control border border-border bg-surface text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 text-base font-bold rounded-control border border-border bg-surface-muted text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
 
@@ -1128,7 +955,7 @@ export default function DashboardPage() {
                       placeholder="e.g. 15"
                       value={pctPercent}
                       onChange={(e) => setPctPercent(e.target.value)}
-                      className="w-full px-3 py-2 text-base font-bold rounded-control border border-border bg-surface text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full px-3 py-2 text-base font-bold rounded-control border border-border bg-surface-muted text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                     <span className="p-2.5 rounded-control bg-primary/10 text-primary font-bold">%</span>
                   </div>
@@ -1154,9 +981,9 @@ export default function DashboardPage() {
 
                 {/* Calculation Results Card */}
                 {calculatedPercentage ? (
-                  <div className="p-4 rounded-control bg-surface-muted border border-border space-y-2">
+                  <div className="p-4 rounded-control bg-primary/5 border border-primary/20 space-y-2">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-foreground font-medium">{pctPercent}% Value:</span>
+                      <span className="text-primary font-medium">{pctPercent}% Value:</span>
                       <span className="text-base font-black text-foreground">
                         {formatMoney(calculatedPercentage.percentValue)}
                       </span>
@@ -1201,7 +1028,7 @@ export default function DashboardPage() {
             {calcTab === "standard" && (
               <div className="space-y-3">
                 {/* Display */}
-                <div className="p-3 rounded-control bg-surface-muted border border-border text-right">
+                <div className="p-3 rounded-control bg-surface-muted border border-border text-end">
                   <span className="text-xs text-muted-foreground block h-4 truncate">{calcEquation}</span>
                   <span className="text-2xl font-black text-foreground block truncate">{calcDisplay}</span>
                 </div>
@@ -1272,6 +1099,14 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Danish's Add Transaction Dialog (Income & Expense) */}
+      <AddTransactionDialog
+        open={isTransactionDialogOpen}
+        onOpenChange={setIsTransactionDialogOpen}
+        type={transactionDialogType}
+        onSuccess={handleTransactionSuccess}
+      />
     </div>
   );
 }
