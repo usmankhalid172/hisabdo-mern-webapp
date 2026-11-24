@@ -122,37 +122,8 @@ export default function InvoicesPage() {
         if (stored) {
           setInvoices(JSON.parse(stored));
         } else {
-          // Initial sample invoice
-          const sample: StoredInvoice = {
-            id: "inv-sample-1",
-            invoiceNumber: "INV-202609-1001",
-            customerName: custs[0]?.name || "Ahmed Trading Co.",
-            customerPhone: custs[0]?.phone || "0300-1234567",
-            businessName: businessProfile.businessName || "HisabDo Enterprise",
-            date: new Date().toISOString().split("T")[0],
-            dueDate: new Date(Date.now() + 5 * 86400000).toISOString().split("T")[0],
-            status: "pending",
-            items: [
-              {
-                id: "item-s1",
-                name: "Wholesale Grocery Stock",
-                category: "Sales",
-                type: "income",
-                quantity: 10,
-                unitPrice: 1500,
-                amount: 15000,
-                note: "Batch #410",
-              },
-            ],
-            subtotal: 15000,
-            discount: 0,
-            tax: 0,
-            total: 15000,
-            notes: "Goods delivered in good condition.",
-            createdAt: new Date().toISOString(),
-          };
-          setInvoices([sample]);
-          localStorage.setItem(`hisabdo_${userId}_invoices`, JSON.stringify([sample]));
+          // No invoices yet — start with an empty list (no sample data)
+          setInvoices([]);
         }
       } catch {}
     }
@@ -540,8 +511,29 @@ export default function InvoicesPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-500">
-                        No invoices found. Click "New Invoice" to create your first bill.
+                      <td colSpan={7} className="py-16">
+                        <div className="flex flex-col items-center justify-center text-center">
+                          <div className="w-16 h-16 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-4">
+                            <FileText className="w-8 h-8 text-indigo-400" />
+                          </div>
+                          <h3 className="text-lg font-bold text-white mb-1">
+                            {searchTerm ? "No invoices match your search" : "No invoices yet"}
+                          </h3>
+                          <p className="text-slate-400 text-sm mb-6 max-w-md">
+                            {searchTerm
+                              ? "Try a different customer name or invoice number."
+                              : "Create your first invoice and download a branded PDF statement."}
+                          </p>
+                          {!searchTerm && (
+                            <button
+                              onClick={() => setActiveTab("create")}
+                              className="py-2.5 px-5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2"
+                            >
+                              <Plus className="w-4 h-4 stroke-[3]" />
+                              Create First Invoice
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )}
