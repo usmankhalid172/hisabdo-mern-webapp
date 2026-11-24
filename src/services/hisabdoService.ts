@@ -148,6 +148,30 @@ const DEFAULT_INCOMES: Income[] = [];
 const DEFAULT_EXPENSES: Expense[] = [];
 const DEFAULT_LEDGER_TXS: LedgerTransaction[] = [];
 
+export const DEFAULT_INCOME_CATEGORIES: string[] = [
+  "Sales",
+  "Salary",
+  "Gift",
+  "Service Fee",
+  "Commission",
+  "Other",
+];
+
+export const DEFAULT_EXPENSE_CATEGORIES: string[] = [
+  "Rent",
+  "Salaries",
+  "Utilities",
+  "Bills",
+  "Supplies",
+  "Food",
+  "Transport",
+  "Travel",
+  "Shopping",
+  "Tea & Refreshment",
+  "General",
+  "Other",
+];
+
 export class HisabDoService {
   private async resolveCategoryId(userId: string, value: string | null | undefined, type: "receivable" | "payable"): Promise<string | null> {
     if (!value) return null;
@@ -227,7 +251,78 @@ export class HisabDoService {
       localStorage.removeItem("hisabdo_customers");
       localStorage.removeItem("hisabdo_expenses");
       localStorage.removeItem("hisabdo_transactions");
+      localStorage.removeItem(this.getStorageKey(userId, "income_categories"));
+      localStorage.removeItem(this.getStorageKey(userId, "expense_categories"));
     } catch {}
+  }
+
+  // ==================== CATEGORIES ====================
+  async getCategories(userId: string, type: "income" | "expense"): Promise<string[]> {
+    const defaultCategories = type === "income" ? DEFAULT_INCOME_CATEGORIES : DEFAULT_EXPENSE_CATEGORIES;
+    const storageKey = `${type}_categories`;
+    const local = this.getLocal<string[]>(userId, storageKey, defaultCategories);
+
+    if (userId !== "guest" && isRemoteUuid(userId)) {
+      try {
+        const supabase = createClient();
+        const dbType = type === "income" ? "receivable" : "payable";
+        const { data, error } = await supabase
+          .from("categories")
+          .select("name")
+          .eq("user_id", userId)
+          .eq("type", dbType)
+          .is("deleted_at", null)
+          .order("name");
+
+        if (!error && data) {
+          const names = data.map((d: any) => String(d.name).trim()).filter(Boolean);
+          const combined = [...defaultCategories];
+          for (const name of names) {
+            if (!combined.some((c) => c.toLowerCase() === name.toLowerCase())) {
+              combined.push(name);
+            }
+          }
+          for (const loc of local) {
+            if (!combined.some((c) => c.toLowerCase() === loc.toLowerCase())) {
+              combined.push(loc);
+            }
+          }
+          this.setLocal(userId, storageKey, combined);
+          return combined;
+        }
+      } catch (err) {
+        console.warn("getCategories: error fetching from Supabase, using local cache:", err);
+      }
+    }
+
+    return local;
+  }
+
+  async addCategory(userId: string, name: string, type: "income" | "expense"): Promise<string> {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      throw new Error("Category name cannot be empty.");
+    }
+
+    const current = await this.getCategories(userId, type);
+    const exists = current.some((c) => c.trim().toLowerCase() === trimmed.toLowerCase());
+    if (exists) {
+      throw new Error(`Category "${trimmed}" already exists.`);
+    }
+
+    const updated = [...current, trimmed];
+    this.setLocal(userId, `${type}_categories`, updated);
+
+    if (userId !== "guest" && isRemoteUuid(userId)) {
+      try {
+        const dbType = type === "income" ? "receivable" : "payable";
+        await this.resolveCategoryId(userId, trimmed, dbType);
+      } catch (err) {
+        console.warn("addCategory: error syncing to Supabase:", err);
+      }
+    }
+
+    return trimmed;
   }
 
   // ==================== CUSTOMERS ====================
