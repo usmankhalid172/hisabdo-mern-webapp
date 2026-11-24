@@ -60,6 +60,15 @@ export default function TransactionsPage() {
   // Feedback state
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
+  // Auto-dismiss feedback after 5 seconds
+  useEffect(() => {
+    if (!feedback) return;
+    const timer = setTimeout(() => {
+      setFeedback(null);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [feedback]);
+
   // Delete & Edit states
   const [deleteTarget, setDeleteTarget] = useState<UnifiedTransaction | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -244,6 +253,14 @@ export default function TransactionsPage() {
           expense_date: payload.date,
           payment_method: payload.paymentMethod,
         });
+      } else if (editingTransaction.sourceTable === "ledger_transactions") {
+        await hisabDoService.updateLedgerTransaction(userId, editingTransaction.id, {
+          amount: payload.amount,
+          customerId: payload.customerId || undefined,
+          category: payload.category,
+          note: payload.description,
+          date: payload.date,
+        });
       }
       setEditingTransaction(null);
       setFeedback({
@@ -257,6 +274,7 @@ export default function TransactionsPage() {
         type: "error",
         message: err?.message || "Failed to update transaction record.",
       });
+      throw err;
     }
   };
 
@@ -465,28 +483,28 @@ export default function TransactionsPage() {
       align: "center",
       render: (tx) => (
         <div className="flex items-center justify-center gap-1">
-          {(tx.sourceTable === "income" || tx.sourceTable === "expenses") && (
-            <button
-              type="button"
-              onClick={() => setEditingTransaction(tx)}
-              title="Edit entry"
-              className="p-1.5 text-muted-foreground hover:text-primary rounded-control transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <Edit2 className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setEditingTransaction(tx)}
+            title="Edit transaction"
+            className="p-1.5 text-muted-foreground hover:text-primary hover:bg-surface-muted rounded-control transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+            <span className="sr-only">Edit transaction</span>
+          </button>
           <button
             type="button"
             onClick={() => setDeleteTarget(tx)}
             title="Delete entry"
             disabled={isDeleting && deleteTarget?.id === tx.id}
-            className="p-1.5 text-muted-foreground hover:text-danger rounded-control transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
+            className="p-1.5 text-muted-foreground hover:text-danger hover:bg-surface-muted rounded-control transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
           >
             {isDeleting && deleteTarget?.id === tx.id ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
               <Trash2 className="w-3.5 h-3.5" />
             )}
+            <span className="sr-only">Delete entry</span>
           </button>
         </div>
       ),
@@ -801,33 +819,47 @@ export default function TransactionsPage() {
       )}
 
       {/* ================= 5. REUSABLE TRANSACTION FORMS (PRESERVED & WIRED FOR EDITING) ================= */}
-      <AddIncomeForm
-        isOpen={Boolean(editingTransaction && editingTransaction.sourceTable === "income")}
-        onClose={() => setEditingTransaction(null)}
-        onSuccess={loadData}
-        customers={customers}
-        initialAmount={editingTransaction?.sourceTable === "income" ? editingTransaction.amount : undefined}
-        initialCategory={editingTransaction?.sourceTable === "income" ? editingTransaction.category : undefined}
-        initialDescription={editingTransaction?.sourceTable === "income" ? editingTransaction.description : undefined}
-        initialDate={editingTransaction?.sourceTable === "income" ? editingTransaction.date : undefined}
-        paymentMethod={editingTransaction?.sourceTable === "income" ? editingTransaction.paymentMethod : undefined}
-        customerId={editingTransaction?.sourceTable === "income" ? (editingTransaction.customerId || undefined) : undefined}
-        onSubmitCustom={editingTransaction?.sourceTable === "income" ? handleEditSubmit : undefined}
-      />
+      {editingTransaction && (editingTransaction.sourceTable === "income" || (editingTransaction.sourceTable === "ledger_transactions" && editingTransaction.type === "payment_received")) && (
+        <AddIncomeForm
+          key={`edit-income-${editingTransaction.id}`}
+          isOpen={true}
+          onClose={() => setEditingTransaction(null)}
+          onCancel={() => setEditingTransaction(null)}
+          onSuccess={async () => {
+            setEditingTransaction(null);
+            await loadData();
+          }}
+          customers={customers}
+          initialAmount={editingTransaction.amount}
+          initialCategory={editingTransaction.category}
+          initialDescription={editingTransaction.description}
+          initialDate={editingTransaction.date ? editingTransaction.date.split("T")[0] : undefined}
+          paymentMethod={editingTransaction.paymentMethod || "cash"}
+          customerId={editingTransaction.customerId || undefined}
+          onSubmitCustom={handleEditSubmit}
+        />
+      )}
 
-      <AddExpenseForm
-        isOpen={Boolean(editingTransaction && editingTransaction.sourceTable === "expenses")}
-        onClose={() => setEditingTransaction(null)}
-        onSuccess={loadData}
-        customers={customers}
-        initialAmount={editingTransaction?.sourceTable === "expenses" ? editingTransaction.amount : undefined}
-        initialCategory={editingTransaction?.sourceTable === "expenses" ? editingTransaction.category : undefined}
-        initialDescription={editingTransaction?.sourceTable === "expenses" ? editingTransaction.description : undefined}
-        initialDate={editingTransaction?.sourceTable === "expenses" ? editingTransaction.date : undefined}
-        paymentMethod={editingTransaction?.sourceTable === "expenses" ? editingTransaction.paymentMethod : undefined}
-        customerId={editingTransaction?.sourceTable === "expenses" ? (editingTransaction.customerId || undefined) : undefined}
-        onSubmitCustom={editingTransaction?.sourceTable === "expenses" ? handleEditSubmit : undefined}
-      />
+      {editingTransaction && (editingTransaction.sourceTable === "expenses" || (editingTransaction.sourceTable === "ledger_transactions" && editingTransaction.type === "payment_sent")) && (
+        <AddExpenseForm
+          key={`edit-expense-${editingTransaction.id}`}
+          isOpen={true}
+          onClose={() => setEditingTransaction(null)}
+          onCancel={() => setEditingTransaction(null)}
+          onSuccess={async () => {
+            setEditingTransaction(null);
+            await loadData();
+          }}
+          customers={customers}
+          initialAmount={editingTransaction.amount}
+          initialCategory={editingTransaction.category}
+          initialDescription={editingTransaction.description}
+          initialDate={editingTransaction.date ? editingTransaction.date.split("T")[0] : undefined}
+          paymentMethod={editingTransaction.paymentMethod || "cash"}
+          customerId={editingTransaction.customerId || undefined}
+          onSubmitCustom={handleEditSubmit}
+        />
+      )}
 
       {/* ================= 6. DANISH'S ADD TRANSACTION DIALOG (MERGED COMPONENT) ================= */}
       <AddTransactionDialog
