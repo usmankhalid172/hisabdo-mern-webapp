@@ -24,6 +24,7 @@ import {
   X,
   Loader2,
   Globe,
+  FileText,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
@@ -303,29 +304,24 @@ const [editForm, setEditForm] = useState({
             <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
               {customer.name}
             </h1>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mt-0.5">
               <span className="flex items-center gap-1">
-                <Phone className="w-3.5 h-3.5 text-success" />
-                {customer.phone || "No phone number"}
+                <Phone className="w-3.5 h-3.5" />
+                {customer.phone?.trim() || "Not added"}
               </span>
-              {customer.address && (
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5" />
-                  {customer.address}
-                </span>
-              )}
-               {customer.email && (
-                <span className="flex items-center gap-1">
-                  <Mail className="w-3.5 h-3.5 text-slate-500" />
-                  {customer.email}
-                </span>
-              )}
+              <span className="flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5" />
+                {customer.address?.trim() || "Not added"}
+              </span>
+              <span className="flex items-center gap-1">
+                <Mail className="w-3.5 h-3.5" />
+                {customer.email?.trim() || "Not added"}
+              </span>
             </div>
-              {customer.notes && (
-                <p className="text-xs text-slate-400 mt-2">
-                  Notes: {customer.notes}
-                </p>
-              )}
+            <p className="flex items-center gap-1 text-xs text-muted-foreground mt-2">
+              <FileText className="w-3.5 h-3.5 shrink-0" />
+              Notes: {customer.notes?.trim() || "Not added"}
+            </p>
           </div>
         </div>
 
