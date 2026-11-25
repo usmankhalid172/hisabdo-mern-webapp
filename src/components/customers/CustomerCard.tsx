@@ -75,33 +75,25 @@ export default function CustomerCard({
       </div>
 
       <div className="space-y-2 text-sm text-secondary">
-        {customer.phone && (
-          <div className="flex items-center gap-2">
-            <Phone size={15} />
-            <span className="truncate">{customer.phone}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <Phone size={15} />
+          <span className="truncate">{customer.phone?.trim() || 'Not added'}</span>
+        </div>
 
-        {customer.email && (
-          <div className="flex items-center gap-2">
-            <Mail size={15} />
-            <span className="truncate">{customer.email}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <Mail size={15} />
+          <span className="truncate">{customer.email?.trim() || 'Not added'}</span>
+        </div>
 
-        {customer.address && (
-          <div className="flex items-center gap-2">
-            <MapPin size={15} />
-            <span className="line-clamp-2">{customer.address}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <MapPin size={15} />
+          <span className="line-clamp-2">{customer.address?.trim() || 'Not added'}</span>
+        </div>
 
-        {customer.notes && (
-          <div className="flex items-start gap-2">
-            <FileText size={15} className="mt-0.5 shrink-0" />
-            <span className="line-clamp-2">{customer.notes}</span>
-          </div>
-        )}
+        <div className="flex items-start gap-2">
+          <FileText size={15} className="mt-0.5 shrink-0" />
+          <span className="line-clamp-2">{customer.notes?.trim() || 'Not added'}</span>
+        </div>
       </div>
 
       <div className="mt-auto border-t border-border-color pt-3">
