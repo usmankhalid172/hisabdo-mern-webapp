@@ -175,6 +175,23 @@ export class HisabDoService {
     return created?.id ?? null;
   }
 
+  /**
+   * Normalizes a phone number for duplicate comparison only.
+   * Stored phone format is never changed.
+   * Examples:
+   *   0300-1234567  → 03001234567
+   *   +92 300 1234567 → 03001234567
+   *   923001234567  → 03001234567
+   */
+  private normalizePhone(phone: string | null | undefined): string {
+    if (!phone) return "";
+    return phone
+      .replace(/[\s\-\(\)]/g, "")
+      .replace(/^\+92/, "0")
+      .replace(/^92(?=3)/, "0")
+      .trim();
+  }
+
   private getStorageKey(userId: string, key: string) {
     return `hisabdo_${userId || "guest"}_${key}`;
   }
@@ -253,6 +270,35 @@ export class HisabDoService {
   }
 
   async addCustomer(userId: string, customer: Omit<Customer, "id" | "created_at">): Promise<Customer> {
+    // Duplicate check — same user only, phone + name (per lead instruction)
+    if (userId !== "guest") {
+      const existing = await this.getCustomers(userId);
+      const incomingPhone = this.normalizePhone(customer.phone);
+      const incomingName = (customer.name || "").trim().toLowerCase();
+
+      if (incomingPhone) {
+        const duplicateByPhone = existing.find(
+          (c) => this.normalizePhone(c.phone) === incomingPhone
+        );
+        if (duplicateByPhone) {
+          throw new Error(
+            `A customer with this phone number already exists (${duplicateByPhone.name})`
+          );
+        }
+      }
+
+      if (incomingName) {
+        const duplicateByName = existing.find(
+          (c) => (c.name || "").trim().toLowerCase() === incomingName
+        );
+        if (duplicateByName) {
+          throw new Error(
+            `A customer with this name already exists (${duplicateByName.name})`
+          );
+        }
+      }
+    }
+
     const clientUuid = customer.client_uuid || createClientUuid();
     const metadata = {
       ...asMetadata(customer.metadata),
@@ -297,7 +343,41 @@ export class HisabDoService {
 
   async updateCustomer(userId: string, id: string, updates: Partial<Customer>): Promise<Customer> {
     const list = await this.getCustomers(userId);
-    let updatedCust: Customer | null = null;    
+
+    // Duplicate check — same user only, exclude self, phone + name
+    if (userId !== "guest") {
+      const others = list.filter((c) => c.id !== id);
+
+      if (updates.phone !== undefined) {
+        const incomingPhone = this.normalizePhone(updates.phone);
+        if (incomingPhone) {
+          const duplicateByPhone = others.find(
+            (c) => this.normalizePhone(c.phone) === incomingPhone
+          );
+          if (duplicateByPhone) {
+            throw new Error(
+              `Another customer already uses this phone number (${duplicateByPhone.name})`
+            );
+          }
+        }
+      }
+
+      if (updates.name !== undefined) {
+        const incomingName = (updates.name || "").trim().toLowerCase();
+        if (incomingName) {
+          const duplicateByName = others.find(
+            (c) => (c.name || "").trim().toLowerCase() === incomingName
+          );
+          if (duplicateByName) {
+            throw new Error(
+              `Another customer already uses this name (${duplicateByName.name})`
+            );
+          }
+        }
+      }
+    }
+
+    let updatedCust: Customer | null = null;
     const updatedList = list.map ((c) => {
       if (c.id === id) {
         updatedCust = { ...c, ...updates };
@@ -700,6 +780,25 @@ export class HisabDoService {
   }
 
   async addLedgerTransaction(userId: string, tx: Omit<LedgerTransaction, "id">): Promise<LedgerTransaction> {
+    // Amount validation (mirrors addIncome / addExpense)
+    const numAmount = Number(tx.amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      throw new Error("Amount must be greater than zero");
+    }
+
+    // Category required (mirrors addIncome / addExpense)
+    const category = tx.category ? String(tx.category).trim() : "";
+    if (!category) {
+      throw new Error("Category is required");
+    }
+
+    // Date validation (mirrors addIncome / addExpense)
+    const dateStr = tx.date ? String(tx.date).trim() : "";
+    const dateCheck = validateDateRestrictions(dateStr);
+    if (!dateCheck.isValid) {
+      throw new Error(dateCheck.error || "Invalid transaction date");
+    }
+
     const clientUuid = tx.client_uuid || createClientUuid();
     const newTx: LedgerTransaction = {
       ...tx,
@@ -718,7 +817,7 @@ export class HisabDoService {
           customer_id: isRemoteUuid(tx.customerId) ? tx.customerId : null,
           amount: Number(tx.amount),
           type: tx.type,
-          category: tx.category || "Payment",
+          category: category,
           date: tx.date,
           note: tx.note || null,
           image_path: tx.imagePath || null,
