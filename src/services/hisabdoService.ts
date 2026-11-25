@@ -2,6 +2,11 @@ import { createClient } from "@/lib/supabase/client";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { validateDateRestrictions } from "@/lib/validations/formDateValidation";
+import {
+  convertFromPKR,
+  convertToPKR,
+  getUserCurrency,
+} from "@/services/currencyService";
 
 export interface Customer {
   id: string;
@@ -231,7 +236,7 @@ export class HisabDoService {
   }
 
   // ==================== CUSTOMERS ====================
-  async getCustomers(userId: string): Promise<Customer[]> {
+  private async getRawCustomers(userId: string): Promise<Customer[]> {
     const fallback = this.getLocal<Customer[]>(userId, "customers", DEFAULT_CUSTOMERS);
     if (userId === "guest") return fallback;
     try {
@@ -252,16 +257,37 @@ export class HisabDoService {
     return fallback;
   }
 
+  async getCustomers(userId: string): Promise<Customer[]> {
+    const rawCustomers = await this.getRawCustomers(userId);
+    const targetCurrency = getUserCurrency();
+    if (targetCurrency === "PKR") return rawCustomers;
+
+    return Promise.all(
+      rawCustomers.map(async (customer) => ({
+        ...customer,
+        opening_balance: await convertFromPKR(customer.opening_balance, targetCurrency),
+        currency: targetCurrency,
+      }))
+    );
+  }
+
   async addCustomer(userId: string, customer: Omit<Customer, "id" | "created_at">): Promise<Customer> {
+    const selectedCurrency = getUserCurrency();
+    const pkrOpeningBalance = await convertToPKR(
+      Number(customer.opening_balance || 0),
+      selectedCurrency
+    );
     const clientUuid = customer.client_uuid || createClientUuid();
     const metadata = {
       ...asMetadata(customer.metadata),
-      opening_balance: Number(customer.opening_balance || 0),
-      currency: customer.currency || "PKR",
+      opening_balance: pkrOpeningBalance,
+      currency: "PKR",
       address: customer.address || "",
     };
     const newCust: Customer = {
       ...customer,
+      opening_balance: pkrOpeningBalance,
+      currency: "PKR",
       id: `local-${clientUuid}`,
       client_uuid: clientUuid,
       version: 1,
@@ -283,24 +309,49 @@ export class HisabDoService {
           version: 1,
         }]).select().single();
         if (error) throw error;
-        if (data) return normalizeCustomer(data as SupabaseRow);
+        if (data) {
+          const saved = normalizeCustomer(data as SupabaseRow);
+          if (selectedCurrency === "PKR") return saved;
+          return {
+            ...saved,
+            opening_balance: await convertFromPKR(saved.opening_balance, selectedCurrency),
+            currency: selectedCurrency,
+          };
+        }
       } catch (error) {
         console.warn("Customer cloud save failed; keeping the local copy:", error);
       }
     }
 
-    const list = await this.getCustomers(userId);
+    const list = await this.getRawCustomers(userId);
     const updated = [newCust, ...list.filter((c) => c.id !== newCust.id)];
     this.setLocal(userId, "customers", updated);
-    return newCust;
+    if (selectedCurrency === "PKR") return newCust;
+    return {
+      ...newCust,
+      opening_balance: await convertFromPKR(newCust.opening_balance, selectedCurrency),
+      currency: selectedCurrency,
+    };
   }
 
   async updateCustomer(userId: string, id: string, updates: Partial<Customer>): Promise<Customer> {
-    const list = await this.getCustomers(userId);
-    let updatedCust: Customer | null = null;    
+    const selectedCurrency = getUserCurrency();
+    const pkrOpeningBalance =
+      updates.opening_balance !== undefined
+        ? await convertToPKR(Number(updates.opening_balance), selectedCurrency)
+        : undefined;
+
+    const list = await this.getRawCustomers(userId);
+    let updatedCust: Customer | null = null;
+    const normalizedUpdates: Partial<Customer> = {
+      ...updates,
+      ...(pkrOpeningBalance !== undefined ? { opening_balance: pkrOpeningBalance } : {}),
+      currency: "PKR",
+    };
+
     const updatedList = list.map ((c) => {
       if (c.id === id) {
-        updatedCust = { ...c, ...updates };
+        updatedCust = { ...c, ...normalizedUpdates };
         return updatedCust;
       }
       return c;
@@ -313,8 +364,8 @@ export class HisabDoService {
         const metadata = {
           ...asMetadata(current?.metadata),
           ...asMetadata(updates.metadata),
-          ...(updates.opening_balance !== undefined ? { opening_balance: Number(updates.opening_balance) } : {}),
-          ...(updates.currency !== undefined ? { currency: updates.currency } : {}),
+          ...(pkrOpeningBalance !== undefined ? { opening_balance: pkrOpeningBalance } : {}),
+          currency: "PKR",
           ...(updates.address !== undefined ? { address: updates.address } : {}),
         };
         const payload: SupabaseRow = {
@@ -335,7 +386,12 @@ export class HisabDoService {
 
     if (updatedCust) {
       this.setLocal(userId, "customers", updatedList);
-      return updatedCust;
+      if (selectedCurrency === "PKR") return updatedCust;
+      return {
+        ...updatedCust,
+        opening_balance: await convertFromPKR((updatedCust as Customer).opening_balance, selectedCurrency),
+        currency: selectedCurrency,
+      };
     }
     throw new Error("Customer not found");
   }
@@ -354,12 +410,12 @@ export class HisabDoService {
       }
     }
 
-    const list = await this.getCustomers(userId);
+    const list = await this.getRawCustomers(userId);
     this.setLocal(userId, "customers", list.filter((c) => c.id !== id));
   }
 
   // ==================== INCOMES ====================
-  async getIncomes(userId: string): Promise<Income[]> {
+  private async getRawIncomes(userId: string): Promise<Income[]> {
     const fallback = this.getLocal<Income[]>(userId, "incomes", DEFAULT_INCOMES);
     if (userId === "guest") return fallback;
     try {
@@ -380,6 +436,19 @@ export class HisabDoService {
     return fallback;
   }
 
+  async getIncomes(userId: string): Promise<Income[]> {
+    const rawIncomes = await this.getRawIncomes(userId);
+    const targetCurrency = getUserCurrency();
+    if (targetCurrency === "PKR") return rawIncomes;
+
+    return Promise.all(
+      rawIncomes.map(async (income) => ({
+        ...income,
+        amount: await convertFromPKR(income.amount, targetCurrency),
+      }))
+    );
+  }
+
   async addIncome(userId: string, income: Omit<Income, "id" | "created_at">): Promise<Income> {
     const numAmount = Number(income.amount);
     if (isNaN(numAmount) || numAmount <= 0) {
@@ -397,6 +466,9 @@ export class HisabDoService {
       throw new Error(dateCheck.error || "Invalid transaction date");
     }
 
+    const selectedCurrency = getUserCurrency();
+    const pkrAmount = await convertToPKR(numAmount, selectedCurrency);
+
     const clientUuid = income.client_uuid || createClientUuid();
     const categoryLabel = category;
     const metadata = {
@@ -409,6 +481,7 @@ export class HisabDoService {
     };
     const newInc: Income = {
       ...income,
+      amount: pkrAmount,
       id: `local-${clientUuid}`,
       client_uuid: clientUuid,
       version: 1,
@@ -426,7 +499,7 @@ export class HisabDoService {
           client_uuid: clientUuid,
           customer_id: isRemoteUuid(income.customer_id) ? income.customer_id : null,
           category_id: categoryId,
-          amount: Number(income.amount),
+          amount: pkrAmount,
           date: income.income_date,
           note: income.description || null,
           image_path: income.image_path || null,
@@ -434,16 +507,27 @@ export class HisabDoService {
           version: 1,
         }]).select().single();
         if (error) throw error;
-        if (data) return normalizeIncome(data as SupabaseRow);
+        if (data) {
+          const saved = normalizeIncome(data as SupabaseRow);
+          if (selectedCurrency === "PKR") return saved;
+          return {
+            ...saved,
+            amount: await convertFromPKR(saved.amount, selectedCurrency),
+          };
+        }
       } catch (error) {
         console.warn("Income cloud save failed; keeping the local copy:", error);
       }
     }
 
-    const list = await this.getIncomes(userId);
+    const list = await this.getRawIncomes(userId);
     const updated = [newInc, ...list];
     this.setLocal(userId, "incomes", updated);
-    return newInc;
+    if (selectedCurrency === "PKR") return newInc;
+    return {
+      ...newInc,
+      amount: await convertFromPKR(newInc.amount, selectedCurrency),
+    };
   }
 
   async deleteIncome(userId: string, id: string): Promise<void> {
@@ -457,16 +541,30 @@ export class HisabDoService {
       }
     }
 
-    const list = await this.getIncomes(userId);
+    const list = await this.getRawIncomes(userId);
     this.setLocal(userId, "incomes", list.filter((i) => i.id !== id));
   }
 
   async updateIncome(userId: string, id: string, updates: Partial<Income>): Promise<Income> {
-    const list = await this.getIncomes(userId);
+    const selectedCurrency = getUserCurrency();
+    let pkrAmount: number | undefined;
+    if (updates.amount !== undefined) {
+      const numAmount = Number(updates.amount);
+      if (isNaN(numAmount) || numAmount <= 0) {
+        throw new Error("Amount must be greater than zero");
+      }
+      pkrAmount = await convertToPKR(numAmount, selectedCurrency);
+    }
+
+    const list = await this.getRawIncomes(userId);
     let updatedItem: Income | null = null;
+    const normalizedUpdates: Partial<Income> = {
+      ...updates,
+      ...(pkrAmount !== undefined ? { amount: pkrAmount } : {}),
+    };
     const updatedList = list.map((i) => {
       if (i.id === id) {
-        updatedItem = { ...i, ...updates };
+        updatedItem = { ...i, ...normalizedUpdates };
         return updatedItem;
       }
       return i;
@@ -487,7 +585,7 @@ export class HisabDoService {
           payment_method: updates.payment_method ?? current?.payment_method ?? "cash",
         };
         const payload: SupabaseRow = {
-          ...(updates.amount !== undefined ? { amount: Number(updates.amount) } : {}),
+          ...(pkrAmount !== undefined ? { amount: pkrAmount } : {}),
           ...(updates.customer_id !== undefined ? { customer_id: isRemoteUuid(updates.customer_id) ? updates.customer_id : null } : {}),
           ...(updates.income_date !== undefined ? { date: updates.income_date } : {}),
           ...(updates.description !== undefined ? { note: updates.description || null } : {}),
@@ -505,13 +603,17 @@ export class HisabDoService {
 
     if (updatedItem) {
       this.setLocal(userId, "incomes", updatedList);
-      return updatedItem;
+      if (selectedCurrency === "PKR") return updatedItem;
+      return {
+        ...updatedItem,
+        amount: await convertFromPKR((updatedItem as Income).amount, selectedCurrency),
+      };
     }
     throw new Error("Income record not found");
   }
 
   // ==================== EXPENSES ====================
-  async getExpenses(userId: string): Promise<Expense[]> {
+  private async getRawExpenses(userId: string): Promise<Expense[]> {
     const fallback = this.getLocal<Expense[]>(userId, "expenses", DEFAULT_EXPENSES);
     if (userId === "guest") return fallback;
     try {
@@ -532,6 +634,19 @@ export class HisabDoService {
     return fallback;
   }
 
+  async getExpenses(userId: string): Promise<Expense[]> {
+    const rawExpenses = await this.getRawExpenses(userId);
+    const targetCurrency = getUserCurrency();
+    if (targetCurrency === "PKR") return rawExpenses;
+
+    return Promise.all(
+      rawExpenses.map(async (expense) => ({
+        ...expense,
+        amount: await convertFromPKR(expense.amount, targetCurrency),
+      }))
+    );
+  }
+
   async addExpense(userId: string, expense: Omit<Expense, "id" | "created_at">): Promise<Expense> {
     const numAmount = Number(expense.amount);
     if (isNaN(numAmount) || numAmount <= 0) {
@@ -549,6 +664,9 @@ export class HisabDoService {
       throw new Error(dateCheck.error || "Invalid transaction date");
     }
 
+    const selectedCurrency = getUserCurrency();
+    const pkrAmount = await convertToPKR(numAmount, selectedCurrency);
+
     const clientUuid = expense.client_uuid || createClientUuid();
     const categoryLabel = category;
     const metadata = {
@@ -561,6 +679,7 @@ export class HisabDoService {
     };
     const newExp: Expense = {
       ...expense,
+      amount: pkrAmount,
       id: `local-${clientUuid}`,
       client_uuid: clientUuid,
       version: 1,
@@ -578,7 +697,7 @@ export class HisabDoService {
           client_uuid: clientUuid,
           customer_id: isRemoteUuid(expense.customer_id) ? expense.customer_id : null,
           category_id: categoryId,
-          amount: Number(expense.amount),
+          amount: pkrAmount,
           date: expense.expense_date,
           note: expense.description || null,
           image_path: expense.image_path || null,
@@ -586,16 +705,27 @@ export class HisabDoService {
           version: 1,
         }]).select().single();
         if (error) throw error;
-        if (data) return normalizeExpense(data as SupabaseRow);
+        if (data) {
+          const saved = normalizeExpense(data as SupabaseRow);
+          if (selectedCurrency === "PKR") return saved;
+          return {
+            ...saved,
+            amount: await convertFromPKR(saved.amount, selectedCurrency),
+          };
+        }
       } catch (error) {
         console.warn("Expense cloud save failed; keeping the local copy:", error);
       }
     }
 
-    const list = await this.getExpenses(userId);
+    const list = await this.getRawExpenses(userId);
     const updated = [newExp, ...list];
     this.setLocal(userId, "expenses", updated);
-    return newExp;
+    if (selectedCurrency === "PKR") return newExp;
+    return {
+      ...newExp,
+      amount: await convertFromPKR(newExp.amount, selectedCurrency),
+    };
   }
 
   async deleteExpense(userId: string, id: string): Promise<void> {
@@ -609,16 +739,30 @@ export class HisabDoService {
       }
     }
 
-    const list = await this.getExpenses(userId);
+    const list = await this.getRawExpenses(userId);
     this.setLocal(userId, "expenses", list.filter((e) => e.id !== id));
   }
 
   async updateExpense(userId: string, id: string, updates: Partial<Expense>): Promise<Expense> {
-    const list = await this.getExpenses(userId);
+    const selectedCurrency = getUserCurrency();
+    let pkrAmount: number | undefined;
+    if (updates.amount !== undefined) {
+      const numAmount = Number(updates.amount);
+      if (isNaN(numAmount) || numAmount <= 0) {
+        throw new Error("Amount must be greater than zero");
+      }
+      pkrAmount = await convertToPKR(numAmount, selectedCurrency);
+    }
+
+    const list = await this.getRawExpenses(userId);
     let updatedItem: Expense | null = null;
+    const normalizedUpdates: Partial<Expense> = {
+      ...updates,
+      ...(pkrAmount !== undefined ? { amount: pkrAmount } : {}),
+    };
     const updatedList = list.map((e) => {
       if (e.id === id) {
-        updatedItem = { ...e, ...updates };
+        updatedItem = { ...e, ...normalizedUpdates };
         return updatedItem;
       }
       return e;
@@ -639,7 +783,7 @@ export class HisabDoService {
           payment_method: updates.payment_method ?? current?.payment_method ?? "cash",
         };
         const payload: SupabaseRow = {
-          ...(updates.amount !== undefined ? { amount: Number(updates.amount) } : {}),
+          ...(pkrAmount !== undefined ? { amount: pkrAmount } : {}),
           ...(updates.customer_id !== undefined ? { customer_id: isRemoteUuid(updates.customer_id) ? updates.customer_id : null } : {}),
           ...(updates.expense_date !== undefined ? { date: updates.expense_date } : {}),
           ...(updates.description !== undefined ? { note: updates.description || null } : {}),
@@ -657,13 +801,17 @@ export class HisabDoService {
 
     if (updatedItem) {
       this.setLocal(userId, "expenses", updatedList);
-      return updatedItem;
+      if (selectedCurrency === "PKR") return updatedItem;
+      return {
+        ...updatedItem,
+        amount: await convertFromPKR((updatedItem as Expense).amount, selectedCurrency),
+      };
     }
     throw new Error("Expense record not found");
   }
 
   // ==================== DIRECT LEDGER PAYMENTS ====================
-  async getLedgerTransactions(userId: string): Promise<LedgerTransaction[]> {
+  private async getRawLedgerTransactions(userId: string): Promise<LedgerTransaction[]> {
     const fallback = this.getLocal<LedgerTransaction[]>(userId, "ledger_txs", DEFAULT_LEDGER_TXS);
     if (userId === "guest") return fallback;
     try {
@@ -699,10 +847,27 @@ export class HisabDoService {
     return fallback;
   }
 
+  async getLedgerTransactions(userId: string): Promise<LedgerTransaction[]> {
+    const rawTransactions = await this.getRawLedgerTransactions(userId);
+    const targetCurrency = getUserCurrency();
+    if (targetCurrency === "PKR") return rawTransactions;
+
+    return Promise.all(
+      rawTransactions.map(async (tx) => ({
+        ...tx,
+        amount: await convertFromPKR(tx.amount, targetCurrency),
+      }))
+    );
+  }
+
   async addLedgerTransaction(userId: string, tx: Omit<LedgerTransaction, "id">): Promise<LedgerTransaction> {
+    const selectedCurrency = getUserCurrency();
+    const pkrAmount = await convertToPKR(Number(tx.amount), selectedCurrency);
+
     const clientUuid = tx.client_uuid || createClientUuid();
     const newTx: LedgerTransaction = {
       ...tx,
+      amount: pkrAmount,
       id: `local-${clientUuid}`,
       client_uuid: clientUuid,
       user_id: userId,
@@ -716,7 +881,7 @@ export class HisabDoService {
           user_id: userId,
           client_uuid: clientUuid,
           customer_id: isRemoteUuid(tx.customerId) ? tx.customerId : null,
-          amount: Number(tx.amount),
+          amount: pkrAmount,
           type: tx.type,
           category: tx.category || "Payment",
           date: tx.date,
@@ -726,23 +891,34 @@ export class HisabDoService {
           version: 1,
         }]).select().single();
         if (error) throw error;
-        if (data) return {
-          ...newTx,
-          id: data.id,
-          client_uuid: data.client_uuid,
-          user_id: data.user_id,
-          version: data.version,
-          updated_at: data.updated_at,
-        };
+        if (data) {
+          const saved: LedgerTransaction = {
+            ...newTx,
+            id: data.id,
+            client_uuid: data.client_uuid,
+            user_id: data.user_id,
+            version: data.version,
+            updated_at: data.updated_at,
+          };
+          if (selectedCurrency === "PKR") return saved;
+          return {
+            ...saved,
+            amount: await convertFromPKR(saved.amount, selectedCurrency),
+          };
+        }
       } catch (error) {
         console.warn("Ledger transaction cloud save failed; keeping the local copy:", error);
       }
     }
 
-    const list = await this.getLedgerTransactions(userId);
+    const list = await this.getRawLedgerTransactions(userId);
     const updated = [newTx, ...list];
     this.setLocal(userId, "ledger_txs", updated);
-    return newTx;
+    if (selectedCurrency === "PKR") return newTx;
+    return {
+      ...newTx,
+      amount: await convertFromPKR(newTx.amount, selectedCurrency),
+    };
   }
 
   async deleteLedgerTransaction(userId: string, id: string): Promise<void> {
@@ -756,16 +932,26 @@ export class HisabDoService {
       }
     }
 
-    const list = await this.getLedgerTransactions(userId);
+    const list = await this.getRawLedgerTransactions(userId);
     this.setLocal(userId, "ledger_txs", list.filter((t) => t.id !== id));
   }
 
   async updateLedgerTransaction(userId: string, id: string, updates: Partial<LedgerTransaction>): Promise<LedgerTransaction> {
-    const list = await this.getLedgerTransactions(userId);
+    const selectedCurrency = getUserCurrency();
+    const pkrAmount =
+      updates.amount !== undefined
+        ? await convertToPKR(Number(updates.amount), selectedCurrency)
+        : undefined;
+
+    const list = await this.getRawLedgerTransactions(userId);
     let updatedItem: LedgerTransaction | null = null;
+    const normalizedUpdates: Partial<LedgerTransaction> = {
+      ...updates,
+      ...(pkrAmount !== undefined ? { amount: pkrAmount } : {}),
+    };
     const updatedList = list.map((t) => {
       if (t.id === id) {
-        updatedItem = { ...t, ...updates };
+        updatedItem = { ...t, ...normalizedUpdates };
         return updatedItem;
       }
       return t;
@@ -776,7 +962,7 @@ export class HisabDoService {
         const supabase = createClient();
         const payload: SupabaseRow = {
           ...(updates.customerId !== undefined ? { customer_id: isRemoteUuid(updates.customerId) ? updates.customerId : null } : {}),
-          ...(updates.amount !== undefined ? { amount: Number(updates.amount) } : {}),
+          ...(pkrAmount !== undefined ? { amount: pkrAmount } : {}),
           ...(updates.type !== undefined ? { type: updates.type } : {}),
           ...(updates.category !== undefined ? { category: updates.category } : {}),
           ...(updates.date !== undefined ? { date: updates.date } : {}),
@@ -795,20 +981,23 @@ export class HisabDoService {
 
     if (updatedItem) {
       this.setLocal(userId, "ledger_txs", updatedList);
-      return updatedItem;
+      if (selectedCurrency === "PKR") return updatedItem;
+      return {
+        ...updatedItem,
+        amount: await convertFromPKR((updatedItem as LedgerTransaction).amount, selectedCurrency),
+      };
     }
     throw new Error("Ledger transaction record not found");
   }
 
   // ==================== COMPUTED CUSTOMER LEDGER & RUNNING BALANCE ====================
-  async getCustomerLedgerTimeline(userId: string, customerId: string): Promise<{ rows: LedgerRow[]; summary: { totalPurchases: number; totalPaymentsReceived: number; totalPaymentsSent: number; netBalance: number } }> {
-    const [customers, incomes, expenses, payments] = await Promise.all([
-      this.getCustomers(userId),
-      this.getIncomes(userId),
-      this.getExpenses(userId),
-      this.getLedgerTransactions(userId),
-    ]);
-
+  private computeRawCustomerLedgerTimeline(
+    customers: Customer[],
+    incomes: Income[],
+    expenses: Expense[],
+    payments: LedgerTransaction[],
+    customerId: string
+  ): { rows: LedgerRow[]; summary: { totalPurchases: number; totalPaymentsReceived: number; totalPaymentsSent: number; netBalance: number } } {
     const customer = customers.find((c) => c.id === customerId);
     const openingBalance = customer ? Number(customer.opening_balance || 0) : 0;
 
@@ -905,19 +1094,62 @@ export class HisabDoService {
     };
   }
 
+  async getCustomerLedgerTimeline(userId: string, customerId: string): Promise<{ rows: LedgerRow[]; summary: { totalPurchases: number; totalPaymentsReceived: number; totalPaymentsSent: number; netBalance: number } }> {
+    const [customers, incomes, expenses, payments] = await Promise.all([
+      this.getRawCustomers(userId),
+      this.getRawIncomes(userId),
+      this.getRawExpenses(userId),
+      this.getRawLedgerTransactions(userId),
+    ]);
+
+    const rawTimeline = this.computeRawCustomerLedgerTimeline(
+      customers,
+      incomes,
+      expenses,
+      payments,
+      customerId
+    );
+    const targetCurrency = getUserCurrency();
+    if (targetCurrency === "PKR") return rawTimeline;
+
+    const convertedRows = await Promise.all(
+      rawTimeline.rows.map(async (row) => ({
+        ...row,
+        amount: await convertFromPKR(row.amount, targetCurrency),
+        runningBalance: await convertFromPKR(row.runningBalance, targetCurrency),
+      }))
+    );
+
+    return {
+      rows: convertedRows,
+      summary: {
+        totalPurchases: await convertFromPKR(rawTimeline.summary.totalPurchases, targetCurrency),
+        totalPaymentsReceived: await convertFromPKR(rawTimeline.summary.totalPaymentsReceived, targetCurrency),
+        totalPaymentsSent: await convertFromPKR(rawTimeline.summary.totalPaymentsSent, targetCurrency),
+        netBalance: await convertFromPKR(rawTimeline.summary.netBalance, targetCurrency),
+      },
+    };
+  }
+
   async getDashboardMetrics(userId: string) {
     const [customers, incomes, expenses, payments] = await Promise.all([
-      this.getCustomers(userId),
-      this.getIncomes(userId),
-      this.getExpenses(userId),
-      this.getLedgerTransactions(userId),
+      this.getRawCustomers(userId),
+      this.getRawIncomes(userId),
+      this.getRawExpenses(userId),
+      this.getRawLedgerTransactions(userId),
     ]);
 
     let totalReceivable = 0;
     let totalPayable = 0;
 
     for (const cust of customers) {
-      const { summary } = await this.getCustomerLedgerTimeline(userId, cust.id);
+      const { summary } = this.computeRawCustomerLedgerTimeline(
+        customers,
+        incomes,
+        expenses,
+        payments,
+        cust.id
+      );
       if (summary.netBalance > 0) {
         totalReceivable += summary.netBalance;
       } else if (summary.netBalance < 0) {
@@ -943,13 +1175,30 @@ export class HisabDoService {
       })
       .reduce((sum, e) => sum + Number(e.amount), 0);
 
+    const rawNetBalance = totalReceivable - totalPayable;
+    const rawCashFlowProfit = monthlyIncome - monthlyExpenses;
+    const targetCurrency = getUserCurrency();
+
+    if (targetCurrency === "PKR") {
+      return {
+        totalReceivable,
+        totalPayable,
+        netBalance: rawNetBalance,
+        monthlyIncome,
+        monthlyExpenses,
+        cashFlowProfit: rawCashFlowProfit,
+        totalCustomers: customers.length,
+        totalTransactions: incomes.length + expenses.length + payments.length,
+      };
+    }
+
     return {
-      totalReceivable,
-      totalPayable,
-      netBalance: totalReceivable - totalPayable,
-      monthlyIncome,
-      monthlyExpenses,
-      cashFlowProfit: monthlyIncome - monthlyExpenses,
+      totalReceivable: await convertFromPKR(totalReceivable, targetCurrency),
+      totalPayable: await convertFromPKR(totalPayable, targetCurrency),
+      netBalance: await convertFromPKR(rawNetBalance, targetCurrency),
+      monthlyIncome: await convertFromPKR(monthlyIncome, targetCurrency),
+      monthlyExpenses: await convertFromPKR(monthlyExpenses, targetCurrency),
+      cashFlowProfit: await convertFromPKR(rawCashFlowProfit, targetCurrency),
       totalCustomers: customers.length,
       totalTransactions: incomes.length + expenses.length + payments.length,
     };

@@ -376,6 +376,16 @@ export default function DashboardLayout({
         {/* Page Content */}
         <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto pb-28 md:pb-16">
           {children}
+          <footer className="mt-8 pt-4 border-t border-border/50 text-[11px] text-muted-foreground flex items-center justify-end">
+            <a
+              href="https://www.exchangerate-api.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-foreground transition-colors"
+            >
+              Rates By Exchange Rate API
+            </a>
+          </footer>
         </main>
 
         <div className={`md:hidden fixed bottom-0 left-0 right-0 border-t py-2 px-4 flex items-center justify-around z-40 ${

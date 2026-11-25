@@ -224,6 +224,18 @@ export default function SettingsPage() {
             </button>
           ))}
         </div>
+
+        <p className="text-[11px] text-slate-400">
+          Amounts are stored in PKR and converted automatically for display.{" "}
+          <a
+            href="https://www.exchangerate-api.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-slate-200"
+          >
+            Rates By Exchange Rate API
+          </a>
+        </p>
       </div>
 
       {/* 3. Currency Selector */}
@@ -258,6 +270,18 @@ export default function SettingsPage() {
             </button>
           ))}
         </div>
+
+        <p className="text-[11px] text-slate-400">
+          Amounts are stored in PKR and converted automatically for display.{" "}
+          <a
+            href="https://www.exchangerate-api.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-slate-200"
+          >
+            Rates By Exchange Rate API
+          </a>
+        </p>
       </div>
 
       {/* 4. Appearance & Cache Security */}

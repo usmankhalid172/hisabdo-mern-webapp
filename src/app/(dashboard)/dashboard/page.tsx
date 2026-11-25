@@ -43,7 +43,7 @@ import {
 export default function DashboardPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const { formatMoney, currencySymbol, businessProfile } = useSettings();
+  const { formatMoney, currency, currencySymbol, businessProfile } = useSettings();
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -776,7 +776,7 @@ export default function DashboardPage() {
                   Total of <strong className="text-foreground">{metrics.totalCustomers}</strong> registered customer accounts with <strong className="text-foreground">{metrics.totalTransactions}</strong> lifetime ledger transactions.
                 </p>
                 <div className="pt-2 flex items-center gap-3 text-xs text-muted-foreground border-t border-border">
-                  <span>Currency: <strong className="text-foreground">{currencySymbol} (PKR)</strong></span>
+                  <span>Currency: <strong className="text-foreground">{currencySymbol} ({currency})</strong></span>
                   <span>&bull;</span>
                   <span>Ledger: <strong className="text-foreground">Double-entry Parity</strong></span>
                 </div>
