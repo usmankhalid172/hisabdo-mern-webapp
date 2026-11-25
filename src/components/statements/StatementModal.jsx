@@ -48,50 +48,44 @@ export default function StatementModal({ isOpen, onClose, party, partyType = 'Cu
     >
       <div>
         {/* Printable Header */}
-        <div style={{
-          background: 'rgba(15, 23, 42, 0.95)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          borderRadius: '12px',
-          padding: '1.5rem',
-          marginBottom: '1.5rem'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '1rem', marginBottom: '1rem' }}>
+        <div className="mb-6 rounded-card border border-border bg-surface-raised p-6">
+          <div className="mb-4 flex items-center justify-between border-b border-border pb-4">
             <div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white' }}>
+              <div className="text-xl font-extrabold text-foreground">
                 Hamza Traders & Wholesale Enterprise
               </div>
-              <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.2rem' }}>
+              <div className="mt-0.5 text-xs text-muted-foreground">
                 Hafeez Centre, Main Boulevard, Gulberg III, Lahore • Phone: 0300-1234567
               </div>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', padding: '0.25rem 0.65rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
+            <div className="text-right">
+              <div className="inline-flex items-center gap-1.5 rounded-control bg-info/10 px-2.5 py-1 text-xs font-bold text-info">
                 <ShieldCheck size={14} /> Verified Account Statement
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>
+              <div className="mt-1 text-xs text-muted-foreground">
                 Generated on: {new Date().toLocaleDateString()}
               </div>
             </div>
           </div>
 
           {/* Party Details Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', background: 'rgba(30, 41, 59, 0.4)', padding: '1rem', borderRadius: '8px' }}>
+          <div className="grid gap-4 rounded-card bg-surface-muted p-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
             <div>
-              <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>Account Holder:</span>
-              <strong style={{ fontSize: '0.95rem', color: 'white' }}>{party.name}</strong>
-              {party.companyName && <div style={{ fontSize: '0.8rem', color: '#38bdf8' }}>{party.companyName}</div>}
+              <span className="block text-xs text-muted-foreground">Account Holder:</span>
+              <strong className="text-base text-foreground">{party.name}</strong>
+              {party.companyName && <div className="text-sm text-info">{party.companyName}</div>}
             </div>
             <div>
-              <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>Mobile / Phone:</span>
-              <strong style={{ fontSize: '0.95rem', color: 'white' }}>{party.phone}</strong>
+              <span className="block text-xs text-muted-foreground">Mobile / Phone:</span>
+              <strong className="text-base text-foreground">{party.phone}</strong>
             </div>
             <div>
-              <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>Location / City:</span>
-              <strong style={{ fontSize: '0.95rem', color: 'white' }}>{party.city}</strong>
+              <span className="block text-xs text-muted-foreground">Location / City:</span>
+              <strong className="text-base text-foreground">{party.city}</strong>
             </div>
             <div>
-              <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>Net Balance Status:</span>
-              <strong style={{ fontSize: '1.05rem', color: balance > 0 ? (isCustomer ? '#f87171' : '#f59e0b') : balance < 0 ? '#34d399' : '#94a3b8' }}>
+              <span className="block text-xs text-muted-foreground">Net Balance Status:</span>
+              <strong className={`text-lg ${balance > 0 ? (isCustomer ? 'text-danger' : 'text-warning') : balance < 0 ? 'text-success' : 'text-muted-foreground'}`}>
                 Rs. {balanceAmount.toLocaleString()} {balance > 0 ? (isCustomer ? '(Receivable / Udhar)' : '(Payable / Supplier Dues)') : balance < 0 ? '(Advance Paid)' : '(Settled)'}
               </strong>
             </div>
@@ -99,38 +93,31 @@ export default function StatementModal({ isOpen, onClose, party, partyType = 'Cu
         </div>
 
         {/* Transactions Table Preview */}
-        <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '1.5rem', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+        <div className="mb-6 max-h-[300px] overflow-y-auto rounded-card border border-border">
+          <table className="w-full border-collapse text-sm">
             <thead>
-              <tr style={{ background: '#090d16', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', color: '#94a3b8', textAlign: 'left' }}>
-                <th style={{ padding: '0.65rem 0.85rem' }}>Date</th>
-                <th style={{ padding: '0.65rem 0.85rem' }}>Type</th>
-                <th style={{ padding: '0.65rem 0.85rem' }}>Bill/Voucher #</th>
-                <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right' }}>Amount (PKR)</th>
-                <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right' }}>Running Balance</th>
+              <tr className="border-b border-border bg-surface-muted text-left text-muted-foreground">
+                <th className="px-3.5 py-2.5">Date</th>
+                <th className="px-3.5 py-2.5">Type</th>
+                <th className="px-3.5 py-2.5">Bill/Voucher #</th>
+                <th className="px-3.5 py-2.5 text-right">Amount (PKR)</th>
+                <th className="px-3.5 py-2.5 text-right">Running Balance</th>
               </tr>
             </thead>
             <tbody>
               {entries.map((e, idx) => (
-                <tr key={idx} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)', background: idx % 2 === 0 ? 'rgba(15, 23, 42, 0.4)' : 'transparent' }}>
-                  <td style={{ padding: '0.65rem 0.85rem', color: '#cbd5e1' }}>{new Date(e.date).toLocaleDateString()}</td>
-                  <td style={{ padding: '0.65rem 0.85rem' }}>
-                    <span style={{
-                      padding: '0.2rem 0.5rem',
-                      borderRadius: '4px',
-                      fontSize: '0.75rem',
-                      fontWeight: 600,
-                      background: (e.type === 'GAVE_CREDIT' || e.type === 'PURCHASE_BILL') ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-                      color: (e.type === 'GAVE_CREDIT' || e.type === 'PURCHASE_BILL') ? '#f87171' : '#34d399'
-                    }}>
+                <tr key={idx} className="border-b border-border">
+                  <td className="px-3.5 py-2.5 text-muted-foreground">{new Date(e.date).toLocaleDateString()}</td>
+                  <td className="px-3.5 py-2.5">
+                    <span className={`rounded-control px-2 py-1 text-xs font-semibold ${e.type === 'GAVE_CREDIT' || e.type === 'PURCHASE_BILL' ? 'bg-danger/10 text-danger' : 'bg-success/10 text-success'}`}>
                       {e.type.replace('_', ' ')}
                     </span>
                   </td>
-                  <td style={{ padding: '0.65rem 0.85rem', color: '#94a3b8' }}>{e.billNumber || '-'}</td>
-                  <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 700, color: 'white' }}>
+                  <td className="px-3.5 py-2.5 text-muted-foreground">{e.billNumber || '-'}</td>
+                  <td className="px-3.5 py-2.5 text-right font-bold text-foreground">
                     Rs. {Number(e.amount).toLocaleString()}
                   </td>
-                  <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 700, color: '#38bdf8' }}>
+                  <td className="px-3.5 py-2.5 text-right font-bold text-info">
                     Rs. {Number(e.balanceAfter).toLocaleString()}
                   </td>
                 </tr>
@@ -140,12 +127,11 @@ export default function StatementModal({ isOpen, onClose, party, partyType = 'Cu
         </div>
 
         {/* Footer Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+        <div className="flex items-center justify-between gap-3">
           <Button variant="secondary" size="md" onClick={handleExportCSV} icon={Download}>
             Export to CSV Data
           </Button>
-
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <div className="flex gap-3">
             <Button variant="secondary" size="md" onClick={onClose}>
               Close
             </Button>

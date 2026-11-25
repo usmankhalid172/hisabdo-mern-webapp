@@ -6,32 +6,20 @@ import Button from './Button';
 
 export function LoadingState({ message = 'Loading records...' }) {
   return (
-    <div style={{
-      padding: '3rem 1.5rem',
-      textAlign: 'center',
-      background: 'rgba(15, 23, 42, 0.4)',
-      borderRadius: '12px',
-      border: '1px solid rgba(255, 255, 255, 0.08)'
-    }} className="animate-pulse">
-      <RefreshCw size={32} color="#3b82f6" className="animate-spin" style={{ margin: '0 auto 1rem' }} />
-      <div style={{ fontSize: '1rem', fontWeight: 600, color: 'white' }}>{message}</div>
-      <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>Communicating with database...</div>
+    <div className="animate-pulse rounded-card border border-border bg-surface-raised px-6 py-12 text-center shadow-card">
+      <RefreshCw size={32} className="animate-spin mx-auto mb-4 text-info" />
+      <div className="text-base font-semibold text-foreground">{message}</div>
+      <div className="mt-1 text-xs text-muted-foreground">Communicating with database...</div>
     </div>
   );
 }
 
 export function EmptyState({ title = 'No Data Found', message = 'No records match your criteria.', actionText, onAction }) {
   return (
-    <div style={{
-      padding: '3.5rem 1.5rem',
-      textAlign: 'center',
-      background: 'rgba(15, 23, 42, 0.4)',
-      borderRadius: '12px',
-      border: '1px dashed rgba(255, 255, 255, 0.12)'
-    }}>
-      <Inbox size={44} color="#475569" style={{ margin: '0 auto 1rem' }} />
-      <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', marginBottom: '0.35rem' }}>{title}</h4>
-      <p style={{ fontSize: '0.85rem', color: '#94a3b8', maxWidth: '380px', margin: '0 auto 1.25rem' }}>{message}</p>
+    <div className="rounded-card border border-dashed border-border bg-surface-raised px-6 py-14 text-center">
+      <Inbox size={44} className="mx-auto mb-4 text-muted-foreground" />
+      <h4 className="mb-1.5 text-lg font-bold text-foreground">{title}</h4>
+      <p className="mx-auto mb-5 max-w-[380px] text-sm text-muted-foreground">{message}</p>
       {actionText && onAction && (
         <Button variant="primary" size="sm" onClick={onAction}>
           {actionText}
@@ -45,28 +33,18 @@ export function ErrorState({ title = 'Alert', message, onDismiss }) {
   if (!message) return null;
 
   return (
-    <div style={{
-      background: 'rgba(239, 68, 68, 0.15)',
-      border: '1px solid rgba(239, 68, 68, 0.4)',
-      padding: '1rem 1.25rem',
-      borderRadius: '12px',
-      marginBottom: '1.25rem',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      color: '#f87171'
-    }} className="animate-fade-in">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <AlertTriangle size={20} color="#f87171" style={{ flexShrink: 0 }} />
+    <div className="animate-fade-in mb-5 flex items-center justify-between rounded-card border border-danger/30 bg-danger/10 px-5 py-4 text-danger">
+      <div className="flex items-center gap-3">
+        <AlertTriangle size={20} className="shrink-0" />
         <div>
-          <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{title}</div>
-          <div style={{ fontSize: '0.85rem', color: '#fca5a5' }}>{message}</div>
+          <div className="text-sm font-bold">{title}</div>
+          <div className="text-sm text-danger/80">{message}</div>
         </div>
       </div>
       {onDismiss && (
         <button
           onClick={onDismiss}
-          style={{ background: 'transparent', border: 'none', color: '#fca5a5', cursor: 'pointer', padding: '0.25rem' }}
+          className="cursor-pointer border-none bg-transparent p-1 text-danger/80"
         >
           <X size={18} />
         </button>
@@ -79,28 +57,18 @@ export function SuccessBanner({ title = 'Success', message, onDismiss }) {
   if (!message) return null;
 
   return (
-    <div style={{
-      background: 'rgba(16, 185, 129, 0.15)',
-      border: '1px solid rgba(16, 185, 129, 0.4)',
-      padding: '1rem 1.25rem',
-      borderRadius: '12px',
-      marginBottom: '1.25rem',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      color: '#34d399'
-    }} className="animate-fade-in">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <CheckCircle2 size={20} color="#34d399" style={{ flexShrink: 0 }} />
+    <div className="animate-fade-in mb-5 flex items-center justify-between rounded-card border border-success/30 bg-success/10 px-5 py-4 text-success">
+      <div className="flex items-center gap-3">
+        <CheckCircle2 size={20} className="shrink-0" />
         <div>
-          <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{title}</div>
-          <div style={{ fontSize: '0.85rem', color: '#a7f3d0' }}>{message}</div>
+          <div className="text-sm font-bold">{title}</div>
+          <div className="text-sm text-success/80">{message}</div>
         </div>
       </div>
       {onDismiss && (
         <button
           onClick={onDismiss}
-          style={{ background: 'transparent', border: 'none', color: '#a7f3d0', cursor: 'pointer', padding: '0.25rem' }}
+          className="cursor-pointer border-none bg-transparent p-1 text-success/80"
         >
           <X size={18} />
         </button>

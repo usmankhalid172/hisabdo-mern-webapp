@@ -24,51 +24,25 @@ export default function Modal({ isOpen, onClose, title, maxWidth = '560px', chil
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 100,
-        background: 'rgba(9, 13, 22, 0.85)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '1rem',
-        overflowY: 'auto'
-      }}
-      className="animate-fade-in"
+      className="animate-fade-in fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-background/85 p-4 backdrop-blur-[12px]"
       onClick={onClose}
     >
       <div
-        style={{
-          background: '#0f172a',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
-          borderRadius: '16px',
-          width: '100%',
-          maxWidth: maxWidth,
-          padding: '1.75rem',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)',
-          maxHeight: '90vh',
-          overflowY: 'auto'
-        }}
+        className="max-h-[90vh] w-full overflow-y-auto rounded-dialog border border-border bg-surface-raised p-7 shadow-dialog"
+        style={{ maxWidth }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Modal Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'white' }}>{title}</h3>
+        <div className="mb-5 flex items-center justify-between border-b border-border pb-4">
+          <h3 className="text-lg font-bold text-foreground">{title}</h3>
           <button
             onClick={onClose}
-            style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '0.25rem' }}
+            className="cursor-pointer border-none bg-transparent p-1 text-muted-foreground"
           >
             <X size={20} />
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div>
-          {children}
-        </div>
+        <div>{children}</div>
       </div>
     </div>
   );
