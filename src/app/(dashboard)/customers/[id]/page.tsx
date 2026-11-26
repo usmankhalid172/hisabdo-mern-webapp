@@ -38,7 +38,7 @@ export default function CustomerLedgerPage() {
   const customerId = params.id as string;
 
   const { user } = useAuth();
-  const { formatMoney, currencySymbol, theme, businessProfile } = useSettings();
+  const { formatMoney, currencySymbol, businessProfile } = useSettings();
 
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [timeline, setTimeline] = useState<LedgerRow[]>([]);
@@ -60,8 +60,8 @@ export default function CustomerLedgerPage() {
   // Edit/Delete
   const [editingRow, setEditingRow] = useState<LedgerRow | null>(null);
   const [deletingRow, setDeletingRow] = useState<LedgerRow | null>(null);
-// Edit Form
-const [editForm, setEditForm] = useState({
+  // Edit Form
+  const [editForm, setEditForm] = useState({
     amount: "",
     category: "",
     date: "",
@@ -70,7 +70,7 @@ const [editForm, setEditForm] = useState({
 
   const [submitting, setSubmitting] = useState(false);
 
-  // Payment dialog (uses Aiman's shared form)
+  // Add forms
   const [isIncomeModalOpen, setIsIncomeModalOpen] = useState(false);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
 
@@ -314,18 +314,18 @@ const [editForm, setEditForm] = useState({
                   {customer.address}
                 </span>
               )}
-               {customer.email && (
+              {customer.email && (
                 <span className="flex items-center gap-1">
-                  <Mail className="w-3.5 h-3.5 text-slate-500" />
+                  <Mail className="w-3.5 h-3.5 text-muted-foreground" />
                   {customer.email}
                 </span>
               )}
             </div>
-              {customer.notes && (
-                <p className="text-xs text-slate-400 mt-2">
-                  Notes: {customer.notes}
-                </p>
-              )}
+            {customer.notes && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Notes: {customer.notes}
+              </p>
+            )}
           </div>
         </div>
 
@@ -514,13 +514,16 @@ const [editForm, setEditForm] = useState({
         </div>
       </div>
 
-{/* ================= MODALS ================= */}
+      {/* ================= MODALS ================= */}
 
       {/* Reusable Add Income Form */}
       <AddIncomeForm
         isOpen={isIncomeModalOpen}
         onClose={() => setIsIncomeModalOpen(false)}
-        onSuccess={loadLedger}
+        onSuccess={() => {
+          loadLedger();
+          setFeedback({ type: "success", message: "Income entry saved successfully." });
+        }}
         customerId={customer?.id}
         lockCustomer={true}
         customers={customer ? [customer] : []}
@@ -530,14 +533,17 @@ const [editForm, setEditForm] = useState({
       <AddExpenseForm
         isOpen={isExpenseModalOpen}
         onClose={() => setIsExpenseModalOpen(false)}
-        onSuccess={loadLedger}
+        onSuccess={() => {
+          loadLedger();
+          setFeedback({ type: "success", message: "Expense entry saved successfully." });
+        }}
         customerId={customer?.id}
         lockCustomer={true}
         customers={customer ? [customer] : []}
       />
 
       {/* Modal 3: Edit Entry */}
-{editingRow && (
+      {editingRow && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-md rounded-card border border-border p-6 space-y-4 shadow-card bg-surface text-foreground">
             <div className="flex items-center justify-between border-b border-border pb-3">
