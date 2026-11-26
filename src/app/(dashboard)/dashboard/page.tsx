@@ -28,7 +28,6 @@ import { PageHeading } from "@/components/ui/design-system/PageHeading";
 import { LoadingState } from "@/components/ui/design-system/LoadingState";
 import { EmptyState } from "@/components/ui/design-system/EmptyState";
 import { ErrorState } from "@/components/ui/design-system/ErrorState";
-import { AddTransactionDialog } from "@/components/transactions/AddTransactionDialog";
 import { IncomeExpenseChart, type ChartDataPoint } from "@/components/dashboard/IncomeExpenseChart";
 import { RecentActivity, type RecentActivityTransaction } from "@/components/dashboard/RecentActivity";
 import { useAuth } from "@/context/AuthContext";
@@ -39,6 +38,8 @@ import {
   Income,
   Expense,
 } from "@/services/hisabdoService";
+import { AddIncomeForm } from "@/components/transactions/AddIncomeForm";
+import { AddExpenseForm } from "@/components/transactions/AddExpenseForm";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -64,8 +65,8 @@ export default function DashboardPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<RecentActivityTransaction[]>([]);
 
-  // Modals state: Add Customer & Calculator modals
-  const [activeModal, setActiveModal] = useState<"customer" | "calculator" | null>(null);
+  // Modals state: Add Income, Add Expense, Add Customer & Calculator modals
+  const [activeModal, setActiveModal] = useState<"income" | "expense" | "customer" | "calculator" | null>(null);
 
   // Form states
   const [formCustomer, setFormCustomer] = useState({
@@ -85,22 +86,12 @@ export default function DashboardPage() {
   const [pctAmount, setPctAmount] = useState("");
   const [pctPercent, setPctPercent] = useState("");
 
-  // Add Transaction Dialog States (Danish's AddTransactionDialog)
-  const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
-  const [transactionDialogType, setTransactionDialogType] = useState<"income" | "expense">("income");
-
   const handleAddIncome = () => {
-    setTransactionDialogType("income");
-    setIsTransactionDialogOpen(true);
+    setActiveModal("income");
   };
 
   const handleAddExpense = () => {
-    setTransactionDialogType("expense");
-    setIsTransactionDialogOpen(true);
-  };
-
-  const handleTransactionSuccess = async () => {
-    await loadData();
+    setActiveModal("expense");
   };
 
   const loadData = useCallback(async () => {
@@ -149,14 +140,17 @@ export default function DashboardPage() {
 
       exps.forEach((e) => {
         const c = custs.find((cust) => cust.id === e.customer_id);
-        combined.push({
-          id: e.id,
-          date: e.expense_date,
-          type: "expense",
-          description: e.description || "Expense Record",
-          customerName: c?.name || "Business Expense",
-          amount: Number(e.amount),
-        });
+        const customerName = c?.name;
+        if (!customerName || (customerName !== "Direct Sale" && customerName !== "Business Expense")) {
+          combined.push({
+            id: e.id,
+            date: e.expense_date,
+            type: "expense",
+            description: e.description || "Expense Record",
+            customerName,
+            amount: Number(e.amount),
+          });
+        }
       });
 
       pmts.forEach((p) => {
@@ -172,7 +166,11 @@ export default function DashboardPage() {
       });
 
       combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setRecentTransactions(combined);
+      setRecentTransactions(
+        combined.filter(
+          (tx) => tx.customerName !== "Direct Sale" && tx.customerName !== "Business Expense"
+        )
+      );
     } catch (err: any) {
       console.error("Dashboard data load error:", err);
       setLoadError(
@@ -343,7 +341,7 @@ export default function DashboardPage() {
                 variant="accent"
                 size="sm"
                 icon={Plus}
-                onClick={handleAddIncome}
+                onClick={() => setActiveModal("income")}
               >
                 Record Income
               </Button>
@@ -352,7 +350,7 @@ export default function DashboardPage() {
                 variant="danger"
                 size="sm"
                 icon={Minus}
-                onClick={handleAddExpense}
+                onClick={() => setActiveModal("expense")}
               >
                 Record Expense
               </Button>
@@ -405,7 +403,7 @@ export default function DashboardPage() {
                       variant="accent"
                       size="sm"
                       icon={Plus}
-                      onClick={handleAddIncome}
+                      onClick={() => setActiveModal("income")}
                     >
                       First Sale
                     </Button>
@@ -629,7 +627,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
-                onClick={handleAddIncome}
+                onClick={() => setActiveModal("income")}
                 className="p-3.5 rounded-control border border-success/20 bg-success/5 hover:bg-success/10 text-start transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success"
               >
                 <div className="w-8 h-8 rounded-control bg-success/15 text-success flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
@@ -641,7 +639,7 @@ export default function DashboardPage() {
 
               <button
                 type="button"
-                onClick={handleAddExpense}
+                onClick={() => setActiveModal("expense")}
                 className="p-3.5 rounded-control border border-danger/20 bg-danger/5 hover:bg-danger/10 text-start transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
               >
                 <div className="w-8 h-8 rounded-control bg-danger/15 text-danger flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
@@ -788,7 +786,37 @@ export default function DashboardPage() {
 
       {/* ================= MODALS (FULLY THEMED WITH DESIGN SYSTEM TOKENS) ================= */}
 
-      {/* Modal 1: Add Customer Modal */}
+      {/* Modal 1: Standardized Add Income Modal */}
+      {activeModal === "income" && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <AddIncomeForm
+            isOpen={activeModal === "income"}
+            onSuccess={async () => {
+              setActiveModal(null);
+              await loadData();
+            }}
+            onClose={() => setActiveModal(null)}
+            onCancel={() => setActiveModal(null)}
+          />
+        </div>
+      )}
+
+      {/* Modal 2: Standardized Add Expense Modal */}
+      {activeModal === "expense" && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <AddExpenseForm
+            isOpen={activeModal === "expense"}
+            onSuccess={async () => {
+              setActiveModal(null);
+              await loadData();
+            }}
+            onClose={() => setActiveModal(null)}
+            onCancel={() => setActiveModal(null)}
+          />
+        </div>
+      )}
+
+      {/* Modal 3: Add Customer Modal */}
       {activeModal === "customer" && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-md rounded-card border border-border bg-surface text-foreground p-6 space-y-4 shadow-dialog">
@@ -890,7 +918,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Modal 2: Retail & Percentage Calculator Modal */}
+      {/* Modal 4: Retail & Percentage Calculator Modal */}
       {activeModal === "calculator" && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-sm rounded-card border border-border bg-surface text-foreground p-5 space-y-4 shadow-dialog">
@@ -1099,14 +1127,6 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-
-      {/* Danish's Add Transaction Dialog (Income & Expense) */}
-      <AddTransactionDialog
-        open={isTransactionDialogOpen}
-        onOpenChange={setIsTransactionDialogOpen}
-        type={transactionDialogType}
-        onSuccess={handleTransactionSuccess}
-      />
     </div>
   );
 }
