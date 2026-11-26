@@ -145,11 +145,12 @@ test("================ HISABDO FORM STANDARDIZATION TESTS ================", asy
     assert.equal(pastCheck.isValid, false);
     assert.ok(pastCheck.error?.includes("earlier"), "Date before minDate correctly prevented");
 
-    // Calendar picker button and hidden input in component
+    // Shared calendar picker and manual text input in DatePickerPopover
     const incomeSrc = fs.readFileSync("src/components/transactions/AddIncomeForm.tsx", "utf8");
-    assert.ok(incomeSrc.includes("showPicker"), "AddIncomeForm has calendar picker trigger");
-    assert.ok(incomeSrc.includes('type="date"'), "AddIncomeForm has native date picker element");
-    assert.ok(incomeSrc.includes('type="text"'), "AddIncomeForm allows manual typing of date");
+    const datePickerSrc = fs.readFileSync("src/components/ui/DatePickerPopover.tsx", "utf8");
+    assert.ok(incomeSrc.includes("DatePickerPopover"), "AddIncomeForm uses the shared date picker component");
+    assert.ok(datePickerSrc.includes("aria-label=\"Open themed calendar\""), "DatePickerPopover has calendar picker trigger");
+    assert.ok(datePickerSrc.includes('type="text"'), "DatePickerPopover allows manual typing of date");
   });
 
   // 5. REQUIRED CATEGORY VALIDATION
