@@ -129,11 +129,23 @@ const [editForm, setEditForm] = useState({
   // Submit Edit
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingRow || !editForm.amount) return;
+    if (!editingRow) return;
+
+    const updatedAmount = Number(editForm.amount);
+    if (
+      !editForm.amount.trim() ||
+      !Number.isFinite(updatedAmount) ||
+      updatedAmount <= 0
+    ) {
+      setFeedback({
+        type: "error",
+        message: "Please enter a valid amount greater than zero.",
+      });
+      return;
+    }
     setSubmitting(true);
     const userId = user?.id || "guest";
     try {
-      const updatedAmount = Number(editForm.amount);
       if (editingRow.sourceTable === "income") {
         await hisabDoService.updateIncome(userId, editingRow.id, {
           amount: updatedAmount,
@@ -207,9 +219,13 @@ const [editForm, setEditForm] = useState({
 
   // Filter rows
   const filteredTimeline = timeline.filter((row) => {
+    const searchableNote = String(row.note ?? "");
+    const searchableCategory = String(row.category ?? "");
+    const normalizedSearch = searchTerm.toLowerCase();
+
     const matchesSearch =
-      row.note.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      row.category.toLowerCase().includes(searchTerm.toLowerCase());
+      searchableNote.toLowerCase().includes(normalizedSearch) ||
+      searchableCategory.toLowerCase().includes(normalizedSearch);
 
     const isIncomeType =
       row.type === "Purchase" ||
