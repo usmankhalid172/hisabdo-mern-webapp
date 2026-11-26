@@ -430,7 +430,7 @@ class DatabaseStore {
 
 // Global singleton instance
 const globalStore = global.dbStoreCustomerVendor || new DatabaseStore();
-if (process.env.NODE_ENV !== 'production') {
+if ((process.env.NODE_ENV || 'development') !== 'production') {
   global.dbStoreCustomerVendor = globalStore;
 }
 

@@ -15,7 +15,7 @@ declare global {
 const users: Map<string, StoredUser> =
   globalThis.__hisabdo_users || new Map<string, StoredUser>();
 
-if (process.env.NODE_ENV !== "production") {
+if ((process.env.NODE_ENV || "development") !== "production") {
   globalThis.__hisabdo_users = users;
 }
 

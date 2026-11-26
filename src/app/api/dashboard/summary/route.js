@@ -3,9 +3,17 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { verifyAuthToken } from '@/lib/auth-token';
 
 function getAdminSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_SUPABASE_URL || '';
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_SUPABASE_ANON_KEY || '';
-  if (!url || !serviceKey) return null;
+  const url =
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.NEXT_SUPABASE_URL ||
+    "https://ooabmcalzsgesdgrgilu.supabase.co";
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for dashboard summary access.");
+  }
+  if (!url) {
+    throw new Error("Supabase URL is required for dashboard summary access.");
+  }
   return createSupabaseClient(url, serviceKey);
 }
 

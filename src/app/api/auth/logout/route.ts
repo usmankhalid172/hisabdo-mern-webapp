@@ -12,7 +12,7 @@ export async function POST() {
   // Clear HTTP-only auth cookies
   response.cookies.set("hisabdo_auth_token", "", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: (process.env.NODE_ENV || "development") === "production",
     sameSite: "lax",
     path: "/",
     maxAge: 0,
@@ -21,7 +21,7 @@ export async function POST() {
 
   response.cookies.set("hisabdo_refresh_token", "", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: (process.env.NODE_ENV || "development") === "production",
     sameSite: "lax",
     path: "/",
     maxAge: 0,

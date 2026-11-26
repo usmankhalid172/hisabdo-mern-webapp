@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     response.cookies.set("hisabdo_auth_token", newAccessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: (process.env.NODE_ENV || "development") === "production",
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24, // 24 hours
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     response.cookies.set("hisabdo_refresh_token", newRefreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: (process.env.NODE_ENV || "development") === "production",
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 7, // 7 days

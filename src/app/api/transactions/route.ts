@@ -7,8 +7,11 @@ function getAdminSupabase() {
   const url =
     process.env.NEXT_PUBLIC_SUPABASE_URL ||
     process.env.NEXT_SUPABASE_URL ||
-    "";
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+    "https://ooabmcalzsgesdgrgilu.supabase.co";
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for transaction API access.");
+  }
   return createSupabaseClient(url, serviceKey);
 }
 
