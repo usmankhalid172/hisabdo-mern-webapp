@@ -291,7 +291,7 @@ const [editForm, setEditForm] = useState({
     <div className="space-y-6 pb-20">
       {/* ================= HEADER ================= */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <Link
             href="/customers"
             className="p-2 rounded-control border border-border hover:bg-surface-muted text-foreground transition"
@@ -299,11 +299,11 @@ const [editForm, setEditForm] = useState({
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <div>
-            <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <h1 className="break-words text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
               {customer.name}
             </h1>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-0.5">
               <span className="flex items-center gap-1">
                 <Phone className="w-3.5 h-3.5 text-success" />
                 {customer.phone || "No phone number"}
@@ -316,13 +316,13 @@ const [editForm, setEditForm] = useState({
               )}
                {customer.email && (
                 <span className="flex items-center gap-1">
-                  <Mail className="w-3.5 h-3.5 text-slate-500" />
+                  <Mail className="w-3.5 h-3.5 text-muted-foreground" />
                   {customer.email}
                 </span>
               )}
             </div>
               {customer.notes && (
-                <p className="text-xs text-slate-400 mt-2">
+                <p className="break-words text-xs text-muted-foreground mt-2">
                   Notes: {customer.notes}
                 </p>
               )}
@@ -539,12 +539,12 @@ const [editForm, setEditForm] = useState({
       {/* Modal 3: Edit Entry */}
 {editingRow && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-card border border-border p-6 space-y-4 shadow-card bg-surface text-foreground">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-card border border-border p-6 space-y-4 shadow-card bg-surface text-foreground">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <h3 className="text-lg font-bold flex items-center gap-2">
                 <Edit2 className="w-4 h-4 text-info" /> Edit Ledger Entry
               </h3>
-              <button onClick={() => setEditingRow(null)} className="text-muted-foreground hover:text-foreground">
+              <button type="button" onClick={() => setEditingRow(null)} disabled={submitting} className="text-muted-foreground hover:text-foreground disabled:opacity-50">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -557,6 +557,7 @@ const [editForm, setEditForm] = useState({
                 <input
                   type="number"
                   required
+                  min="0.01"
                   step="any"
                   value={editForm.amount}
                   onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
@@ -598,6 +599,7 @@ const [editForm, setEditForm] = useState({
                 <button
                   type="button"
                   onClick={() => setEditingRow(null)}
+                  disabled={submitting}
                   className="flex-1 py-2.5 rounded-control text-sm font-semibold border border-border hover:bg-surface-muted text-foreground transition"
                 >
                   Cancel
@@ -619,7 +621,7 @@ const [editForm, setEditForm] = useState({
       {/* ================= MODAL: CONFIRM DELETE ================= */}
       {deletingRow && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-sm rounded-card border border-border p-6 space-y-4 shadow-card text-center bg-surface text-foreground">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto rounded-card border border-border p-6 space-y-4 shadow-card text-center bg-surface text-foreground">
             <div className="w-12 h-12 rounded-full bg-danger/10 text-danger mx-auto flex items-center justify-center">
               <Trash2 className="w-6 h-6" />
             </div>
@@ -633,6 +635,7 @@ const [editForm, setEditForm] = useState({
               <button
                 type="button"
                 onClick={() => setDeletingRow(null)}
+                disabled={submitting}
                 className="flex-1 py-2.5 rounded-control text-sm font-semibold border border-border hover:bg-surface-muted text-foreground transition"
               >
                 Cancel
@@ -653,24 +656,32 @@ const [editForm, setEditForm] = useState({
 
       {/* ================= MODAL: MESSAGE PREVIEW ================= */}
       {isPreviewOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-card border border-border p-6 space-y-4 shadow-card bg-surface text-foreground">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col space-y-4 overflow-y-auto rounded-card border border-border bg-surface p-6 text-foreground shadow-card">
             <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="text-base font-bold flex items-center gap-2">
-                <MessageCircle className="w-4 h-4 text-success" />
+              <h3 className="flex items-center gap-2 text-base font-bold">
+                <MessageCircle className="h-4 w-4 text-success" />
                 Reminder Message Preview ({reminderLang})
               </h3>
-              <button onClick={() => setIsPreviewOpen(false)} className="text-muted-foreground hover:text-foreground">
-                <X className="w-5 h-5" />
+              <button
+                type="button"
+                aria-label="Close message preview"
+                onClick={() => setIsPreviewOpen(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="p-4 rounded-control border border-border text-sm whitespace-pre-wrap leading-relaxed font-sans bg-surface-muted text-foreground">
+
+            <div className="rounded-control border border-border bg-surface-muted p-4 text-sm font-sans leading-relaxed text-foreground whitespace-pre-wrap">
               {previewMessage}
             </div>
+
             <div className="flex justify-end pt-2">
               <button
+                type="button"
                 onClick={() => setIsPreviewOpen(false)}
-                className="px-4 py-2 rounded-control text-xs font-bold bg-primary hover:opacity-90 text-white transition"
+                className="rounded-control bg-primary px-4 py-2 text-xs font-bold text-white transition hover:opacity-90"
               >
                 Close Preview
               </button>
