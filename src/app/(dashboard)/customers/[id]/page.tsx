@@ -50,6 +50,7 @@ export default function CustomerLedgerPage() {
   });
 
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<"all" | "income" | "expense">("all");
 
@@ -91,21 +92,26 @@ const [editForm, setEditForm] = useState({
   const loadLedger = useCallback(async () => {
     try {
       setIsLoading(true);
+      setLoadError(null);
+      setCustomer(null);
+      setTimeline([]);
+
       const userId = user?.id || "guest";
       const custs = await hisabDoService.getCustomers(userId);
       const current = custs.find((c) => c.id === customerId);
 
       if (!current) {
-        setIsLoading(false);
+        setLoadError("The requested customer could not be found or was removed.");
         return;
       }
 
-      setCustomer(current);
       const ledgerData = await hisabDoService.getCustomerLedgerTimeline(userId, customerId);
+      setCustomer(current);
       setTimeline(ledgerData.rows);
       setSummary(ledgerData.summary);
     } catch (e) {
       console.error("Error loading ledger:", e);
+      setLoadError("Unable to load customer details. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -241,10 +247,21 @@ const [editForm, setEditForm] = useState({
   if (!customer) {
     return (
       <div className="p-12 text-center space-y-4">
-        <h2 className="text-xl font-bold text-foreground">Customer Not Found</h2>
+        <h2 className="text-xl font-bold text-foreground">
+          {loadError ? "Unable to Load Customer" : "Customer Not Found"}
+        </h2>
         <p className="text-sm text-muted-foreground">
-          The requested customer could not be found or was removed.
+          {loadError || "The requested customer could not be found or was removed."}
         </p>
+        {loadError && (
+          <button
+            type="button"
+            onClick={loadLedger}
+            className="rounded-control bg-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+          >
+            Retry
+          </button>
+        )}
         <Link
           href="/customers"
           className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-control text-sm font-semibold"
