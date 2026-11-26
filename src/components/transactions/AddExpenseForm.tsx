@@ -320,7 +320,7 @@ export function AddExpenseForm({
             placeholder="0.00"
             value={formData.amount}
             onChange={(e) => handleAmountChange(e.target.value)}
-            className={`w-full px-3 py-2 text-lg font-bold rounded-control border bg-surface text-foreground focus:outline-none focus:ring-1 focus:ring-primary ${
+            className={`w-full px-3 py-2 text-lg font-bold rounded-control border bg-surface text-foreground focus:outline-none focus:ring-1 focus:ring-rose-500 ${
               errors.amount ? "border-danger ring-1 ring-danger text-danger" : "border-border"
             }`}
             autoFocus
@@ -427,7 +427,8 @@ export function AddExpenseForm({
           <button
             type="submit"
             disabled={submitting}
-            className="flex-1 py-2 rounded-control text-sm font-bold flex items-center justify-center gap-2 bg-danger text-white hover:opacity-90 transition shadow-card disabled:opacity-60"
+            className="flex-1 py-2 rounded-control text-sm font-bold flex items-center justify-center gap-2"
+            style={{ backgroundColor: "#E53935", color: "white" }}
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
             <span>Save Entry</span>
