@@ -11,6 +11,7 @@ import {
 } from "@/lib/validations/formDateValidation";
 import DatePickerPopover from "@/components/ui/DatePickerPopover";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { CategoryInputDropdown } from "./CategoryInputDropdown";
 
 export const DEFAULT_INCOME_CATEGORIES = [
   "Sales",
@@ -69,6 +70,7 @@ export function AddIncomeForm({
   const { currencySymbol } = useSettings();
 
   const [customerList, setCustomerList] = useState<Customer[]>(initialCustomers || []);
+  const [categoryList, setCategoryList] = useState<string[]>(categories || DEFAULT_INCOME_CATEGORIES);
   const [formData, setFormData] = useState({
     amount: initialAmount ? String(initialAmount) : "",
     customerId: customerId,
@@ -130,6 +132,29 @@ export function AddIncomeForm({
       setCustomerList(initialCustomers);
     }
   }, [initialCustomers, user]);
+
+  // Load persistent categories
+  useEffect(() => {
+    if (isOpen) {
+      const userId = user?.id || "guest";
+      hisabDoService.getCategories(userId, "income").then((cats) => {
+        if (cats && cats.length > 0) {
+          setCategoryList(cats);
+        }
+      }).catch(console.error);
+    }
+  }, [isOpen, user]);
+
+  const handleAddCategory = async (newCat: string) => {
+    const userId = user?.id || "guest";
+    const added = await hisabDoService.addCategory(userId, newCat, "income");
+    setCategoryList((prev) => {
+      if (prev.some((c) => c.toLowerCase() === added.toLowerCase())) return prev;
+      return [...prev, added];
+    });
+    setFormData((prev) => ({ ...prev, category: added }));
+    setErrors((prev) => ({ ...prev, category: undefined }));
+  };
 
   if (!isOpen) return null;
 
@@ -348,29 +373,23 @@ export function AddIncomeForm({
           </div>
         )}
 
-        {/* 3. Category (Single Dropdown Required) */}
+        {/* 3. Category (Combined Text Input and Dropdown) */}
         <div>
           <label htmlFor="income-category" className="block text-xs font-semibold mb-1 text-foreground">
             Category *
           </label>
-          <select
+          <CategoryInputDropdown
             id="income-category"
             name="category"
-            required
             value={formData.category}
-            onChange={(e) => handleCategoryChange(e.target.value)}
-            className={`w-full px-3 py-2 rounded-control text-sm border bg-surface text-foreground focus:outline-none focus:ring-1 focus:ring-primary ${
-              errors.category ? "border-danger ring-1 ring-danger text-danger" : "border-border"
-            }`}
-          >
-            <option value="">Select Category</option>
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
-          {errors.category && <p className="text-xs text-danger mt-1">{errors.category}</p>}
+            onChange={handleCategoryChange}
+            categories={categoryList}
+            onAddCategory={handleAddCategory}
+            error={errors.category}
+            placeholder="Select or type category..."
+            variant="income"
+            required
+          />
         </div>
 
         {/* 4. Description / Notes */}
